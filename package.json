@@ -1,0 +1,26 @@
+{
+  "name": "pasteleria-app",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de pedidos para la pastelería La Fiesta",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --watch server.js"
+  },
+  "author": "Isaac",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "googleapis": "^160.0.0",
+    "html-pdf-node": "^1.0.8",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "mysql2": "^3.10.3",
+    "mysqldump": "^3.2.0",
+    "puppeteer": "^24.22.3",
+    "sequelize": "^6.37.3"
+  }
+}
