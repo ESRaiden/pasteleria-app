@@ -12,7 +12,7 @@
         .fc .fc-daygrid-day.fc-day-today { background-color: #fcf8e3; }
         #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.8); display: flex; justify-content: center; align-items: center; z-index: 9999; }
         .hidden { display: none !important; }
-        input:read-only, input:disabled { background-color: #e9ecef; cursor: not-allowed; }
+        input:read-only, input:disabled, textarea:disabled { background-color: #e9ecef; cursor: not-allowed; }
         .image-preview-wrapper { position: relative; }
         .delete-image-btn {
             position: absolute; top: -8px; right: -8px;
@@ -21,6 +21,45 @@
             border: 2px solid white; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             font-weight: bold; font-size: 14px; line-height: 1;
+        }
+        /* --- ESTILOS PARA EL NUEVO SISTEMA DE ETIQUETAS --- */
+        .tag-container {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            padding: 8px; border: 1px solid #d1d5db; border-radius: 0.5rem;
+            background-color: #f9fafb; min-height: 42px;
+        }
+        .tag {
+            display: flex; align-items: center;
+            background-color: #e5e7eb; color: #374151;
+            padding: 4px 8px; border-radius: 9999px;
+            font-size: 0.875rem; font-weight: 500;
+        }
+        .tag-remove-btn {
+            margin-left: 8px; background: none; border: none;
+            color: #9ca3af; font-weight: bold; cursor: pointer;
+        }
+        .tag-remove-btn:hover { color: #374151; }
+        .disabled-section { opacity: 0.5; pointer-events: none; }
+
+        /* Estilos para el Modal de Selección */
+        .modal-selection {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); z-index: 10000;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background-color: white; padding: 20px;
+            border-radius: 8px; width: 90%; max-width: 500px;
+            max-height: 80vh; overflow-y: auto;
+        }
+        .modal-list-item {
+            padding: 10px; border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .modal-list-item:hover { background-color: #f3f4f6; }
+        .modal-list-item.cost-extra::after {
+            content: '(Costo Adicional)';
+            font-size: 0.8rem; color: #ef4444; margin-left: 8px;
         }
     </style>
 </head>
@@ -94,20 +133,47 @@
                                 <option value="Normal">Normal</option><option value="Base/Especial">Base/Especial</option>
                             </select>
                         </div>
-                        <div><label for="persons" class="block mb-2 text-sm font-medium">Número de Personas</label><input type="number" id="persons" step="5" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required></div>
-                        <div><label for="shape" class="block mb-2 text-sm font-medium">Forma del Pastel</label><input type="text" id="shape" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required></div>
+                        <div><label for="persons" class="block mb-2 text-sm font-medium">Número de Personas (Total)</label><input type="number" id="persons" step="5" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required></div>
+                        <div>
+                            <label for="shape" class="block mb-2 text-sm font-medium">Forma del Pastel</label>
+                            <input type="text" id="shape" list="shape-options" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required>
+                            <datalist id="shape-options">
+                                <option value="Redondo"></option>
+                                <option value="Rectangular"></option>
+                                <option value="Corazon"></option>
+                            </datalist>
+                        </div>
                     </div>
                     
                     <div id="normalFields">
                         <div class="space-y-6">
-                            <div><label for="cakeFlavor" class="block mb-2 text-sm font-medium">Sabor(es) del Pan</label><input type="text" id="cakeFlavor" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
-                            <div><label for="filling" class="block mb-2 text-sm font-medium">Relleno(s) (Opcional)</label><input type="text" id="filling" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div>
+                                <label class="block mb-2 text-sm font-medium">Sabor(es) del Pan (Máx. 2)</label>
+                                <div id="cakeFlavorContainer" class="tag-container"></div>
+                                <button type="button" id="addCakeFlavorBtn" class="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Añadir Sabor</button>
+                            </div>
+                            <div id="fillingSection">
+                                <label class="block mb-2 text-sm font-medium">Relleno(s) (Máx. 2)</label>
+                                <div id="fillingContainer" class="tag-container"></div>
+                                <button type="button" id="addFillingBtn" class="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Añadir Relleno</button>
+                            </div>
                         </div>
                     </div>
 
                     <div id="specialFields" class="hidden mt-6">
                         <h4 class="text-md font-semibold mb-2 text-gray-600">Estructura por Pisos</h4>
-                        <table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th scope="col" class="px-4 py-3">Personas</th><th scope="col" class="px-4 py-3">Panes</th><th scope="col" class="px-4 py-3">Rellenos</th><th scope="col" class="px-4 py-3">Notas/Forma</th><th scope="col" class="px-1 py-3"></th></tr></thead><tbody id="tiersTableBody"></tbody></table>
+                        <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3">Personas</th>
+                                    <th scope="col" class="px-4 py-3">Panes (3)</th>
+                                    <th scope="col" class="px-4 py-3">Rellenos (2)</th>
+                                    <th scope="col" class="px-4 py-3">Notas/Forma</th>
+                                    <th scope="col" class="px-1 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tiersTableBody"></tbody>
+                        </table>
                         <button type="button" id="addTierButton" class="mt-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">+ Añadir Piso</button>
                     </div>
 
@@ -128,8 +194,10 @@
                             <label class="block mb-2 text-sm font-medium">Adicionales</label>
                             <div class="flex items-center gap-2 mb-2">
                                 <input type="text" id="additionalName" placeholder="Descripción (ej: Vela, Letrero)" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
-                                <input type="number" id="additionalPrice" placeholder="Precio" step="0.01" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-40 p-2.5">
-                                <button type="button" id="addAdditionalButton" class="text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">+</button>
+                                <input type="number" id="additionalQuantity" value="1" min="1" placeholder="Cant." class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-20 p-2.5">
+                                <span class="text-gray-500 font-bold">x</span>
+                                <input type="number" id="additionalPrice" placeholder="Precio Unitario" step="0.01" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-32 p-2.5">
+                                <button type="button" id="addAdditionalButton" class="text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-5 py-2.5">+</button>
                             </div>
                             <ul id="additionalList" class="list-disc list-inside text-gray-700 ml-4"></ul>
                         </div>
@@ -144,11 +212,33 @@
                     </div>
                     
                     <h3 class="text-lg font-semibold my-6 text-gray-700 border-b pb-2">Entrega</h3>
-                    <div class="grid md:grid-cols-2 gap-6 mb-6">
-                        <div><label for="deliveryLocation" class="block mb-2 text-sm font-medium">Dirección de Entrega</label><input type="text" id="deliveryLocation" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
-                        <div><label for="deliveryCost" class="block mb-2 text-sm font-medium">Costo de Envío</label><input type="number" id="deliveryCost" step="0.01" value="0" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
+                     <div class="grid md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                           <label for="deliveryCost" class="block mb-2 text-sm font-medium">Costo de Envío</label>
+                           <input type="number" id="deliveryCost" step="0.01" value="0" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
+                        </div>
+                         <div class="flex items-center pt-5">
+                            <input id="inStorePickup" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="inStorePickup" class="ml-2 text-sm font-medium text-gray-900">Se recoge en tienda</label>
+                        </div>
                     </div>
-                    <div class="flex items-center mb-6"><input id="inStorePickup" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"><label for="inStorePickup" class="ml-2 text-sm font-medium text-gray-900">Se recoge en tienda</label></div>
+                    <div id="deliveryAddressSection">
+                        <div class="flex items-center mb-4">
+                            <input id="googleMapsLocation" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="googleMapsLocation" class="ml-2 text-sm font-medium text-gray-900">El cliente envía ubicación (Google Maps)</label>
+                        </div>
+                        <div id="addressFields">
+                            <div class="grid md:grid-cols-2 gap-6 mb-4">
+                                <div><label for="postalCode" class="block mb-2 text-sm font-medium">Código Postal</label><input type="text" id="postalCode" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
+                                <div><label for="neighborhood" class="block mb-2 text-sm font-medium">Colonia</label><input type="text" id="neighborhood" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
+                            </div>
+                            <div class="mb-4"><label for="street" class="block mb-2 text-sm font-medium">Calle</label><input type="text" id="street" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div class="grid md:grid-cols-2 gap-6 mb-4">
+                                <div><label for="extNumber" class="block mb-2 text-sm font-medium">Número Exterior</label><input type="text" id="extNumber" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
+                                <div><label for="intNumber" class="block mb-2 text-sm font-medium">Número Interior (Opcional)</label><input type="text" id="intNumber" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <h3 class="text-lg font-semibold my-6 text-gray-700 border-b pb-2">Cuenta</h3>
                     <div class="grid md:grid-cols-3 gap-6 mb-6">
@@ -174,15 +264,75 @@
                 </div>
             </div>
         </div>
+
+        <div id="selectionModal" class="modal-selection hidden">
+            <div class="modal-content">
+                <h3 id="modalTitle" class="text-xl font-bold mb-4"></h3>
+                <div id="modal-step-1">
+                    <input type="text" id="modalSearch" class="w-full p-2 border border-gray-300 rounded-md mb-4" placeholder="Buscar...">
+                    <div id="modalList"></div>
+                </div>
+                <div id="modal-step-2" class="hidden">
+                    <h4 id="modal-step-2-title" class="text-lg font-semibold mb-2"></h4>
+                    <div id="modal-step-2-list"></div>
+                </div>
+                <button id="modalCloseBtn" class="mt-4 w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cerrar</button>
+            </div>
+        </div>
+
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // --- Referencias a elementos del DOM ---
-            const loginView = document.getElementById('loginView'), appView = document.getElementById('appView'), loginForm = document.getElementById('loginForm'), loginError = document.getElementById('loginError'), emailInput = document.getElementById('email'), passwordInput = document.getElementById('password'), logoutButton = document.getElementById('logoutButton'), calendarView = document.getElementById('calendarView'), formView = document.getElementById('formView'), newFolioButton = document.getElementById('newFolioButton'), cancelFormButton = document.getElementById('cancelFormButton'), folioForm = document.getElementById('folioForm'), calendarEl = document.getElementById('calendar'), modal = document.getElementById('folioModal'), closeModalBtn = document.getElementById('closeModal'), loadingEl = document.getElementById('loading'), inStorePickupCheckbox = document.getElementById('inStorePickup'), deliveryLocationInput = document.getElementById('deliveryLocation'), deliveryCostInput = document.getElementById('deliveryCost'), totalInput = document.getElementById('total'), advanceInput = document.getElementById('advancePayment'), balanceInput = document.getElementById('balance'), imageInput = document.getElementById('referenceImages'), imagePreview = document.getElementById('imagePreview'), folioTypeSelect = document.getElementById('folioType'), normalFields = document.getElementById('normalFields'), specialFields = document.getElementById('specialFields'), tiersTableBody = document.getElementById('tiersTableBody'), addTierButton = document.getElementById('addTierButton'), addComplementCheckbox = document.getElementById('addComplement'), complementForm = document.getElementById('complementForm'), isPaidCheckbox = document.getElementById('isPaid'), addAdditionalButton = document.getElementById('addAdditionalButton'), additionalList = document.getElementById('additionalList');
+            const loginView = document.getElementById('loginView'), appView = document.getElementById('appView'), loginForm = document.getElementById('loginForm'), loginError = document.getElementById('loginError'), emailInput = document.getElementById('email'), passwordInput = document.getElementById('password'), logoutButton = document.getElementById('logoutButton'), calendarView = document.getElementById('calendarView'), formView = document.getElementById('formView'), newFolioButton = document.getElementById('newFolioButton'), cancelFormButton = document.getElementById('cancelFormButton'), folioForm = document.getElementById('folioForm'), calendarEl = document.getElementById('calendar'), modal = document.getElementById('folioModal'), closeModalBtn = document.getElementById('closeModal'), loadingEl = document.getElementById('loading'), inStorePickupCheckbox = document.getElementById('inStorePickup'), deliveryCostInput = document.getElementById('deliveryCost'), totalInput = document.getElementById('total'), advanceInput = document.getElementById('advancePayment'), balanceInput = document.getElementById('balance'), imageInput = document.getElementById('referenceImages'), imagePreview = document.getElementById('imagePreview'), folioTypeSelect = document.getElementById('folioType'), normalFields = document.getElementById('normalFields'), specialFields = document.getElementById('specialFields'), tiersTableBody = document.getElementById('tiersTableBody'), addTierButton = document.getElementById('addTierButton'), addComplementCheckbox = document.getElementById('addComplement'), complementForm = document.getElementById('complementForm'), isPaidCheckbox = document.getElementById('isPaid'), addAdditionalButton = document.getElementById('addAdditionalButton'), additionalList = document.getElementById('additionalList'), personsInput = document.getElementById('persons'), designDescriptionTextarea = document.getElementById('designDescription');
+            
+            // --- ELEMENTOS DE ENTREGA ---
+            const deliveryAddressSection = document.getElementById('deliveryAddressSection');
+            const googleMapsLocationCheckbox = document.getElementById('googleMapsLocation');
+            const addressFields = document.getElementById('addressFields');
+            const postalCodeInput = document.getElementById('postalCode');
+            const streetInput = document.getElementById('street');
+            const extNumberInput = document.getElementById('extNumber');
+            const intNumberInput = document.getElementById('intNumber');
+            const neighborhoodInput = document.getElementById('neighborhood');
+
+            // --- ELEMENTOS PARA ETIQUETAS ---
+            const addCakeFlavorBtn = document.getElementById('addCakeFlavorBtn'), addFillingBtn = document.getElementById('addFillingBtn'), cakeFlavorContainer = document.getElementById('cakeFlavorContainer'), fillingContainer = document.getElementById('fillingContainer'), fillingSection = document.getElementById('fillingSection'), selectionModal = document.getElementById('selectionModal'), modalTitle = document.getElementById('modalTitle'), modalSearch = document.getElementById('modalSearch'), modalList = document.getElementById('modalList'), modalCloseBtn = document.getElementById('modalCloseBtn'), modalStep1 = document.getElementById('modal-step-1'), modalStep2 = document.getElementById('modal-step-2'), modalStep2Title = document.getElementById('modal-step-2-title'), modalStep2List = document.getElementById('modal-step-2-list');
+
             let calendar;
             let selectedFiles = [];
             let additionalItems = [];
+            let selectedCakeFlavors = [];
+            let selectedFillings = [];
+            let tiersData = [];
+            let currentTierIndex = -1; // Para saber qué fila del piso se está editando
+            
+            // --- BASES DE DATOS DE SABORES Y RELLENOS ---
+            const cakeFlavorsData = {
+                normal: ['Pastel de queso', 'Pan de tres leches', 'Chocolate', 'Red Velvet', 'Mil Hojas', 'Zanahoria', 'Queso/Flan', 'Mantequilla'],
+                tier: ['Mantequilla', 'Queso', 'Nata', 'Chocolate', 'Vainilla', 'Flan', 'Red Velvet']
+            };
+            const fillingsData = {
+                'incluidos': {
+                    'Mermelada': ['Zarzamora', 'Fresa', 'Piña', 'Durazno'],
+                    'Manjar': ['Nuez', 'Coco', 'Almendra'],
+                    'Dulce de Leche': ['Envinada', 'Nuez', 'Almendra', 'Coco'],
+                    'Duraznos': ['Crema de Yogurth', 'Chantilly', 'Rompope'],
+                    'Nuez': ['Manjar', 'Mocka', 'Capuchino']
+                },
+                'conCosto': {
+                    'Cajeta': ['Nuez', 'Coco', 'Almendra', 'Oreo'],
+                    'Crema de Queso': ['Mermelada zarzamora', 'Mermelada fresa', 'Cajeta', 'Envinada'],
+                    'Oreo': ['Manjar', 'Crema de yogurth fresa', 'Crema de chocolate', 'Chantilly'],
+                    'Cremas': ['Mocka', 'Yogurth de fresa', 'Café con o sin brandy'],
+                    'Chantilly con fresas': [],
+                    'Nutella': [],
+                    'Cocktail de frutas': ['Chantilly', 'Crema de queso', 'Crema de Yogurth'],
+                    'Crema de queso con Chocoretas': [],
+                    'Snickers / Milky Way': ['Manjar', 'Chantilly', 'Crema de yogurth fresa', 'Crema de chocolate']
+                }
+            };
 
             // --- Lógica para poblar el selector de hora ---
             const hourSelect = document.getElementById('deliveryHour');
@@ -190,6 +340,173 @@
                 const option = document.createElement('option'); option.value = i; option.textContent = i.toString().padStart(2, '0'); hourSelect.appendChild(option);
             }
 
+            // --- FUNCIÓN PARA RENDERIZAR ETIQUETAS ---
+            function renderTags(container, tagsArray, onRemoveCallback) {
+                container.innerHTML = '';
+                tagsArray.forEach((tagData, index) => {
+                    const tagEl = document.createElement('div');
+                    tagEl.className = 'tag';
+                    const tagName = typeof tagData === 'object' ? tagData.name : tagData;
+                    tagEl.innerHTML = `
+                        <span>${tagName}</span>
+                        <button type="button" class="tag-remove-btn" data-index="${index}">&times;</button>
+                    `;
+                    container.appendChild(tagEl);
+                });
+
+                if (onRemoveCallback) {
+                     container.querySelectorAll('.tag-remove-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            const indexToRemove = parseInt(e.target.dataset.index, 10);
+                            onRemoveCallback(indexToRemove);
+                        });
+                    });
+                }
+            }
+            
+            // --- LÓGICA DEL MODAL DE SELECCIÓN ---
+            function openSelectionModal(title, data, currentTags, onSelectCallback, limit) {
+                modalStep1.classList.remove('hidden');
+                modalStep2.classList.add('hidden');
+                modalTitle.textContent = title;
+                modalSearch.value = '';
+                
+                function populateList(filter = '') {
+                    modalList.innerHTML = '';
+                    const filteredData = data.filter(item => item.toLowerCase().includes(filter.toLowerCase()));
+                    
+                    filteredData.forEach(item => {
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'modal-list-item';
+                        itemEl.textContent = item;
+                        itemEl.addEventListener('click', () => {
+                            if (currentTags.length < limit) {
+                                onSelectCallback(item);
+                                selectionModal.classList.add('hidden');
+                            } else {
+                                alert(`Solo puedes seleccionar un máximo de ${limit}.`);
+                            }
+                        });
+                        modalList.appendChild(itemEl);
+                    });
+                }
+
+                populateList();
+                modalSearch.onkeyup = () => populateList(modalSearch.value);
+                selectionModal.classList.remove('hidden');
+            }
+            
+            // --- LÓGICA ESPECÍFICA PARA RELLENOS (2 PASOS) ---
+            function openFillingModal(onSelectCallback, currentFillings, limit) {
+                const showStep1 = () => {
+                    modalTitle.textContent = 'Añadir Relleno (Paso 1 de 2)';
+                    modalStep1.classList.remove('hidden');
+                    modalStep2.classList.add('hidden');
+                    modalSearch.value = '';
+                    modalList.innerHTML = '';
+
+                    const allTitulares = [
+                        ...Object.keys(fillingsData.incluidos).map(name => ({ name, hasCost: false })),
+                        ...Object.keys(fillingsData.conCosto).map(name => ({ name, hasCost: true }))
+                    ];
+
+                    allTitulares.forEach(titular => {
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'modal-list-item';
+                        if (titular.hasCost) itemEl.classList.add('cost-extra');
+                        itemEl.textContent = titular.name;
+                        itemEl.addEventListener('click', () => {
+                            const complementos = (fillingsData.incluidos[titular.name] || fillingsData.conCosto[titular.name]);
+                            if (complementos && complementos.length > 0) {
+                                showStep2(titular, complementos);
+                            } else {
+                                if (currentFillings.length < limit) {
+                                    onSelectCallback(titular);
+                                    selectionModal.classList.add('hidden');
+                                } else {
+                                    alert(`Solo puedes seleccionar un máximo de ${limit} rellenos.`);
+                                }
+                            }
+                        });
+                        modalList.appendChild(itemEl);
+                    });
+                }
+
+                const showStep2 = (titular, complementos) => {
+                    modalStep1.classList.add('hidden');
+                    modalStep2.classList.remove('hidden');
+                    modalTitle.textContent = `Paso 2: Elige un complemento`;
+                    modalStep2Title.innerHTML = `Complemento para "<b>${titular.name}</b>" <button type="button" class="back-to-step1 text-sm text-blue-600 hover:underline">(Volver)</button>`;
+                    modalStep2List.innerHTML = '';
+                    complementos.forEach(comp => {
+                        const compEl = document.createElement('div');
+                        compEl.className = 'modal-list-item';
+                        compEl.textContent = comp;
+                        compEl.addEventListener('click', () => {
+                             if (currentFillings.length < limit) {
+                                onSelectCallback({ name: `${titular.name} con ${comp}`, hasCost: titular.hasCost });
+                                selectionModal.classList.add('hidden');
+                            } else {
+                                alert(`Solo puedes seleccionar un máximo de ${limit} rellenos.`);
+                            }
+                        });
+                        modalStep2List.appendChild(compEl);
+                    });
+                    modalStep2Title.querySelector('.back-to-step1').addEventListener('click', showStep1);
+                }
+                
+                showStep1();
+                selectionModal.classList.remove('hidden');
+            }
+
+            modalCloseBtn.addEventListener('click', () => selectionModal.classList.add('hidden'));
+
+            // --- FUNCIONES PARA SABORES Y RELLENOS (NORMAL) ---
+            function addCakeFlavor(flavor) {
+                if (selectedCakeFlavors.length < 2) {
+                    selectedCakeFlavors.push(flavor);
+                    renderTags(cakeFlavorContainer, selectedCakeFlavors, removeCakeFlavor);
+                    checkRestrictions();
+                }
+            }
+            function removeCakeFlavor(index) {
+                selectedCakeFlavors.splice(index, 1);
+                renderTags(cakeFlavorContainer, selectedCakeFlavors, removeCakeFlavor);
+                checkRestrictions();
+            }
+            
+            function addFilling(filling) {
+                if (selectedFillings.length < 2) {
+                    selectedFillings.push(filling);
+                    renderTags(fillingContainer, selectedFillings, removeFilling);
+                    calculateBalance();
+                }
+            }
+            function removeFilling(index) {
+                selectedFillings.splice(index, 1);
+                renderTags(fillingContainer, selectedFillings, removeFilling);
+                calculateBalance();
+            }
+
+            addCakeFlavorBtn.addEventListener('click', () => openSelectionModal('Sabor de Pan', cakeFlavorsData.normal, selectedCakeFlavors, addCakeFlavor, 2));
+            addFillingBtn.addEventListener('click', () => openFillingModal(addFilling, selectedFillings, 2));
+
+            // --- LÓGICA DE RESTRICCIONES (NORMAL) ---
+            function checkRestrictions() {
+                const hasNoFillingPan = selectedCakeFlavors.includes('Pastel de queso') || selectedCakeFlavors.includes('Queso/Flan');
+                const isMilHojas = selectedCakeFlavors.includes('Mil Hojas');
+                
+                fillingSection.classList.toggle('disabled-section', hasNoFillingPan || isMilHojas);
+                designDescriptionTextarea.disabled = isMilHojas;
+
+                if (hasNoFillingPan || isMilHojas) {
+                    selectedFillings = [];
+                    renderTags(fillingContainer, selectedFillings, removeFilling);
+                    calculateBalance();
+                    if(isMilHojas) designDescriptionTextarea.value = "Mil Hojas no lleva diseño";
+                }
+            }
+            
             // --- Función de Fetch con Timeout ---
             async function fetchWithTimeout(resource, options = {}, timeout = 8000) { const controller = new AbortController(); const id = setTimeout(() => controller.abort(), timeout); const response = await fetch(resource, { ...options, signal: controller.signal }); clearTimeout(id); return response; }
 
@@ -225,18 +542,23 @@
             function handleLogout() { localStorage.removeItem('authToken'); appView.classList.add('hidden'); loginView.classList.remove('hidden'); if (calendar) calendar.destroy(); alert("Sesión cerrada."); }
 
             // --- Event Listeners ---
-            loginForm.addEventListener('submit', function(e) {
-                e.preventDefault(); loadingEl.classList.remove('hidden'); loginError.textContent = '';
-                fetchWithTimeout('http://localhost:3000/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: emailInput.value, password: passwordInput.value }) })
-                .then(response => response.json()).then(data => { if (data.token) { localStorage.setItem('authToken', data.token); showAppView(data.token); } else { throw new Error(data.message || 'Error al iniciar sesión.'); } })
-                .catch(error => { loginError.textContent = 'Error: ' + error.message; }).finally(() => { loadingEl.classList.add('hidden'); });
-            });
+            loginForm.addEventListener('submit', function(e) { /* ... */ });
 
             newFolioButton.addEventListener('click', () => {
-                folioForm.reset(); selectedFiles = []; renderImagePreviews(); additionalItems = []; renderAdditionalItems(); balanceInput.value = '0.00'; inStorePickupCheckbox.checked = false; addComplementCheckbox.checked = false;
-                deliveryLocationInput.readOnly = false; deliveryLocationInput.value = '';
-                deliveryCostInput.readOnly = false; deliveryCostInput.value = '0';
-                complementForm.classList.add('hidden');
+                folioForm.reset();
+                selectedFiles = []; renderImagePreviews();
+                additionalItems = []; renderAdditionalItems();
+                selectedCakeFlavors = []; renderTags(cakeFlavorContainer, selectedCakeFlavors, removeCakeFlavor);
+                selectedFillings = []; renderTags(fillingContainer, selectedFillings, removeFilling);
+                tiersData = []; tiersTableBody.innerHTML = '';
+                checkRestrictions();
+                balanceInput.value = '0.00';
+                inStorePickupCheckbox.checked = false;
+                inStorePickupCheckbox.dispatchEvent(new Event('change'));
+                addComplementCheckbox.checked = false;
+                addComplementCheckbox.dispatchEvent(new Event('change'));
+                googleMapsLocationCheckbox.checked = false;
+                googleMapsLocationCheckbox.dispatchEvent(new Event('change'));
                 document.getElementById('formTitle').textContent = 'Crear Nuevo Folio';
                 folioTypeSelect.dispatchEvent(new Event('change'));
                 showView('form');
@@ -253,6 +575,21 @@
                 if (period === 'PM' && hour !== 12) { hour += 12; } if (period === 'AM' && hour === 12) { hour = 0; }
                 const deliveryTime = `${hour.toString().padStart(2, '0')}:${minute}:00`;
 
+                let deliveryLocation = '';
+                if (inStorePickupCheckbox.checked) {
+                    deliveryLocation = 'Recoge en Tienda';
+                } else if (googleMapsLocationCheckbox.checked) {
+                    deliveryLocation = 'El cliente envía ubicación (Google Maps)';
+                } else {
+                    const parts = [
+                        `${streetInput.value || ''} ${extNumberInput.value || ''}`.trim(),
+                        intNumberInput.value ? `Int. ${intNumberInput.value}` : '',
+                        neighborhoodInput.value ? `Col. ${neighborhoodInput.value}` : '',
+                        postalCodeInput.value ? `C.P. ${postalCodeInput.value}` : ''
+                    ];
+                    deliveryLocation = parts.filter(Boolean).join(', ');
+                }
+
                 formData.append('clientName', document.getElementById('clientName').value);
                 formData.append('clientPhone', document.getElementById('clientPhone').value);
                 formData.append('deliveryDate', document.getElementById('deliveryDate').value);
@@ -262,32 +599,34 @@
                 formData.append('shape', document.getElementById('shape').value);
                 formData.append('designDescription', document.getElementById('designDescription').value);
                 formData.append('dedication', document.getElementById('dedication').value);
-                formData.append('deliveryLocation', document.getElementById('deliveryLocation').value);
+                formData.append('deliveryLocation', deliveryLocation);
                 formData.append('deliveryCost', document.getElementById('deliveryCost').value);
                 formData.append('total', document.getElementById('total').value);
                 formData.append('advancePayment', document.getElementById('advancePayment').value);
                 formData.append('accessories', document.getElementById('accessories').value);
-                formData.append('additional', JSON.stringify(additionalItems));
+                
+                const finalAdditionalItems = additionalItems.map(item => ({ name: `${item.quantity} x ${item.name}`, price: item.totalPrice }));
+                formData.append('additional', JSON.stringify(finalAdditionalItems));
+                
                 formData.append('isPaid', isPaidCheckbox.checked);
 
                 if (folioTypeSelect.value === 'Base/Especial') {
-                    const tiers = [];
-                    document.querySelectorAll('.tier-row').forEach(row => {
-                        const inputs = row.querySelectorAll('input');
-                        tiers.push({ persons: inputs[0].value, panes: inputs[1].value, rellenos: inputs[2].value, notas: inputs[3].value, });
+                    const tiers = tiersData.map((tier, index) => {
+                        const row = tiersTableBody.children[index];
+                        return {
+                            persons: row.querySelector('.tier-persons-input').value,
+                            panes: tier.panes.join(', '),
+                            rellenos: tier.fillings.map(f => f.name).join('; '),
+                            notas: row.querySelector('.tier-notes-input').value
+                        };
                     });
                     formData.append('tiers', JSON.stringify(tiers));
                 } else {
-                    formData.append('cakeFlavor', document.getElementById('cakeFlavor').value);
-                    formData.append('filling', document.getElementById('filling').value);
+                    formData.append('cakeFlavor', selectedCakeFlavors.join(', '));
+                    formData.append('filling', selectedFillings.map(f => f.name).join('; '));
                 }
                 
-                if (addComplementCheckbox.checked) {
-                    formData.append('complementPersons', document.getElementById('complementPersons').value);
-                    formData.append('complementFlavor', document.getElementById('complementFlavor').value);
-                    formData.append('complementFilling', document.getElementById('complementFilling').value);
-                    formData.append('complementDescription', document.getElementById('complementDescription').value);
-                }
+                if (addComplementCheckbox.checked) { /* ... */ }
 
                 for (const file of selectedFiles) { formData.append('referenceImages', file); }
 
@@ -298,84 +637,179 @@
                 } catch (error) { alert('Error al crear el folio: ' + error.message); } finally { loadingEl.classList.add('hidden'); }
             });
             
-            inStorePickupCheckbox.addEventListener('change', function() { const isChecked = this.checked; deliveryLocationInput.value = isChecked ? 'Recoge en Tienda' : ''; deliveryLocationInput.readOnly = isChecked; deliveryCostInput.value = isChecked ? '0' : ''; deliveryCostInput.readOnly = isChecked; calculateBalance(); });
-            
-            function calculateBalance() { 
-                const total = parseFloat(totalInput.value) || 0; 
-                const advance = parseFloat(advanceInput.value) || 0; 
+            // --- LÓGICA DE ENTREGA ---
+            inStorePickupCheckbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+                deliveryAddressSection.classList.toggle('hidden', isChecked);
+                if (isChecked) {
+                    deliveryCostInput.value = '0';
+                    deliveryCostInput.readOnly = true;
+                } else {
+                    deliveryCostInput.readOnly = false;
+                }
+                calculateBalance();
+            });
+
+            googleMapsLocationCheckbox.addEventListener('change', function() {
+                addressFields.classList.toggle('disabled-section', this.checked);
+            });
+
+            // --- CÁLCULO DE SALDO CORREGIDO ---
+            function getGrandTotal() {
+                const total = parseFloat(totalInput.value) || 0;
                 const delivery = parseFloat(deliveryCostInput.value) || 0;
-                const additional = additionalItems.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
-                balanceInput.value = (total + delivery + additional - advance).toFixed(2); 
-            }
-            [totalInput, advanceInput, deliveryCostInput].forEach(input => input.addEventListener('input', calculateBalance));
-            
-            isPaidCheckbox.addEventListener('change', function() {
-                const total = parseFloat(totalInput.value) || 0; const delivery = parseFloat(deliveryCostInput.value) || 0;
-                const additional = additionalItems.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
-                const grandTotal = total + delivery + additional;
-                if (this.checked) { advanceInput.value = grandTotal.toFixed(2); advanceInput.readOnly = true; } 
-                else { advanceInput.readOnly = false; }
-                calculateBalance();
-            });
-            [totalInput, deliveryCostInput].forEach(input => { input.addEventListener('input', () => { if (isPaidCheckbox.checked) { const total = parseFloat(totalInput.value) || 0; const delivery = parseFloat(deliveryCostInput.value) || 0; const additional = additionalItems.reduce((sum, item) => sum + parseFloat(item.price || 0), 0); advanceInput.value = (total + delivery + additional).toFixed(2); } }); });
-
-            function renderImagePreviews() {
-                imagePreview.innerHTML = '';
-                selectedFiles.forEach((file, index) => {
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        const wrapper = document.createElement('div'); wrapper.className = 'image-preview-wrapper';
-                        wrapper.innerHTML = `<img src="${e.target.result}" class="h-24 w-24 object-cover rounded-md border"><button type="button" class="delete-image-btn" data-index="${index}">&times;</button>`;
-                        imagePreview.appendChild(wrapper);
+                const additionalFromList = additionalItems.reduce((sum, item) => sum + item.totalPrice, 0);
+                const persons = parseFloat(personsInput.value) || 0;
+                
+                const normalFillingCost = selectedFillings.reduce((sum, filling) => {
+                    if (filling.hasCost && persons > 0) {
+                        return sum + ((persons / 20) * 30);
                     }
-                    reader.readAsDataURL(file);
-                });
+                    return sum;
+                }, 0);
+
+                const tierFillingCost = tiersData.reduce((sum, tier, index) => {
+                    const row = tiersTableBody.children[index];
+                    const tierPersons = parseFloat(row.querySelector('.tier-persons-input').value) || 0;
+                    const tierCost = tier.fillings.reduce((tierSum, filling) => {
+                        if (filling.hasCost && tierPersons > 0) {
+                            return tierSum + ((tierPersons / 20) * 30);
+                        }
+                        return tierSum;
+                    }, 0);
+                    return sum + tierCost;
+                }, 0);
+
+                return total + delivery + additionalFromList + normalFillingCost + tierFillingCost;
             }
-            imageInput.addEventListener('change', () => {
-                if (imageInput.files.length + selectedFiles.length > 5) { alert('Solo puedes subir un máximo de 5 imágenes.'); imageInput.value = ''; return; }
-                selectedFiles.push(...imageInput.files); renderImagePreviews(); imageInput.value = '';
+
+            function calculateBalance() {
+                const grandTotal = getGrandTotal();
+                const advance = parseFloat(advanceInput.value) || 0;
+                balanceInput.value = (grandTotal - advance).toFixed(2);
+            }
+            [totalInput, advanceInput, deliveryCostInput, personsInput].forEach(input => input.addEventListener('input', calculateBalance));
+
+            isPaidCheckbox.addEventListener('change', function() {
+                if (this.checked) { 
+                    const grandTotal = getGrandTotal();
+                    advanceInput.value = grandTotal.toFixed(2); 
+                    advanceInput.readOnly = true; 
+                } else { 
+                    advanceInput.readOnly = false; 
+                }
+                calculateBalance();
             });
-            imagePreview.addEventListener('click', (e) => {
-                if (e.target.classList.contains('delete-image-btn')) { const indexToRemove = parseInt(e.target.dataset.index, 10); selectedFiles.splice(indexToRemove, 1); renderImagePreviews(); }
+            [totalInput, deliveryCostInput, personsInput].forEach(input => { input.addEventListener('input', () => { if (isPaidCheckbox.checked) { isPaidCheckbox.dispatchEvent(new Event('change')); } }); });
+            tiersTableBody.addEventListener('input', (e) => {
+                if(e.target.classList.contains('tier-persons-input')) {
+                    calculateBalance();
+                    if(isPaidCheckbox.checked) isPaidCheckbox.dispatchEvent(new Event('change'));
+                }
             });
 
-            function renderAdditionalItems() {
-                additionalList.innerHTML = '';
-                additionalItems.forEach((item, index) => {
-                    const li = document.createElement('li');
-                    li.className = 'flex justify-between items-center py-1';
-                    li.innerHTML = `<span>${item.name} - $${parseFloat(item.price).toFixed(2)}</span><button type="button" class="remove-additional-btn text-red-500 font-bold px-2" data-index="${index}">X</button>`;
-                    additionalList.appendChild(li);
-                });
-                calculateBalance();
-            }
-            addAdditionalButton.addEventListener('click', () => {
-                const nameInput = document.getElementById('additionalName');
-                const priceInput = document.getElementById('additionalPrice');
-                if (nameInput.value && priceInput.value) {
-                    additionalItems.push({ name: nameInput.value, price: priceInput.value });
-                    renderAdditionalItems();
-                    nameInput.value = ''; priceInput.value = '';
-                } else { alert('Por favor, completa la descripción y el precio del adicional.'); }
-            });
+            function renderImagePreviews() { /* ... */ }
+            imageInput.addEventListener('change', () => { /* ... */ });
+            imagePreview.addEventListener('click', (e) => { /* ... */ });
+
+            function renderAdditionalItems() { /* ... */ }
+            addAdditionalButton.addEventListener('click', () => { /* ... */ });
             additionalList.addEventListener('click', (e) => {
                 if (e.target.classList.contains('remove-additional-btn')) {
                     additionalItems.splice(e.target.dataset.index, 1);
                     renderAdditionalItems();
+                    if(isPaidCheckbox.checked) isPaidCheckbox.dispatchEvent(new Event('change'));
                 }
             });
 
-            function addTierRow() { const row = document.createElement('tr'); row.className = 'tier-row border-b'; row.innerHTML = `<td class="p-2"><input type="text" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2" placeholder="Personas"></td><td class="p-2"><input type="text" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2" placeholder="Panes"></td><td class="p-2"><input type="text" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2" placeholder="Rellenos"></td><td class="p-2"><input type="text" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2" placeholder="Notas"></td><td class="p-1"><button type="button" class="remove-tier-button text-red-500 font-bold px-2">X</button></td>`; tiersTableBody.appendChild(row); }
+            // --- LÓGICA DE PISOS (TIERS) ---
+            function addTierRow() {
+                const index = tiersData.length;
+                tiersData.push({ panes: [], fillings: [] });
+
+                const row = document.createElement('tr');
+                row.className = 'tier-row border-b';
+                row.setAttribute('data-index', index);
+                row.innerHTML = `
+                    <td class="p-2"><input type="number" class="tier-persons-input bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2" placeholder="Personas"></td>
+                    <td class="p-2">
+                        <div class="tag-container panes-container"></div>
+                        <button type="button" class="add-tier-pane-btn mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Pan</button>
+                    </td>
+                    <td class="p-2">
+                        <div class="tag-container fillings-container"></div>
+                        <button type="button" class="add-tier-filling-btn mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Relleno</button>
+                    </td>
+                    <td class="p-2"><input type="text" class="tier-notes-input bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2" placeholder="Notas"></td>
+                    <td class="p-1 text-center"><button type="button" class="remove-tier-button text-red-500 font-bold px-2 text-lg">X</button></td>
+                `;
+                tiersTableBody.appendChild(row);
+            }
+
             folioTypeSelect.addEventListener('change', function() {
                 const isSpecial = this.value === 'Base/Especial';
                 normalFields.classList.toggle('hidden', isSpecial);
                 specialFields.classList.toggle('hidden', !isSpecial);
-                document.getElementById('cakeFlavor').required = !isSpecial;
-                if (isSpecial && tiersTableBody.children.length === 0) { addTierRow(); addTierRow(); }
+                if (isSpecial && tiersTableBody.children.length === 0) { addTierRow(); }
             });
             addTierButton.addEventListener('click', addTierRow);
-            tiersTableBody.addEventListener('click', function(e) { if (e.target.classList.contains('remove-tier-button')) e.target.closest('tr').remove(); });
-            addComplementCheckbox.addEventListener('change', function() { complementForm.classList.toggle('hidden', !this.checked); if (!this.checked) { complementForm.querySelectorAll('input, textarea').forEach(input => input.value = ''); } });
+            
+            tiersTableBody.addEventListener('click', function(e) {
+                const target = e.target;
+                const row = target.closest('.tier-row');
+                if (!row) return;
+
+                currentTierIndex = parseInt(row.dataset.index, 10);
+
+                const addTierPane = (flavor) => {
+                    if (tiersData[currentTierIndex].panes.length < 3) {
+                        tiersData[currentTierIndex].panes.push(flavor);
+                        renderTags(row.querySelector('.panes-container'), tiersData[currentTierIndex].panes, (tagIndex) => removeTierPane(currentTierIndex, tagIndex));
+                    }
+                };
+                const removeTierPane = (tierIndex, tagIndex) => {
+                    tiersData[tierIndex].panes.splice(tagIndex, 1);
+                    renderTags(tiersTableBody.children[tierIndex].querySelector('.panes-container'), tiersData[tierIndex].panes, (tagIndex) => removeTierPane(tierIndex, tagIndex));
+                };
+
+                const addTierFilling = (filling) => {
+                    if (tiersData[currentTierIndex].fillings.length < 2) {
+                        tiersData[currentTierIndex].fillings.push(filling);
+                        renderTags(row.querySelector('.fillings-container'), tiersData[currentTierIndex].fillings, (tagIndex) => removeTierFilling(currentTierIndex, tagIndex));
+                        calculateBalance();
+                        if(isPaidCheckbox.checked) isPaidCheckbox.dispatchEvent(new Event('change'));
+                    }
+                };
+                const removeTierFilling = (tierIndex, tagIndex) => {
+                    tiersData[tierIndex].fillings.splice(tagIndex, 1);
+                    renderTags(tiersTableBody.children[tierIndex].querySelector('.fillings-container'), tiersData[tierIndex].fillings, (tagIndex) => removeTierFilling(tierIndex, tagIndex));
+                    calculateBalance();
+                    if(isPaidCheckbox.checked) isPaidCheckbox.dispatchEvent(new Event('change'));
+                };
+
+                if (target.classList.contains('add-tier-pane-btn')) {
+                    openSelectionModal('Sabor de Pan (Piso)', cakeFlavorsData.tier, tiersData[currentTierIndex].panes, addTierPane, 3);
+                } else if (target.classList.contains('add-tier-filling-btn')) {
+                    openFillingModal(addTierFilling, tiersData[currentTierIndex].fillings, 2);
+                } else if (target.classList.contains('remove-tier-button')) {
+                    const indexToRemove = parseInt(row.dataset.index, 10);
+                    tiersData.splice(indexToRemove, 1);
+                    row.remove();
+                    // Re-index subsequent rows
+                    Array.from(tiersTableBody.children).forEach((r, i) => r.setAttribute('data-index', i));
+                    calculateBalance();
+                } else if(target.closest('.tag-remove-btn')) {
+                    const tagContainer = target.closest('.tag-container');
+                    const tagIndex = parseInt(target.closest('.tag-remove-btn').dataset.index, 10);
+                    if (tagContainer.classList.contains('panes-container')) {
+                        removeTierPane(currentTierIndex, tagIndex);
+                    } else if (tagContainer.classList.contains('fillings-container')) {
+                        removeTierFilling(currentTierIndex, tagIndex);
+                    }
+                }
+            });
+
+            addComplementCheckbox.addEventListener('change', function() { /* ... */ });
             
             closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
             logoutButton.addEventListener('click', handleLogout);

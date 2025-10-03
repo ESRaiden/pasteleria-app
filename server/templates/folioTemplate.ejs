@@ -3,114 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: Arial, sans-serif; font-size: 11pt; margin: 0; color: #333; }
-        .page { padding: 40px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #eee; padding-bottom: 15px; }
-        .logo { font-size: 24px; font-weight: bold; color: #d9534f; }
-        .folio-info { text-align: right; }
-        .folio-number { font-size: 28px; font-weight: 900; color: #000; margin: 0 0 10px 0; }
-        .delivery-date { font-size: 16px; font-weight: bold; color: #000; }
-        .section { margin-top: 20px; }
-        .section-title { font-size: 14px; color: #d9534f; border-bottom: 1px solid #ddd; padding-bottom: 5px; text-transform: uppercase; margin-bottom: 10px; }
-        .two-columns { display: flex; justify-content: space-between; gap: 40px; }
-        .column { width: 48%; }
-        .data-item { margin-bottom: 8px; }
-        .data-label { font-weight: bold; color: #555; }
-        .data-box { border: 1px solid #eee; padding: 10px; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word; }
-        .footer { text-align: center; font-size: 10px; color: #888; margin-top: 40px; position: fixed; bottom: 40px; left: 40px; right: 40px; }
-        .page-break { page-break-before: always; }
-        .table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11pt; }
-        .table th, .table td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-        .table th { background-color: #f8f9fa; }
-        .image-container { text-align: center; margin-bottom: 20px; }
-        .image-container img { max-width: 95%; max-height: 40vh; object-fit: contain; border: 1px solid #ddd; }
-        .paid-watermark {
-            position: fixed; z-index: -1;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 150px; font-weight: bold;
-            color: rgba(0, 128, 0, 0.15);
-            pointer-events: none;
+        /* --- ESTILOS GLOBALES --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 10.5pt;
+            color: #333;
+            margin: 0;
         }
+        .page-break { page-break-before: always; }
+        .paid-watermark { position: fixed; z-index: -1; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 120px; font-weight: bold; color: rgba(40, 167, 69, 0.1); }
+
+        /* --- ENCABEZADO Y FOLIO --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .header-info { text-align: left; }
+        .logo { font-size: 24px; font-weight: bold; color: #d9534f; margin-bottom: 5px; }
+        .header-date { font-size: 12pt; font-weight: bold; }
+        .header-time { font-size: 11pt; color: #666; }
+
+        .folio-box {
+            border-radius: 8px;
+            padding: 10px 15px;
+            text-align: right;
+            min-width: 150px;
+        }
+        .folio-label {
+            font-size: 12pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            opacity: 0.85;
+        }
+        .folio-number {
+            font-size: 28px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        /* --- CONTENEDOR DE SECCIONES --- */
+        .sections-wrapper {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .main-column { width: 65%; }
+        .side-column { width: 35%; }
+
+        .section {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+        .section-title {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #d9534f;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 5px;
+        }
+        .data-item { margin-bottom: 6px; line-height: 1.4; }
+        .data-label { font-weight: bold; color: #495057; }
+        
+        .account-item { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .account-total { font-weight: bold; border-top: 1px solid #dee2e6; padding-top: 5px; margin-top: 5px; }
+        .account-balance { font-size: 1.1em; }
+
+        /* --- FOOTER --- */
+        .footer {
+            text-align: center;
+            font-size: 9.5pt;
+            color: #888;
+            margin-top: 25px;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        /* --- PÁGINA 2 --- */
+        .table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+        .table th, .table td { border: 1px solid #dee2e6; padding: 6px; text-align: left; }
+        .table th { background-color: #f8f9fa; }
+        .image-container { text-align: center; margin-bottom: 15px; }
+        .image-container img { max-width: 90%; max-height: 38vh; object-fit: contain; border: 1px solid #dee2e6; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <div class="page">
-        <% if (folio.isPaid) { %>
-            <div class="paid-watermark">PAGADO</div>
-        <% } %>
+    <div>
+        <% if (folio.isPaid) { %><div class="paid-watermark">PAGADO</div><% } %>
 
         <div class="header">
-            <div class="logo">La fiesta</div>
-            <div class="folio-info">
-                <h1 class="folio-number">FOLIO: <%= folio.folioNumber %></h1>
-                <p class="delivery-date"><%= folio.formattedDeliveryDate %></p>
-                <p><span class="data-label">Hora:</span> <%= folio.formattedDeliveryTime %></p>
+            <div class="header-info">
+                <div class="logo">Pastelería La Fiesta</div>
+                <div class="header-date"><%= folio.formattedDeliveryDate %></div>
+                <div class="header-time">Hora: <%= folio.formattedDeliveryTime %></div>
+            </div>
+            <div class="folio-box" style="background-color: <%= folio.dayColor %>;">
+                <div class="folio-label" style="color: <%= folio.textColor %>;">Folio</div>
+                <div class="folio-number" style="color: <%= folio.textColor %>;"><%= folio.folioNumber %></div>
             </div>
         </div>
 
-        <div class="two-columns section">
-            <div class="column">
-                <div class="section-title">Información General</div>
-                <div class="data-item"><span class="data-label">Cliente:</span> <%= folio.client.name %></div>
-                <div class="data-item"><span class="data-label">Teléfono:</span> <%= folio.client.phone %></div>
-                <div class="data-item"><span class="data-label">Personas:</span> <%= folio.persons %></div>
-                <div class="data-item"><span class="data-label">Forma:</span> <%= folio.shape %></div>
-                <div class="data-item"><span class="data-label">Entrega:</span> <%= folio.deliveryLocation %></div>
-            </div>
-            <div class="column">
-                <div class="section-title">Cuenta</div>
-                <% let additionalCost = (folio.additional && Array.isArray(folio.additional)) ? folio.additional.reduce((sum, item) => sum + parseFloat(item.price || 0), 0) : 0; %>
-                <% let mainCakeCost = parseFloat(folio.total) - parseFloat(folio.deliveryCost) - additionalCost; %>
-                <div class="data-item"><span class="data-label">Costo Pastel(es):</span> $<%= mainCakeCost.toFixed(2) %></div>
-                <% if (additionalCost > 0) { %>
-                    <div class="data-item"><span class="data-label">Costo Adicionales:</span> $<%= additionalCost.toFixed(2) %></div>
-                <% } %>
-                <div class="data-item"><span class="data-label">Costo Envío:</span> $<%= parseFloat(folio.deliveryCost).toFixed(2) %></div>
-                <div class="data-item" style="font-weight: bold;"><span class="data-label">Total:</span> $<%= parseFloat(folio.total).toFixed(2) %></div>
-                <hr style="border: 0; border-top: 1px solid #ddd; margin: 5px 0;">
-                <div class="data-item"><span class="data-label">Anticipo:</span> $<%= parseFloat(folio.advancePayment).toFixed(2) %></div>
-                <div class="data-item" style="font-weight: bold; font-size: 1.1em;"><span class="data-label">Resta:</span> $<%= parseFloat(folio.balance).toFixed(2) %></div>
-            </div>
-        </div>
+        <div class="sections-wrapper">
+            <div class="main-column">
+                <div class="section">
+                    <div class="section-title">Detalles del Pedido</div>
+                    <% if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && !folio.tiers)) { %>
+                        <div class="data-item"><span class="data-label">Sabor(es):</span> <%= folio.cakeFlavor || 'N/A' %></div>
+                        <div class="data-item"><span class="data-label">Relleno(s):</span> <%= folio.filling || 'N/A' %></div>
+                    <% } %>
+                     <div class="data-item"><span class="data-label">Decorado:</span> <%= folio.designDescription %></div>
+                     <div class="data-item"><span class="data-label">Dedicatoria:</span> <%= folio.dedication || 'N/A' %></div>
+                </div>
 
-        <% if (folio.folioType === 'Normal') { %>
-        <div class="section">
-            <div class="section-title">Detalles del Pastel Principal</div>
-            <div class="data-box">
-                <div class="data-item"><span class="data-label">Sabor(es):</span> <%= folio.cakeFlavor %></div>
-                <div class="data-item"><span class="data-label">Relleno(s):</span> <%= folio.filling || 'N/A' %></div>
-            </div>
-        </div>
-        <% } %>
-
-        <% if (folio.complementFlavor) { %>
-            <div class="section">
-                <div class="section-title">Pastel Complementario</div>
-                <div class="data-box">
+                <% if (folio.complementFlavor) { %>
+                <div class="section">
+                    <div class="section-title">Pastel Complementario</div>
                     <div class="data-item"><span class="data-label">Personas:</span> <%= folio.complementPersons %></div>
                     <div class="data-item"><span class="data-label">Sabor(es):</span> <%= folio.complementFlavor %></div>
                     <div class="data-item"><span class="data-label">Relleno(s):</span> <%= folio.complementFilling || 'N/A' %></div>
                     <div class="data-item"><span class="data-label">Descripción:</span> <%= folio.complementDescription || 'N/A' %></div>
                 </div>
-            </div>
-        <% } %>
-
-        <div class="section">
-            <div class="section-title">Descripción y Adicionales</div>
-            <div class="data-box">
-                <div class="data-item"><span class="data-label">Decorado:</span> <%= folio.designDescription %></div>
-                <% if (folio.additional && Array.isArray(folio.additional) && folio.additional.length > 0) { %>
-                    <div class="data-item"><span class="data-label">Adicionales (con costo):</span>
-                        <ul style="list-style-type: none; padding-left: 10px; margin-top: 5px;">
+                <% } %>
+                
+                <div class="section">
+                    <div class="section-title">Adicionales y Accesorios</div>
+                    <% if (folio.additional && Array.isArray(folio.additional) && folio.additional.length > 0) { %>
+                    <div class="data-item">
+                        <span class="data-label">Adicionales:</span>
+                        <ul style="list-style-type: none; padding-left: 10px; margin-top: 4px; margin-bottom: 0;">
                             <% folio.additional.forEach(function(item) { %>
-                                <li>- <%= item.name %> ($<%= parseFloat(item.price).toFixed(2) %>)</li>
+                            <li>- <%= item.name %> ($<%= parseFloat(item.price).toFixed(2) %>)</li>
                             <% }); %>
                         </ul>
                     </div>
-                <% } %>
-                <div class="data-item"><span class="data-label">Accesorios (sin costo):</span> <%= folio.accessories || 'N/A' %></div>
-                <div class="data-item"><span class="data-label">Dedicatoria:</span> <%= folio.dedication || 'N/A' %></div>
+                    <% } %>
+                    <div class="data-item"><span class="data-label">Accesorios:</span> <%= folio.accessories || 'N/A' %></div>
+                </div>
+            </div>
+
+            <div class="side-column">
+                <div class="section">
+                    <div class="section-title">Cliente</div>
+                    <div class="data-item"><span class="data-label">Nombre:</span> <%= folio.client.name %></div>
+                    <div class="data-item"><span class="data-label">Teléfono:</span> <%= folio.client.phone %></div>
+                    <div class="data-item"><span class="data-label">Personas:</span> <%= folio.persons %></div>
+                    <div class="data-item"><span class="data-label">Forma:</span> <%= folio.shape %></div>
+                    <div class="data-item"><span class="data-label">Entrega:</span> <%= folio.deliveryLocation %></div>
+                </div>
+                <div class="section">
+                    <div class="section-title">Cuenta</div>
+                    <% let additionalCost = (folio.additional && Array.isArray(folio.additional)) ? folio.additional.reduce((sum, item) => sum + parseFloat(item.price || 0), 0) : 0; %>
+                    <% let mainCakeCost = parseFloat(folio.total) - parseFloat(folio.deliveryCost) - additionalCost; %>
+                    
+                    <div class="account-item"><span class="data-label">Pastel(es):</span> <span>$<%= mainCakeCost.toFixed(2) %></span></div>
+                    <% if (additionalCost > 0) { %><div class="account-item"><span class="data-label">Adicionales:</span> <span>$<%= additionalCost.toFixed(2) %></span></div><% } %>
+                    <div class="account-item"><span class="data-label">Envío:</span> <span>$<%= parseFloat(folio.deliveryCost).toFixed(2) %></span></div>
+                    <div class="account-item account-total"><span class="data-label">Total:</span> <span>$<%= parseFloat(folio.total).toFixed(2) %></span></div>
+                    <div class="account-item"><span class="data-label">Anticipo:</span> <span>$<%= parseFloat(folio.advancePayment).toFixed(2) %></span></div>
+                    <div class="account-item account-total account-balance"><span class="data-label">Resta:</span> <span>$<%= parseFloat(folio.balance).toFixed(2) %></span></div>
+                </div>
             </div>
         </div>
         
@@ -119,32 +176,35 @@
         </div>
     </div>
 
-    <% if ((folio.folioType === 'Base/Especial' && folio.tiers && Array.isArray(folio.tiers) && folio.tiers.length > 0) || (folio.imageUrls && folio.imageUrls.length > 0)) { %>
-    <div class="page-break">
-        <div class="page">
-            <% if (folio.folioType === 'Base/Especial' && folio.tiers && Array.isArray(folio.tiers) && folio.tiers.length > 0) { %>
-                <div class="section">
-                    <div class="section-title">Estructura por Pisos</div>
-                    <table class="table">
-                        <thead><tr><th>Personas</th><th>Panes</th><th>Rellenos</th><th>Notas/Forma</th></tr></thead>
-                        <tbody>
-                            <% folio.tiers.forEach(function(tier) { %>
-                                <tr><td><%= tier.persons %></td><td><%= tier.panes %></td><td><%= tier.rellenos %></td><td><%= tier.notas %></td></tr>
-                            <% }); %>
-                        </tbody>
-                    </table>
-                </div>
-            <% } %>
-
-            <% if (folio.imageUrls && folio.imageUrls.length > 0) { %>
-                <div class="section">
-                    <div class="section-title">Imágenes de Referencia</div>
-                    <% folio.imageUrls.forEach(function(imageUrl) { %>
-                        <div class="image-container"><img src="http://localhost:3000/<%= imageUrl.replace(/\\/g, '/') %>"></div>
+    <% 
+    const hasTiers = (folio.folioType === 'Base/Especial' && folio.tiers && Array.isArray(folio.tiers) && folio.tiers.length > 0);
+    const hasImages = (folio.imageUrls && folio.imageUrls.length > 0);
+    if (hasTiers || hasImages) { 
+    %>
+    <div class="page-break"></div>
+    <div>
+        <% if (hasTiers) { %>
+        <div class="section">
+            <div class="section-title">Estructura por Pisos</div>
+            <table class="table">
+                <thead><tr><th>Personas</th><th>Panes</th><th>Rellenos</th><th>Notas/Forma</th></tr></thead>
+                <tbody>
+                    <% folio.tiers.forEach(function(tier) { %>
+                    <tr><td><%= tier.persons %></td><td><%= tier.panes %></td><td><%= tier.rellenos %></td><td><%= tier.notas %></td></tr>
                     <% }); %>
-                </div>
-            <% } %>
+                </tbody>
+            </table>
         </div>
+        <% } %>
+
+        <% if (hasImages) { %>
+        <div class="section" style="margin-top: 20px;">
+            <div class="section-title">Imágenes de Referencia</div>
+            <% folio.imageUrls.forEach(function(imageUrl) { %>
+            <div class="image-container"><img src="http://localhost:3000/<%= imageUrl.replace(/\\/g, '/') %>"></div>
+            <% }); %>
+        </div>
+        <% } %>
     </div>
     <% } %>
 </body>

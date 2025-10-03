@@ -144,6 +144,46 @@ exports.generateFolioPdf = async (req, res) => {
     await fs.mkdir(directoryPath, { recursive: true });
     
     const folioDataForPdf = folio.toJSON();
+
+    // --- LÓGICA PARA ASIGNAR COLORES SEGÚN EL DÍA ---
+    const dayOfWeek = format(deliveryDate, 'EEEE', { locale: es });
+    let dayColor = '#F8F9FA'; // Color gris por defecto
+    let textColor = '#000000'; // Color de texto negro por defecto
+
+    switch (dayOfWeek.toLowerCase()) {
+        case 'lunes':
+            dayColor = '#007bff'; // Azul
+            textColor = '#ffffff';
+            break;
+        case 'martes':
+            dayColor = '#6f42c1'; // Morado
+            textColor = '#ffffff';
+            break;
+        case 'miércoles':
+            dayColor = '#fd7e14'; // Naranja
+            textColor = '#ffffff';
+            break;
+        case 'jueves':
+            dayColor = '#28a745'; // Verde
+            textColor = '#ffffff';
+            break;
+        case 'viernes':
+            dayColor = '#e83e8c'; // Rosa
+            textColor = '#ffffff';
+            break;
+        case 'sábado':
+            dayColor = '#ffc107'; // Amarillo
+            textColor = '#000000';
+            break;
+        case 'domingo':
+            dayColor = '#343a40'; // Negro
+            textColor = '#ffffff';
+            break;
+    }
+    folioDataForPdf.dayColor = dayColor;
+    folioDataForPdf.textColor = textColor;
+    // --- FIN DE LA LÓGICA DE COLORES ---
+
     folioDataForPdf.formattedDeliveryDate = format(deliveryDate, "EEEE dd 'de' MMMM 'de' yyyy", { locale: es, timeZone: 'UTC' });
     const [hour, minute] = folio.deliveryTime.split(':');
     const time = new Date();
