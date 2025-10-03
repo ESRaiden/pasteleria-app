@@ -479,13 +479,13 @@
                 if (selectedFillings.length < 2) {
                     selectedFillings.push(filling);
                     renderTags(fillingContainer, selectedFillings, removeFilling);
-                    calculateBalance();
+                    updateTotals();
                 }
             }
             function removeFilling(index) {
                 selectedFillings.splice(index, 1);
                 renderTags(fillingContainer, selectedFillings, removeFilling);
-                calculateBalance();
+                updateTotals();
             }
 
             addCakeFlavorBtn.addEventListener('click', () => openSelectionModal('Sabor de Pan', cakeFlavorsData.normal, selectedCakeFlavors, addCakeFlavor, 2));
@@ -502,7 +502,7 @@
                 if (hasNoFillingPan || isMilHojas) {
                     selectedFillings = [];
                     renderTags(fillingContainer, selectedFillings, removeFilling);
-                    calculateBalance();
+                    updateTotals();
                     if(isMilHojas) designDescriptionTextarea.value = "Mil Hojas no lleva diseño";
                 }
             }
@@ -542,7 +542,29 @@
             function handleLogout() { localStorage.removeItem('authToken'); appView.classList.add('hidden'); loginView.classList.remove('hidden'); if (calendar) calendar.destroy(); alert("Sesión cerrada."); }
 
             // --- Event Listeners ---
-            loginForm.addEventListener('submit', function(e) { /* ... */ });
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = emailInput.value;
+                const password = passwordInput.value;
+                loadingEl.classList.remove('hidden');
+                try {
+                    const response = await fetchWithTimeout('http://localhost:3000/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Error al iniciar sesión');
+                    }
+                    localStorage.setItem('authToken', data.token);
+                    showAppView(data.token);
+                } catch (error) {
+                    loginError.textContent = error.message;
+                } finally {
+                    loadingEl.classList.add('hidden');
+                }
+            });
 
             newFolioButton.addEventListener('click', () => {
                 folioForm.reset();
@@ -626,7 +648,12 @@
                     formData.append('filling', selectedFillings.map(f => f.name).join('; '));
                 }
                 
-                if (addComplementCheckbox.checked) { /* ... */ }
+                if (addComplementCheckbox.checked) {
+                    formData.append('complementPersons', document.getElementById('complementPersons').value);
+                    formData.append('complementFlavor', document.getElementById('complementFlavor').value);
+                    formData.append('complementFilling', document.getElementById('complementFilling').value);
+                    formData.append('complementDescription', document.getElementById('complementDescription').value);
+                }
 
                 for (const file of selectedFiles) { formData.append('referenceImages', file); }
 
@@ -647,7 +674,7 @@
                 } else {
                     deliveryCostInput.readOnly = false;
                 }
-                calculateBalance();
+                updateTotals();
             });
 
             googleMapsLocationCheckbox.addEventListener('change', function() {
@@ -669,6 +696,7 @@
                 }, 0);
 
                 const tierFillingCost = tiersData.reduce((sum, tier, index) => {
+                    if (!tiersTableBody.children[index]) return sum;
                     const row = tiersTableBody.children[index];
                     const tierPersons = parseFloat(row.querySelector('.tier-persons-input').value) || 0;
                     const tierCost = tier.fillings.reduce((tierSum, filling) => {
@@ -688,37 +716,108 @@
                 const advance = parseFloat(advanceInput.value) || 0;
                 balanceInput.value = (grandTotal - advance).toFixed(2);
             }
-            [totalInput, advanceInput, deliveryCostInput, personsInput].forEach(input => input.addEventListener('input', calculateBalance));
 
-            isPaidCheckbox.addEventListener('change', function() {
-                if (this.checked) { 
+            function updateTotals() {
+                if (isPaidCheckbox.checked) {
                     const grandTotal = getGrandTotal();
-                    advanceInput.value = grandTotal.toFixed(2); 
-                    advanceInput.readOnly = true; 
-                } else { 
-                    advanceInput.readOnly = false; 
+                    advanceInput.value = grandTotal.toFixed(2);
                 }
                 calculateBalance();
+            }
+
+            // --- EVENT LISTENERS PARA CUENTAS ---
+            [totalInput, deliveryCostInput, personsInput].forEach(input => input.addEventListener('input', updateTotals));
+            advanceInput.addEventListener('input', calculateBalance);
+            
+            isPaidCheckbox.addEventListener('change', function() {
+                advanceInput.readOnly = this.checked;
+                updateTotals();
             });
-            [totalInput, deliveryCostInput, personsInput].forEach(input => { input.addEventListener('input', () => { if (isPaidCheckbox.checked) { isPaidCheckbox.dispatchEvent(new Event('change')); } }); });
+            
             tiersTableBody.addEventListener('input', (e) => {
-                if(e.target.classList.contains('tier-persons-input')) {
-                    calculateBalance();
-                    if(isPaidCheckbox.checked) isPaidCheckbox.dispatchEvent(new Event('change'));
+                if (e.target.classList.contains('tier-persons-input')) {
+                    updateTotals();
                 }
             });
 
-            function renderImagePreviews() { /* ... */ }
-            imageInput.addEventListener('change', () => { /* ... */ });
-            imagePreview.addEventListener('click', (e) => { /* ... */ });
 
-            function renderAdditionalItems() { /* ... */ }
-            addAdditionalButton.addEventListener('click', () => { /* ... */ });
+            // --- LÓGICA DE IMÁGENES ---
+            function renderImagePreviews() {
+                imagePreview.innerHTML = '';
+                selectedFiles.forEach((file, index) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'image-preview-wrapper w-24 h-24';
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.className = 'w-full h-full object-cover rounded-md border';
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'delete-image-btn';
+                    deleteBtn.innerHTML = '&times;';
+                    deleteBtn.dataset.index = index;
+                    wrapper.appendChild(img);
+                    wrapper.appendChild(deleteBtn);
+                    imagePreview.appendChild(wrapper);
+                });
+            }
+
+            imageInput.addEventListener('change', () => {
+                const files = Array.from(imageInput.files);
+                if (selectedFiles.length + files.length > 5) {
+                    alert('Solo puedes subir un máximo de 5 imágenes.');
+                    return;
+                }
+                selectedFiles.push(...files);
+                renderImagePreviews();
+                imageInput.value = '';
+            });
+
+            imagePreview.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-image-btn')) {
+                    const index = parseInt(e.target.dataset.index, 10);
+                    selectedFiles.splice(index, 1);
+                    renderImagePreviews();
+                }
+            });
+
+            // --- LÓGICA DE ADICIONALES ---
+            function renderAdditionalItems() {
+                additionalList.innerHTML = '';
+                additionalItems.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        ${item.quantity} x ${item.name} - $${item.totalPrice.toFixed(2)}
+                        <button type="button" class="remove-additional-btn text-red-500 ml-2" data-index="${index}">[x]</button>
+                    `;
+                    additionalList.appendChild(li);
+                });
+            }
+
+            addAdditionalButton.addEventListener('click', () => {
+                const nameInput = document.getElementById('additionalName');
+                const quantityInput = document.getElementById('additionalQuantity');
+                const priceInput = document.getElementById('additionalPrice');
+                const name = nameInput.value.trim();
+                const quantity = parseInt(quantityInput.value, 10);
+                const price = parseFloat(priceInput.value);
+
+                if (name && quantity > 0 && !isNaN(price)) {
+                    additionalItems.push({ name, quantity, price, totalPrice: quantity * price });
+                    renderAdditionalItems();
+                    updateTotals();
+                    nameInput.value = '';
+                    quantityInput.value = '1';
+                    priceInput.value = '';
+                } else {
+                    alert('Por favor, completa la descripción, cantidad y precio del adicional.');
+                }
+            });
+
             additionalList.addEventListener('click', (e) => {
                 if (e.target.classList.contains('remove-additional-btn')) {
                     additionalItems.splice(e.target.dataset.index, 1);
                     renderAdditionalItems();
-                    if(isPaidCheckbox.checked) isPaidCheckbox.dispatchEvent(new Event('change'));
+                    updateTotals();
                 }
             });
 
@@ -751,6 +850,16 @@
                 normalFields.classList.toggle('hidden', isSpecial);
                 specialFields.classList.toggle('hidden', !isSpecial);
                 if (isSpecial && tiersTableBody.children.length === 0) { addTierRow(); }
+                if (isSpecial) {
+                    selectedCakeFlavors = [];
+                    selectedFillings = [];
+                    renderTags(cakeFlavorContainer, [], null);
+                    renderTags(fillingContainer, [], null);
+                } else {
+                    tiersData = [];
+                    tiersTableBody.innerHTML = '';
+                }
+                updateTotals();
             });
             addTierButton.addEventListener('click', addTierRow);
             
@@ -776,15 +885,13 @@
                     if (tiersData[currentTierIndex].fillings.length < 2) {
                         tiersData[currentTierIndex].fillings.push(filling);
                         renderTags(row.querySelector('.fillings-container'), tiersData[currentTierIndex].fillings, (tagIndex) => removeTierFilling(currentTierIndex, tagIndex));
-                        calculateBalance();
-                        if(isPaidCheckbox.checked) isPaidCheckbox.dispatchEvent(new Event('change'));
+                        updateTotals();
                     }
                 };
                 const removeTierFilling = (tierIndex, tagIndex) => {
                     tiersData[tierIndex].fillings.splice(tagIndex, 1);
                     renderTags(tiersTableBody.children[tierIndex].querySelector('.fillings-container'), tiersData[tierIndex].fillings, (tagIndex) => removeTierFilling(tierIndex, tagIndex));
-                    calculateBalance();
-                    if(isPaidCheckbox.checked) isPaidCheckbox.dispatchEvent(new Event('change'));
+                    updateTotals();
                 };
 
                 if (target.classList.contains('add-tier-pane-btn')) {
@@ -795,9 +902,8 @@
                     const indexToRemove = parseInt(row.dataset.index, 10);
                     tiersData.splice(indexToRemove, 1);
                     row.remove();
-                    // Re-index subsequent rows
                     Array.from(tiersTableBody.children).forEach((r, i) => r.setAttribute('data-index', i));
-                    calculateBalance();
+                    updateTotals();
                 } else if(target.closest('.tag-remove-btn')) {
                     const tagContainer = target.closest('.tag-container');
                     const tagIndex = parseInt(target.closest('.tag-remove-btn').dataset.index, 10);
@@ -809,7 +915,9 @@
                 }
             });
 
-            addComplementCheckbox.addEventListener('change', function() { /* ... */ });
+            addComplementCheckbox.addEventListener('change', function() {
+                complementForm.classList.toggle('hidden', !this.checked);
+            });
             
             closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
             logoutButton.addEventListener('click', handleLogout);
