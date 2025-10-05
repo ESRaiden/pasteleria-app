@@ -152,6 +152,10 @@
                                 <div id="cakeFlavorContainer" class="tag-container"></div>
                                 <button type="button" id="addCakeFlavorBtn" class="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Añadir Sabor</button>
                             </div>
+                             <div class="flex items-center">
+                                <input id="hasExtraHeight" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded">
+                                <label for="hasExtraHeight" class="ml-2 text-sm font-medium text-gray-900">¿El pastel lleva altura extra?</label>
+                            </div>
                             <div id="fillingSection">
                                 <label class="block mb-2 text-sm font-medium">Relleno(s) (Máx. 2)</label>
                                 <div id="fillingContainer" class="tag-container"></div>
@@ -191,6 +195,15 @@
                     <h3 class="text-lg font-semibold my-6 text-gray-700 border-b pb-2">Diseño y Adicionales</h3>
                     <div class="space-y-6">
                         <div>
+                             <label for="dedication" class="block mb-2 text-sm font-medium">Dedicatoria (Opcional)</label>
+                            <input type="text" id="dedication" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-3.5"> </div>
+                        <div>
+                             <label for="designDescription" class="block mb-2 text-sm font-medium">Descripción General del Diseño</label>
+                            <textarea id="designDescription" rows="5" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300" required></textarea> </div>
+                         <div>
+                             <label for="accessories" class="block mb-2 text-sm font-medium">Accesorios</label>
+                            <textarea id="accessories" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300"></textarea> </div>
+                        <div>
                             <label class="block mb-2 text-sm font-medium">Adicionales</label>
                             <div class="flex items-center gap-2 mb-2">
                                 <input type="text" id="additionalName" placeholder="Descripción (ej: Vela, Letrero)" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
@@ -201,9 +214,6 @@
                             </div>
                             <ul id="additionalList" class="list-disc list-inside text-gray-700 ml-4"></ul>
                         </div>
-                        <div><label for="accessories" class="block mb-2 text-sm font-medium">Accesorios (sin costo)</label><textarea id="accessories" rows="3" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300"></textarea></div>
-                        <div><label for="designDescription" class="block mb-2 text-sm font-medium">Descripción General del Diseño</label><textarea id="designDescription" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300" required></textarea></div>
-                        <div><label for="dedication" class="block mb-2 text-sm font-medium">Dedicatoria (Opcional)</label><input type="text" id="dedication" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
                         <div>
                             <label for="referenceImages" class="block mb-2 text-sm font-medium">Imágenes de Referencia (hasta 5)</label>
                             <input type="file" id="referenceImages" name="referenceImages" multiple accept="image/*" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50">
@@ -285,7 +295,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // --- Referencias a elementos del DOM ---
-            const loginView = document.getElementById('loginView'), appView = document.getElementById('appView'), loginForm = document.getElementById('loginForm'), loginError = document.getElementById('loginError'), emailInput = document.getElementById('email'), passwordInput = document.getElementById('password'), logoutButton = document.getElementById('logoutButton'), calendarView = document.getElementById('calendarView'), formView = document.getElementById('formView'), newFolioButton = document.getElementById('newFolioButton'), cancelFormButton = document.getElementById('cancelFormButton'), folioForm = document.getElementById('folioForm'), calendarEl = document.getElementById('calendar'), modal = document.getElementById('folioModal'), closeModalBtn = document.getElementById('closeModal'), loadingEl = document.getElementById('loading'), inStorePickupCheckbox = document.getElementById('inStorePickup'), deliveryCostInput = document.getElementById('deliveryCost'), totalInput = document.getElementById('total'), advanceInput = document.getElementById('advancePayment'), balanceInput = document.getElementById('balance'), imageInput = document.getElementById('referenceImages'), imagePreview = document.getElementById('imagePreview'), folioTypeSelect = document.getElementById('folioType'), normalFields = document.getElementById('normalFields'), specialFields = document.getElementById('specialFields'), tiersTableBody = document.getElementById('tiersTableBody'), addTierButton = document.getElementById('addTierButton'), addComplementCheckbox = document.getElementById('addComplement'), complementForm = document.getElementById('complementForm'), isPaidCheckbox = document.getElementById('isPaid'), addAdditionalButton = document.getElementById('addAdditionalButton'), additionalList = document.getElementById('additionalList'), personsInput = document.getElementById('persons'), designDescriptionTextarea = document.getElementById('designDescription');
+            const loginView = document.getElementById('loginView'), appView = document.getElementById('appView'), loginForm = document.getElementById('loginForm'), loginError = document.getElementById('loginError'), emailInput = document.getElementById('email'), passwordInput = document.getElementById('password'), logoutButton = document.getElementById('logoutButton'), calendarView = document.getElementById('calendarView'), formView = document.getElementById('formView'), newFolioButton = document.getElementById('newFolioButton'), cancelFormButton = document.getElementById('cancelFormButton'), folioForm = document.getElementById('folioForm'), calendarEl = document.getElementById('calendar'), modal = document.getElementById('folioModal'), closeModalBtn = document.getElementById('closeModal'), loadingEl = document.getElementById('loading'), inStorePickupCheckbox = document.getElementById('inStorePickup'), deliveryCostInput = document.getElementById('deliveryCost'), totalInput = document.getElementById('total'), advanceInput = document.getElementById('advancePayment'), balanceInput = document.getElementById('balance'), imageInput = document.getElementById('referenceImages'), imagePreview = document.getElementById('imagePreview'), folioTypeSelect = document.getElementById('folioType'), normalFields = document.getElementById('normalFields'), specialFields = document.getElementById('specialFields'), tiersTableBody = document.getElementById('tiersTableBody'), addTierButton = document.getElementById('addTierButton'), addComplementCheckbox = document.getElementById('addComplement'), complementForm = document.getElementById('complementForm'), isPaidCheckbox = document.getElementById('isPaid'), addAdditionalButton = document.getElementById('addAdditionalButton'), additionalList = document.getElementById('additionalList'), personsInput = document.getElementById('persons'), designDescriptionTextarea = document.getElementById('designDescription'), hasExtraHeightCheckbox = document.getElementById('hasExtraHeight');
             
             // --- ELEMENTOS DE ENTREGA ---
             const deliveryAddressSection = document.getElementById('deliveryAddressSection');
@@ -306,7 +316,7 @@
             let selectedCakeFlavors = [];
             let selectedFillings = [];
             let tiersData = [];
-            let currentTierIndex = -1; // Para saber qué fila del piso se está editando
+            let currentTierIndex = -1; 
             
             // --- BASES DE DATOS DE SABORES Y RELLENOS ---
             const cakeFlavorsData = {
@@ -627,6 +637,9 @@
                 formData.append('advancePayment', document.getElementById('advancePayment').value);
                 formData.append('accessories', document.getElementById('accessories').value);
                 
+                // NUEVO CAMPO "ALTURA"
+                formData.append('hasExtraHeight', hasExtraHeightCheckbox.checked);
+
                 const finalAdditionalItems = additionalItems.map(item => ({ name: `${item.quantity} x ${item.name}`, price: item.totalPrice }));
                 formData.append('additional', JSON.stringify(finalAdditionalItems));
                 

@@ -8,8 +8,8 @@ const pdfService = require('../services/pdfService');
 // --- CREAR un nuevo folio (CORRECCIÓN DEFINITIVA) ---
 exports.createFolio = async (req, res) => {
   try {
-    // CORRECCIÓN: Leemos TODOS los datos necesarios del req.body
-    const { clientName, clientPhone, total, advancePayment, deliveryDate, tiers, accessories, additional, isPaid, ...folioData } = req.body;
+    // Leemos TODOS los datos necesarios del req.body, incluyendo hasExtraHeight
+    const { clientName, clientPhone, total, advancePayment, deliveryDate, tiers, accessories, additional, isPaid, hasExtraHeight, ...folioData } = req.body;
 
     // Ahora sí podemos usar las variables para buscar o crear al cliente
     const [client] = await Client.findOrCreate({
@@ -48,7 +48,8 @@ exports.createFolio = async (req, res) => {
       tiers: tiersData,
       accessories: accessories, // Se guarda como texto simple
       additional: additionalData, // Se guarda como JSON
-      isPaid: isPaid === 'true'
+      isPaid: isPaid === 'true',
+      hasExtraHeight: hasExtraHeight === 'true' // Guardamos el nuevo valor
     });
     res.status(201).json(newFolio);
   } catch (error) {
