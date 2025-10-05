@@ -43,12 +43,6 @@ const Folio = sequelize.define('Folio', {
     type: DataTypes.STRING,
     allowNull: true
   },
-  // NUEVO CAMPO AÑADIDO
-  hasExtraHeight: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false
-  },
   deliveryLocation: {
     type: DataTypes.STRING,
     allowNull: true
@@ -88,7 +82,7 @@ const Folio = sequelize.define('Folio', {
     allowNull: true
   },
   additional: {
-    type: DataTypes.JSON, 
+    type: DataTypes.JSON, // CAMBIO: Ahora es JSON para guardar nombre y precio
     allowNull: true
   },
   complementPersons: {
@@ -111,6 +105,10 @@ const Folio = sequelize.define('Folio', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false
+  },
+  imageComments: {
+    type: DataTypes.JSON,
+    allowNull: true
   }
 }, { tableName: 'folios' });
 

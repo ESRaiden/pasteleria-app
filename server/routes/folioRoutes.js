@@ -36,4 +36,8 @@ router.route('/:id')
 // Ruta especial para generar el PDF
 router.get('/:id/pdf', folioController.generateFolioPdf);
 
+// Ruta para actualizar el comentario de una imagen
+router.post('/:id/images/:imageIndex/comment', folioController.updateImageComment);
+
+
 module.exports = router;

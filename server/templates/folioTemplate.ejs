@@ -352,8 +352,13 @@
         <% if (hasImages) { %>
         <div class="section" style="margin-top: 20px;">
             <div class="section-title">Imágenes de Referencia</div>
-            <% folio.imageUrls.forEach(function(imageUrl) { %>
-            <div class="image-container"><img src="http://localhost:3000/<%= imageUrl.replace(/\\/g, '/') %>"></div>
+            <% folio.imageUrls.forEach(function(imageData) { %>
+                <div class="image-container">
+                    <img src="http://localhost:3000/<%= imageData.url.replace(/\\/g, '/') %>">
+                    <% if (imageData.comment) { %>
+                        <p style="text-align: center; margin-top: 5px; font-size: 10pt;"><%= imageData.comment %></p>
+                    <% } %>
+                </div>
             <% }); %>
         </div>
         <% } %>

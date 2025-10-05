@@ -8,10 +8,12 @@ const pdfService = require('../services/pdfService');
 // --- CREAR un nuevo folio (CORRECCIÓN DEFINITIVA) ---
 exports.createFolio = async (req, res) => {
   try {
-    // Leemos TODOS los datos necesarios del req.body, incluyendo hasExtraHeight
-    const { clientName, clientPhone, total, advancePayment, deliveryDate, tiers, accessories, additional, isPaid, hasExtraHeight, ...folioData } = req.body;
+    // Leemos los datos, incluyendo los comentarios de las imágenes
+    const { 
+        clientName, clientPhone, total, advancePayment, deliveryDate, 
+        tiers, accessories, additional, isPaid, imageComments, ...folioData 
+    } = req.body;
 
-    // Ahora sí podemos usar las variables para buscar o crear al cliente
     const [client] = await Client.findOrCreate({
       where: { phone: clientPhone },
       defaults: { name: clientName }
@@ -31,8 +33,19 @@ exports.createFolio = async (req, res) => {
     const finalTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost;
     const balance = finalTotal - advancePayment;
 
-    // Lógica para procesar datos opcionales
-    const imageUrls = req.files ? req.files.map(file => file.path) : [];
+    // --- INICIO DE LA CORRECCIÓN ---
+    // 1. Nos aseguramos de que los comentarios siempre sean un arreglo
+    const comments = imageComments ? (Array.isArray(imageComments) ? imageComments : [imageComments]) : [];
+
+    // 2. Combinamos cada archivo de imagen con su comentario correspondiente por su índice
+    const imageUrls = req.files ? req.files.map((file, index) => {
+        return {
+            url: file.path,
+            comment: comments[index] || '' // Asigna el comentario del mismo índice, o '' si no existe
+        };
+    }) : [];
+    // --- FIN DE LA CORRECCIÓN ---
+
     const tiersData = typeof tiers === 'string' ? JSON.parse(tiers) : tiers;
 
     const newFolio = await Folio.create({
@@ -44,16 +57,15 @@ exports.createFolio = async (req, res) => {
       balance,
       clientId: client.id,
       responsibleUserId: req.user.id,
-      imageUrls: imageUrls,
+      imageUrls: imageUrls, // Ahora se guarda el objeto completo {url, comment}
       tiers: tiersData,
-      accessories: accessories, // Se guarda como texto simple
-      additional: additionalData, // Se guarda como JSON
-      isPaid: isPaid === 'true',
-      hasExtraHeight: hasExtraHeight === 'true' // Guardamos el nuevo valor
+      accessories: accessories,
+      additional: additionalData,
+      isPaid: isPaid === 'true'
     });
     res.status(201).json(newFolio);
   } catch (error) {
-    console.error('ERROR DETALLADO AL CREAR FOLIO:', error); // Log mejorado para ver el error en la terminal
+    console.error('ERROR DETALLADO AL CREAR FOLIO:', error);
     if (error.name === 'SequelizeUniqueConstraintError') {
         return res.status(400).json({ message: 'Error: Ya existe un folio con este número o un cliente con este teléfono.', error: error.message });
     }
@@ -148,42 +160,20 @@ exports.generateFolioPdf = async (req, res) => {
 
     // --- LÓGICA PARA ASIGNAR COLORES SEGÚN EL DÍA ---
     const dayOfWeek = format(deliveryDate, 'EEEE', { locale: es });
-    let dayColor = '#F8F9FA'; // Color gris por defecto
-    let textColor = '#000000'; // Color de texto negro por defecto
+    let dayColor = '#F8F9FA'; 
+    let textColor = '#000000'; 
 
     switch (dayOfWeek.toLowerCase()) {
-        case 'lunes':
-            dayColor = '#007bff'; // Azul
-            textColor = '#ffffff';
-            break;
-        case 'martes':
-            dayColor = '#6f42c1'; // Morado
-            textColor = '#ffffff';
-            break;
-        case 'miércoles':
-            dayColor = '#fd7e14'; // Naranja
-            textColor = '#ffffff';
-            break;
-        case 'jueves':
-            dayColor = '#28a745'; // Verde
-            textColor = '#ffffff';
-            break;
-        case 'viernes':
-            dayColor = '#e83e8c'; // Rosa
-            textColor = '#ffffff';
-            break;
-        case 'sábado':
-            dayColor = '#ffc107'; // Amarillo
-            textColor = '#000000';
-            break;
-        case 'domingo':
-            dayColor = '#343a40'; // Negro
-            textColor = '#ffffff';
-            break;
+        case 'lunes': dayColor = '#007bff'; textColor = '#ffffff'; break;
+        case 'martes': dayColor = '#6f42c1'; textColor = '#ffffff'; break;
+        case 'miércoles': dayColor = '#fd7e14'; textColor = '#ffffff'; break;
+        case 'jueves': dayColor = '#28a745'; textColor = '#ffffff'; break;
+        case 'viernes': dayColor = '#e83e8c'; textColor = '#ffffff'; break;
+        case 'sábado': dayColor = '#ffc107'; textColor = '#000000'; break;
+        case 'domingo': dayColor = '#343a40'; textColor = '#ffffff'; break;
     }
     folioDataForPdf.dayColor = dayColor;
     folioDataForPdf.textColor = textColor;
-    // --- FIN DE LA LÓGICA DE COLORES ---
 
     folioDataForPdf.formattedDeliveryDate = format(deliveryDate, "EEEE dd 'de' MMMM 'de' yyyy", { locale: es, timeZone: 'UTC' });
     const [hour, minute] = folio.deliveryTime.split(':');
@@ -203,5 +193,30 @@ exports.generateFolioPdf = async (req, res) => {
   } catch (error) {
     console.error('❌ Error al generar o guardar el PDF:', error);
     res.status(500).json({ message: 'Error al generar y guardar el PDF', error: error.message });
+  }
+};
+
+exports.updateImageComment = async (req, res) => {
+  try {
+    const { id, imageIndex } = req.params;
+    const { comment } = req.body;
+
+    const folio = await Folio.findByPk(id);
+    if (!folio) {
+      return res.status(404).json({ message: 'Folio no encontrado' });
+    }
+
+    const imageUrls = folio.imageUrls || [];
+    if (imageIndex < 0 || imageIndex >= imageUrls.length) {
+      return res.status(400).json({ message: 'Índice de imagen inválido' });
+    }
+
+    imageUrls[imageIndex].comment = comment;
+
+    await folio.update({ imageUrls });
+
+    res.status(200).json({ message: 'Comentario de imagen actualizado correctamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar el comentario de la imagen', error: error.message });
   }
 };
