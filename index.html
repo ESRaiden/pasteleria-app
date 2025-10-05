@@ -206,11 +206,12 @@
                             <label for="designDescription" class="block mb-2 text-sm font-medium">Descripción General del Diseño</label>
                             <textarea id="designDescription" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300" required></textarea>
                         </div>
-
+                        
                         <div class="flex items-center">
                             <input id="hasExtraHeight" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded">
                             <label for="hasExtraHeight" class="ml-2 text-sm font-medium text-gray-900">¿El pastel lleva altura extra?</label>
                         </div>
+                        
                         <div>
                             <label for="accessories" class="block mb-2 text-sm font-medium">Accesorios (sin costo)</label>
                             <textarea id="accessories" rows="3" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300"></textarea>
@@ -243,8 +244,7 @@
                             <label for="googleMapsLocation" class="ml-2 text-sm font-medium text-gray-900">El cliente envía ubicación (Google Maps)</label>
                         </div>
                         <div id="addressFields">
-                            <div class="grid md:grid-cols-2 gap-6 mb-4">
-                                <div><label for="postalCode" class="block mb-2 text-sm font-medium">Código Postal</label><input type="text" id="postalCode" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div class="grid md:grid-cols-1 gap-6 mb-4">
                                 <div><label for="neighborhood" class="block mb-2 text-sm font-medium">Colonia</label><input type="text" id="neighborhood" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
                             </div>
                             <div class="mb-4"><label for="street" class="block mb-2 text-sm font-medium">Calle</label><input type="text" id="street" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
@@ -306,7 +306,6 @@
             const deliveryAddressSection = document.getElementById('deliveryAddressSection');
             const googleMapsLocationCheckbox = document.getElementById('googleMapsLocation');
             const addressFields = document.getElementById('addressFields');
-            const postalCodeInput = document.getElementById('postalCode');
             const streetInput = document.getElementById('street');
             const extNumberInput = document.getElementById('extNumber');
             const intNumberInput = document.getElementById('intNumber');
@@ -621,8 +620,7 @@
                     const parts = [
                         `${streetInput.value || ''} ${extNumberInput.value || ''}`.trim(),
                         intNumberInput.value ? `Int. ${intNumberInput.value}` : '',
-                        neighborhoodInput.value ? `Col. ${neighborhoodInput.value}` : '',
-                        postalCodeInput.value ? `C.P. ${postalCodeInput.value}` : ''
+                        neighborhoodInput.value ? `Col. ${neighborhoodInput.value}` : ''                       
                     ];
                     deliveryLocation = parts.filter(Boolean).join(', ');
                 }
