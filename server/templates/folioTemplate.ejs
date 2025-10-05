@@ -13,11 +13,19 @@
         .page-break { page-break-before: always; }
         .paid-watermark { position: fixed; z-index: -1; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 120px; font-weight: bold; color: rgba(40, 167, 69, 0.1); }
 
+        /* --- NUEVO CONTENEDOR DE PÁGINA --- */
+        .page-container {
+            position: relative;
+            min-height: 98vh; /* Ayuda a que el contenedor ocupe la mayor parte de la página */
+        }
+
         /* --- ENCABEZADO Y FOLIO --- */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
+            padding: 0 25px;
+            padding-top: 25px;
             padding-bottom: 15px;
             border-bottom: 2px solid #f0f0f0;
         }
@@ -49,6 +57,8 @@
             display: flex;
             gap: 20px;
             margin-top: 20px;
+            padding: 0 25px;
+            padding-bottom: 60px; /* Espacio extra en la parte inferior para el pie de página */
         }
         .main-column { width: 65%; }
         .side-column { width: 35%; }
@@ -75,12 +85,15 @@
         .account-total { font-weight: bold; border-top: 1px solid #dee2e6; padding-top: 5px; margin-top: 5px; }
         .account-balance { font-size: 1.1em; }
 
-        /* --- FOOTER --- */
+        /* --- FOOTER MODIFICADO --- */
         .footer {
+            position: absolute;
+            bottom: 25px; /* Distancia desde el borde inferior */
+            left: 25px;
+            right: 25px;
             text-align: center;
             font-size: 9.5pt;
             color: #888;
-            margin-top: 25px;
             padding-top: 10px;
             border-top: 1px solid #f0f0f0;
         }
@@ -94,7 +107,7 @@
     </style>
 </head>
 <body>
-    <div>
+    <div class="page-container">
         <% if (folio.isPaid) { %><div class="paid-watermark">PAGADO</div><% } %>
 
         <div class="header">
@@ -113,6 +126,8 @@
             <div class="main-column">
                 <div class="section">
                     <div class="section-title">Detalles del Pedido</div>
+                    <div class="data-item"><span class="data-label">Personas:</span> <%= folio.persons %></div>
+                    <div class="data-item"><span class="data-label">Forma:</span> <%= folio.shape %></div>
                     <% if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && !folio.tiers)) { %>
                         <div class="data-item"><span class="data-label">Sabor(es):</span> <%= folio.cakeFlavor || 'N/A' %></div>
                         <div class="data-item"><span class="data-label">Relleno(s):</span> <%= folio.filling || 'N/A' %></div>
@@ -152,8 +167,6 @@
                     <div class="section-title">Cliente</div>
                     <div class="data-item"><span class="data-label">Nombre:</span> <%= folio.client.name %></div>
                     <div class="data-item"><span class="data-label">Teléfono:</span> <%= folio.client.phone %></div>
-                    <div class="data-item"><span class="data-label">Personas:</span> <%= folio.persons %></div>
-                    <div class="data-item"><span class="data-label">Forma:</span> <%= folio.shape %></div>
                     <div class="data-item"><span class="data-label">Entrega:</span> <%= folio.deliveryLocation %></div>
                 </div>
                 <div class="section">
