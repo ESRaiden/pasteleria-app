@@ -10,6 +10,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const viewCalendarButton = document.getElementById('viewCalendarButton');
     const loadingEl = document.getElementById('loading');
 
+    // ========= INICIO DE CÓDIGO AÑADIDO =========
+    // Referencias y listeners para la nueva modal de lista de folios
+    const dailyFoliosModal = document.getElementById('dailyFoliosModal');
+    const closeDailyFoliosModalBtn = document.getElementById('closeDailyFoliosModal');
+
+    if (closeDailyFoliosModalBtn) {
+        closeDailyFoliosModalBtn.addEventListener('click', () => {
+            dailyFoliosModal.classList.add('hidden');
+        });
+    }
+
+    if (dailyFoliosModal) {
+        dailyFoliosModal.addEventListener('click', (e) => {
+            // Cierra la modal solo si se hace clic en el fondo oscuro
+            if (e.target.id === 'dailyFoliosModal') {
+                dailyFoliosModal.classList.add('hidden');
+            }
+        });
+    }
+    // ========= FIN DE CÓDIGO AÑADIDO =========
+
     // Función para cambiar entre la vista de calendario y la de formulario
     function showView(viewToShow) {
         calendarView.classList.add('hidden');

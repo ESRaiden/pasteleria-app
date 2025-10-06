@@ -4,13 +4,17 @@ function initializeCalendar(authToken) {
     if (!calendarEl) return;
 
     let calendar;
+    let allFoliosData = []; // Variable para almacenar todos los folios
 
     // Función para buscar y obtener los folios desde el servidor.
     function fetchFolios(query = '', successCallback, failureCallback) {
         const loadingEl = document.getElementById('loading');
-        if (!query) loadingEl.classList.remove('hidden'); // Solo muestra "cargando" en la carga inicial
+        if (!query) loadingEl.classList.remove('hidden');
+
+        // Modificamos la URL para no enviar el query 'q' en la carga inicial
+        const url = query ? `http://localhost:3000/api/folios?q=${query}` : 'http://localhost:3000/api/folios';
         
-        fetch(`http://localhost:3000/api/folios?q=${query}`, {
+        fetch(url, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${authToken}` }
         })
@@ -19,6 +23,10 @@ function initializeCalendar(authToken) {
             return response.json();
         })
         .then(data => {
+            // Guardamos los datos de los folios solo en la carga inicial
+            if (!query) {
+                allFoliosData = data;
+            }
             if (successCallback) {
                 const events = data.map(folio => ({
                     title: `Folio ${folio.folioNumber} - ${folio.client?.name || 'N/A'}`,
@@ -43,7 +51,6 @@ function initializeCalendar(authToken) {
         const modalContent = document.getElementById('modalContent');
         if (!modalFolioNumber || !modalContent) return;
 
-        // Convierte la hora de formato 24h a 12h con AM/PM
         const timeString = folio.deliveryTime;
         const [hour, minute] = timeString.split(':');
         const hour12 = (parseInt(hour) % 12) || 12;
@@ -54,7 +61,7 @@ function initializeCalendar(authToken) {
         modalContent.innerHTML = `
             <p><strong>Cliente:</strong> ${folio.client?.name || 'N/A'}</p>
             <p><strong>Teléfono:</strong> <a href="tel:${folio.client?.phone}" class="text-blue-500 hover:underline">${folio.client?.phone || 'N/A'}</a></p>
-            <p><strong>Fecha de Entrega:</strong> ${new Date(folio.deliveryDate + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p><strong>Fecha de Entrega:</strong> ${new Date(folio.deliveryDate + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             <p><strong>Hora de Entrega:</strong> ${formattedTime}</p>
             <p><strong>Personas:</strong> ${folio.persons}</p>
             <p><strong>Descripción:</strong> ${folio.designDescription}</p>
@@ -78,6 +85,45 @@ function initializeCalendar(authToken) {
         },
         buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', list: 'Lista' },
         events: (fetchInfo, successCallback, failureCallback) => fetchFolios('', successCallback, failureCallback),
+        
+        // ========= INICIO DE LA NUEVA FUNCIONALIDAD =========
+        dateClick: function(info) {
+            const dailyFoliosModal = document.getElementById('dailyFoliosModal');
+            const foliosForDay = allFoliosData.filter(folio => folio.deliveryDate === info.dateStr);
+            
+            foliosForDay.sort((a, b) => a.deliveryTime.localeCompare(b.deliveryTime));
+
+            const dailyFoliosList = document.getElementById('dailyFoliosList');
+            const dailyFoliosTitle = document.getElementById('dailyFoliosTitle');
+            dailyFoliosList.innerHTML = '';
+
+            if (foliosForDay.length > 0) {
+                const date = new Date(info.dateStr + 'T12:00:00');
+                const formattedDate = date.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                dailyFoliosTitle.innerText = `Folios del ${formattedDate}`;
+
+                foliosForDay.forEach(folio => {
+                    const listItem = document.createElement('div');
+                    listItem.className = 'p-3 bg-gray-100 rounded-md cursor-pointer hover:bg-gray-200';
+                    const time = folio.deliveryTime.substring(0, 5);
+                    listItem.innerText = `${time} - Folio ${folio.folioNumber} - ${folio.client ? folio.client.name : 'N/A'}`;
+                    
+                    listItem.addEventListener('click', () => {
+                        dailyFoliosModal.classList.add('hidden');
+                        window.currentEditingFolioId = folio.id;
+                        populateFolioModal(folio);
+                        document.getElementById('folioModal').classList.remove('hidden');
+                    });
+                    dailyFoliosList.appendChild(listItem);
+                });
+            } else {
+                dailyFoliosTitle.innerText = 'No hay folios para este día';
+            }
+            
+            dailyFoliosModal.classList.remove('hidden');
+        },
+        // ========= FIN DE LA NUEVA FUNCIONALIDAD =========
+
         eventClick: function(info) {
             const folio = info.event.extendedProps.folioData;
             window.currentEditingFolioId = folio.id;
@@ -89,11 +135,10 @@ function initializeCalendar(authToken) {
     
     window.myAppCalendar = calendar;
 
-    // --- INICIO DE LA LÓGICA DE BÚSQUEDA EN TIEMPO REAL ---
+    // --- LÓGICA DE BÚSQUEDA EN TIEMPO REAL (SIN CAMBIOS) ---
     const searchInput = document.getElementById('folioSearchInput');
     const searchResultsContainer = document.getElementById('searchResults');
 
-    // Función de "debounce" para no hacer peticiones en cada tecla.
     function debounce(func, delay) {
         let timeout;
         return function(...args) {
@@ -102,10 +147,8 @@ function initializeCalendar(authToken) {
         };
     }
 
-    // Función que se ejecuta al teclear en la barra de búsqueda.
     const handleSearchInput = async (e) => {
         const query = e.target.value.trim();
-        // Solo busca si hay al menos 2 caracteres
         if (query.length < 2) {
             searchResultsContainer.innerHTML = '';
             searchResultsContainer.classList.add('hidden');
@@ -118,12 +161,11 @@ function initializeCalendar(authToken) {
 
             searchResultsContainer.innerHTML = '';
             if (folios.length > 0) {
-                // Muestra un máximo de 5 resultados
                 folios.slice(0, 5).forEach(folio => {
                     const item = document.createElement('div');
                     item.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
                     item.innerHTML = `<strong>Folio: ${folio.folioNumber}</strong> - ${folio.client.name}`;
-                    item.dataset.folioId = folio.id; // Guardamos el ID para usarlo al hacer clic
+                    item.dataset.folioId = folio.id;
                     searchResultsContainer.appendChild(item);
                 });
                 searchResultsContainer.classList.remove('hidden');
@@ -143,20 +185,17 @@ function initializeCalendar(authToken) {
         searchInput.addEventListener('input', debouncedSearch);
     }
     
-    // Lógica para cuando se hace clic en una sugerencia
     if(searchResultsContainer) {
         searchResultsContainer.addEventListener('click', async (e) => {
             const targetItem = e.target.closest('[data-folio-id]');
             if (targetItem) {
                 const folioId = targetItem.dataset.folioId;
                 
-                // Limpia y oculta los resultados
                 searchResultsContainer.innerHTML = '';
                 searchResultsContainer.classList.add('hidden');
                 searchInput.value = '';
                 
                 try {
-                    // Obtiene los detalles completos del folio seleccionado y abre el modal
                     const response = await fetch(`http://localhost:3000/api/folios/${folioId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
                     const folioData = await response.json();
                     
@@ -170,7 +209,6 @@ function initializeCalendar(authToken) {
         });
     }
 
-    // Oculta los resultados si se hace clic fuera del área de búsqueda
     document.addEventListener('click', (e) => {
         if (!searchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
             searchResultsContainer.classList.add('hidden');
@@ -182,6 +220,15 @@ function initializeCalendar(authToken) {
     const editFolioButton = document.getElementById('editFolioButton');
     const viewPdfButton = document.getElementById('viewPdfButton');
     const modal = document.getElementById('folioModal');
+
+    // ========= INICIO DE CÓDIGO AÑADIDO =========
+    const dailyFoliosModal = document.getElementById('dailyFoliosModal');
+    const closeDailyFoliosModalBtn = document.getElementById('closeDailyFoliosModal');
+
+    if (closeDailyFoliosModalBtn) {
+        closeDailyFoliosModalBtn.addEventListener('click', () => dailyFoliosModal.classList.add('hidden'));
+    }
+    // ========= FIN DE CÓDIGO AÑADIDO =========
 
     if (closeModalBtn) { closeModalBtn.addEventListener('click', () => modal.classList.add('hidden')); }
     
