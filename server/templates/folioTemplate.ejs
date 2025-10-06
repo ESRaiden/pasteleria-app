@@ -12,204 +12,64 @@
         }
         .page-break { page-break-before: always; }
         .paid-watermark { 
-            position: fixed; 
-            z-index: -1; 
-            top: 50%; 
-            left: 50%; 
+            position: fixed; z-index: -1; top: 50%; left: 50%; 
             transform: translate(-50%, -50%) rotate(-45deg); 
-            font-size: 120px; 
-            font-weight: bold; 
-            color: rgba(40, 167, 69, 0.15); /* AUMENTADO: Opacidad a 0.15 para mejor visibilidad */
-        }
-
-        /* --- NUEVO CONTENEDOR DE PÁGINA --- */
-        .page-container {
-            position: relative;
-            min-height: 98vh; /* Ayuda a que el contenedor ocupe la mayor parte de la página */
+            font-size: 120px; font-weight: bold; color: rgba(40, 167, 69, 0.15);
         }
 
         /* --- ENCABEZADO Y FOLIO --- */
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding: 0 25px;
-            padding-top: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            padding-bottom: 15px; border-bottom: 2px solid #f0f0f0;
         }
         .header-info { text-align: left; }
         .logo { font-size: 24px; font-weight: bold; color: #d9534f; margin-bottom: 5px; }
         .header-date { font-size: 12pt; font-weight: bold; }
         .header-time { font-size: 11pt; color: #666; }
-
-        .folio-box {
-            border-radius: 8px;
-            padding: 10px 15px;
-            text-align: right;
-            min-width: 150px;
-        }
-        .folio-label {
-            font-size: 12pt;
-            font-weight: bold;
-            text-transform: uppercase;
-            opacity: 0.85;
-        }
-        .folio-number {
-            font-size: 28px;
-            font-weight: 900;
-            line-height: 1;
-        }
+        .folio-box { border-radius: 8px; padding: 10px 15px; text-align: right; min-width: 150px; }
+        .folio-label { font-size: 12pt; font-weight: bold; text-transform: uppercase; opacity: 0.85; }
+        .folio-number { font-size: 28px; font-weight: 900; line-height: 1; }
 
         /* --- CONTENEDOR DE SECCIONES --- */
-        .sections-wrapper {
-            display: flex;
-            gap: 20px;
-            margin-top: 20px;
-            padding: 0 25px;
-            padding-bottom: 60px; /* Espacio extra en la parte inferior para el pie de página */
-        }
+        .sections-wrapper { display: flex; gap: 20px; margin-top: 20px; }
         .main-column { width: 65%; }
         .side-column { width: 35%; }
 
-        .section {
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 15px;
-        }
-        .section-title {
-            font-size: 11pt;
-            font-weight: bold;
-            color: #d9534f;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #f0f0f0;
-            padding-bottom: 5px;
-        }
+        .section { border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; margin-bottom: 15px; page-break-inside: avoid; }
+        .section-title { font-size: 11pt; font-weight: bold; color: #d9534f; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; }
         .data-item { margin-bottom: 6px; line-height: 1.4; }
         .data-label { font-weight: bold; color: #495057; }
-        
         .account-item { display: flex; justify-content: space-between; margin-bottom: 4px; }
         .account-total { font-weight: bold; border-top: 1px solid #dee2e6; padding-top: 5px; margin-top: 5px; }
         .account-balance { font-size: 1.1em; }
-
-        /* --- FOOTER MODIFICADO --- */
-        .footer {
-            position: absolute;
-            bottom: 25px; /* Distancia desde el borde inferior */
-            left: 25px;
-            right: 25px;
-            text-align: center;
-            font-size: 9.5pt;
-            color: #888;
-            padding-top: 10px;
-            border-top: 1px solid #f0f0f0;
-        }
 
         /* --- PÁGINA 2 --- */
         .table { width: 100%; border-collapse: collapse; font-size: 10pt; }
         .table th, .table td { border: 1px solid #dee2e6; padding: 6px; text-align: left; }
         .table th { background-color: #f8f9fa; }
-        .image-container { text-align: center; margin-bottom: 15px; }
+        .image-container { text-align: center; margin-bottom: 15px; page-break-inside: avoid; }
         .image-container img { max-width: 90%; max-height: 38vh; object-fit: contain; border: 1px solid #dee2e6; border-radius: 4px; }
+        .image-comment { text-align: center; margin-top: 5px; font-size: 10pt; color: #555; }
         
-        /* --- INICIO: NUEVOS ESTILOS PARA TARJETAS DE ALERTA --- */
-
-        /* Estilo base para ambas tarjetas */
-        .card-alert {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            border: 1px solid #ddd;
-            padding: 15px 20px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-            overflow: hidden;
-            background-color: transparent;
-        }
-        .card-alert-header {
-            margin: 0 0 15px 0;
-            font-size: 1.1em;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-        }
-        .card-alert-header .icon {
-            font-size: 1.8em;
-            margin-right: 12px;
-            line-height: 1;
-        }
-        .detail-item-alert {
-            margin-bottom: 15px;
-        }
-        .detail-item-alert:last-child {
-            margin-bottom: 0;
-        }
-        .detail-label-alert {
-            font-size: 0.9em;
-            font-weight: bold;
-            color: #4B5563;
-            display: block;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-        .detail-value-alert {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #111827;
-            padding: 10px;
-            border-radius: 6px;
-            width: 100%;
-            box-sizing: border-box;
-            word-wrap: break-word;
-            background-color: transparent; /* CAMBIO CLAVE: Fondo transparente */
-        }
-        
-        /* Estilo para las listas dentro de detail-value-alert (para adicionales) */
-        .detail-value-alert ul {
-            margin: 0;
-            padding-left: 20px;
-            font-weight: bold;
-            font-size: 0.9em;
-        }
-        .detail-value-alert ul li {
-            margin-bottom: 4px;
-        }
-        .detail-value-alert ul li:last-child {
-            margin-bottom: 0;
-        }
-
-        /* Tarjeta Creativa (Naranja/Amarillo) */
-        .card-creative {
-            border-color: #FDE68A;
-            border-left: 6px solid #F97316;
-        }
-        .card-creative .card-alert-header {
-            color: #9A3412;
-        }
-        /* Eliminamos el background-color específico para .detail-value-alert en esta tarjeta */
-        /* .card-creative .detail-value-alert {
-            background-color: #FEF3C7;
-        } */
-
-        /* Tarjeta de Complementos (Azul) */
-        .card-addons {
-            border-color: #BFDBFE;
-            border-left: 6px solid #3B82F6;
-        }
-        .card-addons .card-alert-header {
-            color: #1E40AF;
-        }
-        /* Eliminamos el background-color específico para .detail-value-alert en esta tarjeta */
-        /* .card-addons .detail-value-alert {
-            background-color: #DBEAFE;
-        } */
-
-        /* --- FIN: NUEVOS ESTILOS --- */
+        /* --- ESTILOS PARA TARJETAS DE ALERTA --- */
+        .card-alert { border: 1px solid #ddd; padding: 15px 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); overflow: hidden; background-color: transparent; page-break-inside: avoid; }
+        .card-alert-header { margin: 0 0 15px 0; font-size: 1.1em; font-weight: bold; display: flex; align-items: center; }
+        .card-alert-header .icon { font-size: 1.8em; margin-right: 12px; line-height: 1; }
+        .detail-item-alert { margin-bottom: 15px; }
+        .detail-item-alert:last-child { margin-bottom: 0; }
+        .detail-label-alert { font-size: 0.9em; font-weight: bold; color: #4B5563; display: block; margin-bottom: 5px; text-transform: uppercase; }
+        .detail-value-alert { font-size: 1.2em; font-weight: bold; color: #111827; padding: 10px; border-radius: 6px; width: 100%; box-sizing: border-box; word-wrap: break-word; background-color: transparent; }
+        .detail-value-alert ul { margin: 0; padding-left: 20px; font-weight: bold; font-size: 0.9em; }
+        .detail-value-alert ul li { margin-bottom: 4px; }
+        .detail-value-alert ul li:last-child { margin-bottom: 0; }
+        .card-creative { border-color: #FDE68A; border-left: 6px solid #F97316; }
+        .card-creative .card-alert-header { color: #9A3412; }
+        .card-addons { border-color: #BFDBFE; border-left: 6px solid #3B82F6; }
+        .card-addons .card-alert-header { color: #1E40AF; }
     </style>
 </head>
 <body>
-    <div class="page-container">
+    <div>
         <% if (folio.isPaid) { %><div class="paid-watermark">PAGADO</div><% } %>
 
         <div class="header">
@@ -299,7 +159,7 @@
                     <% } %>
                 </div>
                 <% } %>
-                </div>
+            </div>
 
             <div class="side-column">
                 <div class="section">
@@ -321,10 +181,6 @@
                     <div class="account-item account-total account-balance"><span class="data-label">Resta:</span> <span>$<%= parseFloat(folio.balance).toFixed(2) %></span></div>
                 </div>
             </div>
-        </div>
-        
-        <div class="footer">
-            Pedido capturado por: <%= folio.responsibleUser.username %> el <%= new Date(folio.createdAt).toLocaleString('es-MX') %>
         </div>
     </div>
 
@@ -352,11 +208,11 @@
         <% if (hasImages) { %>
         <div class="section" style="margin-top: 20px;">
             <div class="section-title">Imágenes de Referencia</div>
-            <% folio.imageUrls.forEach(function(imageData) { %>
+            <% folio.imageUrls.forEach(function(imageUrl, index) { %>
                 <div class="image-container">
-                    <img src="http://localhost:3000/<%= imageData.url.replace(/\\/g, '/') %>">
-                    <% if (imageData.comment) { %>
-                        <p style="text-align: center; margin-top: 5px; font-size: 10pt;"><%= imageData.comment %></p>
+                    <img src="http://localhost:3000/<%= imageUrl.replace(/\\/g, '/') %>">
+                    <% if (folio.imageComments && folio.imageComments[index]) { %>
+                        <p class="image-comment"><%= folio.imageComments[index] %></p>
                     <% } %>
                 </div>
             <% }); %>

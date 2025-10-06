@@ -1,0 +1,24 @@
+<div class="bg-white p-6 rounded-lg shadow-lg">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-gray-800">Calendario de Pedidos</h2>
+        <div class="w-1/3">
+            <input type="text" id="folioSearchInput" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="Buscar por Folio o Teléfono...">
+        </div>
+    </div>
+    <div id='calendar'></div>
+</div>
+
+<div id="folioModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-10 mx-auto p-5 border w-11/12 md:w-2/3 lg:w-1/2 shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center border-b pb-3 mb-3">
+            <h3 class="text-2xl leading-6 font-bold text-gray-900" id="modalFolioNumber"></h3>
+            <button id="closeModal" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        </div>
+        <div id="modalContent" class="mt-2 text-left space-y-4">
+            </div>
+        <div class="items-center px-4 py-3 mt-4 border-t">
+            <button id="editFolioButton" class="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-auto hover:bg-blue-600">Editar Folio</button>
+             <button id="viewPdfButton" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-auto hover:bg-green-600 ml-2">Ver PDF</button>
+        </div>
+    </div>
+</div>

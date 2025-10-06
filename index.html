@@ -6,62 +6,7 @@
     <title>Gestión de Folios - Pastelería La Fiesta</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
-    <style>
-        .fc .fc-button-primary { background-color: #d9534f; border-color: #d9534f; }
-        .fc .fc-button-primary:hover { background-color: #c9302c; border-color: #c9302c; }
-        .fc .fc-daygrid-day.fc-day-today { background-color: #fcf8e3; }
-        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.8); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        .hidden { display: none !important; }
-        input:read-only, input:disabled, textarea:disabled { background-color: #e9ecef; cursor: not-allowed; }
-        .image-preview-wrapper { position: relative; }
-        .delete-image-btn {
-            position: absolute; top: -8px; right: -8px;
-            background-color: #dc3545; color: white;
-            border-radius: 50%; width: 24px; height: 24px;
-            border: 2px solid white; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 14px; line-height: 1;
-        }
-        /* --- ESTILOS PARA EL NUEVO SISTEMA DE ETIQUETAS --- */
-        .tag-container {
-            display: flex; flex-wrap: wrap; gap: 8px;
-            padding: 8px; border: 1px solid #d1d5db; border-radius: 0.5rem;
-            background-color: #f9fafb; min-height: 42px;
-        }
-        .tag {
-            display: flex; align-items: center;
-            background-color: #e5e7eb; color: #374151;
-            padding: 4px 8px; border-radius: 9999px;
-            font-size: 0.875rem; font-weight: 500;
-        }
-        .tag-remove-btn {
-            margin-left: 8px; background: none; border: none;
-            color: #9ca3af; font-weight: bold; cursor: pointer;
-        }
-        .tag-remove-btn:hover { color: #374151; }
-        .disabled-section { opacity: 0.5; pointer-events: none; }
-
-        /* Estilos para el Modal de Selección */
-        .modal-selection {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.5); z-index: 10000;
-            display: flex; justify-content: center; align-items: center;
-        }
-        .modal-content {
-            background-color: white; padding: 20px;
-            border-radius: 8px; width: 90%; max-width: 500px;
-            max-height: 80vh; overflow-y: auto;
-        }
-        .modal-list-item {
-            padding: 10px; border-bottom: 1px solid #eee;
-            cursor: pointer;
-        }
-        .modal-list-item:hover { background-color: #f3f4f6; }
-        .modal-list-item.cost-extra::after {
-            content: '(Costo Adicional)';
-            font-size: 0.8rem; color: #ef4444; margin-left: 8px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-100">
 
@@ -89,23 +34,20 @@
 
     <div id="appView" class="hidden">
         <nav class="bg-white shadow-md">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between h-16">
                     <h1 class="text-2xl font-bold text-red-500">Pastelería "La fiesta"</h1>
                     <div>
-                        <button id="logoutButton" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cerrar Sesión</button>
+                        <button id="viewCalendarButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Ver Calendario</button>
                         <button id="newFolioButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg ml-4">+ Nuevo Folio</button>
+                        <button id="logoutButton" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg ml-4">Cerrar Sesión</button>
                     </div>
                 </div>
             </div>
         </nav>
 
-        <main id="calendarView" class="p-4 md:p-8">
-            <div class="bg-white p-6 rounded-lg shadow-lg"><div id='calendar'></div></div>
-        </main>
-
         <main id="formView" class="p-4 md:p-8 hidden">
-            <div class="bg-white p-8 rounded-lg shadow-lg max-w-4xl mx-auto">
+             <div class="bg-white p-8 rounded-lg shadow-lg max-w-4xl mx-auto">
                 <h2 id="formTitle" class="text-2xl font-bold mb-6 text-gray-800">Crear Nuevo Folio</h2>
                 <form id="folioForm">
                     <h3 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Datos del Cliente</h3>
@@ -190,7 +132,7 @@
 
                     <h3 class="text-lg font-semibold my-6 text-gray-700 border-b pb-2">Diseño y Adicionales</h3>
                     <div class="space-y-6">
-                        <div>
+                         <div>
                             <label class="block mb-2 text-sm font-medium">Adicionales</label>
                             <div class="flex items-center gap-2 mb-2">
                                 <input type="text" id="additionalName" placeholder="Descripción (ej: Vela, Letrero)" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
@@ -201,25 +143,15 @@
                             </div>
                             <ul id="additionalList" class="list-disc list-inside text-gray-700 ml-4"></ul>
                         </div>
-                        
-                        <div>
-                            <label for="designDescription" class="block mb-2 text-sm font-medium">Descripción General del Diseño</label>
-                            <textarea id="designDescription" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300" required></textarea>
-                        </div>
+                        <div><label for="accessories" class="block mb-2 text-sm font-medium">Accesorios</label><textarea id="accessories" rows="3" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300"></textarea></div>
+                        <div><label for="designDescription" class="block mb-2 text-sm font-medium">Descripción General del Diseño</label><textarea id="designDescription" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300" required></textarea></div>
                         
                         <div class="flex items-center">
                             <input id="hasExtraHeight" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded">
                             <label for="hasExtraHeight" class="ml-2 text-sm font-medium text-gray-900">¿El pastel lleva altura extra?</label>
                         </div>
-                        
-                        <div>
-                            <label for="accessories" class="block mb-2 text-sm font-medium">Accesorios (sin costo)</label>
-                            <textarea id="accessories" rows="3" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300"></textarea>
-                        </div>
-                        <div>
-                            <label for="dedication" class="block mb-2 text-sm font-medium">Dedicatoria (Opcional)</label>
-                            <input type="text" id="dedication" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5">
-                        </div>
+
+                        <div><label for="dedication" class="block mb-2 text-sm font-medium">Dedicatoria (Opcional)</label><input type="text" id="dedication" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
                         <div>
                             <label for="referenceImages" class="block mb-2 text-sm font-medium">Imágenes de Referencia (hasta 5)</label>
                             <input type="file" id="referenceImages" name="referenceImages" multiple accept="image/*" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50">
@@ -267,19 +199,10 @@
                 </form>
             </div>
         </main>
-        
-        <div id="folioModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
-             <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
-                <div class="mt-3 text-center">
-                    <h3 class="text-2xl leading-6 font-bold text-gray-900" id="modalFolioNumber"></h3>
-                    <div class="mt-4 px-7 py-3 text-left space-y-2">
-                        <p><strong>Cliente:</strong> <span id="modalClientName"></span></p><p><strong>Teléfono:</strong> <span id="modalClientPhone"></span></p><p><strong>Personas:</strong> <span id="modalPersons"></span></p><p><strong>Descripción:</strong> <span id="modalDescription"></span></p>
-                    </div>
-                    <div class="items-center px-4 py-3"><button id="closeModal" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full">Cerrar</button></div>
-                </div>
-            </div>
-        </div>
 
+        <main id="calendarView" class="p-4 md:p-8 hidden">
+        </main>
+        
         <div id="selectionModal" class="modal-selection hidden">
             <div class="modal-content">
                 <h3 id="modalTitle" class="text-xl font-bold mb-4"></h3>
@@ -294,35 +217,36 @@
                 <button id="modalCloseBtn" class="mt-4 w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cerrar</button>
             </div>
         </div>
-
     </div>
 
+    <script src="main.js"></script>
+    <script src="calendar.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // --- Referencias a elementos del DOM ---
-            const loginView = document.getElementById('loginView'), appView = document.getElementById('appView'), loginForm = document.getElementById('loginForm'), loginError = document.getElementById('loginError'), emailInput = document.getElementById('email'), passwordInput = document.getElementById('password'), logoutButton = document.getElementById('logoutButton'), calendarView = document.getElementById('calendarView'), formView = document.getElementById('formView'), newFolioButton = document.getElementById('newFolioButton'), cancelFormButton = document.getElementById('cancelFormButton'), folioForm = document.getElementById('folioForm'), calendarEl = document.getElementById('calendar'), modal = document.getElementById('folioModal'), closeModalBtn = document.getElementById('closeModal'), loadingEl = document.getElementById('loading'), inStorePickupCheckbox = document.getElementById('inStorePickup'), deliveryCostInput = document.getElementById('deliveryCost'), totalInput = document.getElementById('total'), advanceInput = document.getElementById('advancePayment'), balanceInput = document.getElementById('balance'), imageInput = document.getElementById('referenceImages'), imagePreview = document.getElementById('imagePreview'), folioTypeSelect = document.getElementById('folioType'), normalFields = document.getElementById('normalFields'), specialFields = document.getElementById('specialFields'), tiersTableBody = document.getElementById('tiersTableBody'), addTierButton = document.getElementById('addTierButton'), addComplementCheckbox = document.getElementById('addComplement'), complementForm = document.getElementById('complementForm'), isPaidCheckbox = document.getElementById('isPaid'), addAdditionalButton = document.getElementById('addAdditionalButton'), additionalList = document.getElementById('additionalList'), personsInput = document.getElementById('persons'), designDescriptionTextarea = document.getElementById('designDescription'), hasExtraHeightCheckbox = document.getElementById('hasExtraHeight');
+            const folioForm = document.getElementById('folioForm'), imageInput = document.getElementById('referenceImages'), imagePreview = document.getElementById('imagePreview'), folioTypeSelect = document.getElementById('folioType'), normalFields = document.getElementById('normalFields'), specialFields = document.getElementById('specialFields'), tiersTableBody = document.getElementById('tiersTableBody'), addTierButton = document.getElementById('addTierButton'), addComplementCheckbox = document.getElementById('addComplement'), complementForm = document.getElementById('complementForm'), isPaidCheckbox = document.getElementById('isPaid'), addAdditionalButton = document.getElementById('addAdditionalButton'), additionalList = document.getElementById('additionalList'), personsInput = document.getElementById('persons'), designDescriptionTextarea = document.getElementById('designDescription'), hasExtraHeightCheckbox = document.getElementById('hasExtraHeight');
             
-            // --- ELEMENTOS DE ENTREGA ---
             const deliveryAddressSection = document.getElementById('deliveryAddressSection');
             const googleMapsLocationCheckbox = document.getElementById('googleMapsLocation');
-            const addressFields = document.getElementById('addressFields');
+            const addressFields = document.getElementById('addressFields');           
             const streetInput = document.getElementById('street');
             const extNumberInput = document.getElementById('extNumber');
             const intNumberInput = document.getElementById('intNumber');
             const neighborhoodInput = document.getElementById('neighborhood');
+            const inStorePickupCheckbox = document.getElementById('inStorePickup');
+            const deliveryCostInput = document.getElementById('deliveryCost');
+            const totalInput = document.getElementById('total');
+            const advanceInput = document.getElementById('advancePayment');
+            const balanceInput = document.getElementById('balance');
 
-            // --- ELEMENTOS PARA ETIQUETAS ---
             const addCakeFlavorBtn = document.getElementById('addCakeFlavorBtn'), addFillingBtn = document.getElementById('addFillingBtn'), cakeFlavorContainer = document.getElementById('cakeFlavorContainer'), fillingContainer = document.getElementById('fillingContainer'), fillingSection = document.getElementById('fillingSection'), selectionModal = document.getElementById('selectionModal'), modalTitle = document.getElementById('modalTitle'), modalSearch = document.getElementById('modalSearch'), modalList = document.getElementById('modalList'), modalCloseBtn = document.getElementById('modalCloseBtn'), modalStep1 = document.getElementById('modal-step-1'), modalStep2 = document.getElementById('modal-step-2'), modalStep2Title = document.getElementById('modal-step-2-title'), modalStep2List = document.getElementById('modal-step-2-list');
 
-            let calendar;
             let selectedFiles = [];
             let additionalItems = [];
             let selectedCakeFlavors = [];
             let selectedFillings = [];
             let tiersData = [];
-            let currentTierIndex = -1; 
+            let currentTierIndex = -1;
             
-            // --- BASES DE DATOS DE SABORES Y RELLENOS ---
             const cakeFlavorsData = {
                 normal: ['Pastel de queso', 'Pan de tres leches', 'Chocolate', 'Red Velvet', 'Mil Hojas', 'Zanahoria', 'Queso/Flan', 'Mantequilla'],
                 tier: ['Mantequilla', 'Queso', 'Nata', 'Chocolate', 'Vainilla', 'Flan', 'Red Velvet']
@@ -348,37 +272,27 @@
                 }
             };
 
-            // --- Lógica para poblar el selector de hora ---
             const hourSelect = document.getElementById('deliveryHour');
             for (let i = 1; i <= 12; i++) {
                 const option = document.createElement('option'); option.value = i; option.textContent = i.toString().padStart(2, '0'); hourSelect.appendChild(option);
             }
 
-            // --- FUNCIÓN PARA RENDERIZAR ETIQUETAS ---
             function renderTags(container, tagsArray, onRemoveCallback) {
                 container.innerHTML = '';
                 tagsArray.forEach((tagData, index) => {
                     const tagEl = document.createElement('div');
                     tagEl.className = 'tag';
                     const tagName = typeof tagData === 'object' ? tagData.name : tagData;
-                    tagEl.innerHTML = `
-                        <span>${tagName}</span>
-                        <button type="button" class="tag-remove-btn" data-index="${index}">&times;</button>
-                    `;
+                    tagEl.innerHTML = `<span>${tagName}</span><button type="button" class="tag-remove-btn" data-index="${index}">&times;</button>`;
                     container.appendChild(tagEl);
                 });
-
                 if (onRemoveCallback) {
                      container.querySelectorAll('.tag-remove-btn').forEach(btn => {
-                        btn.addEventListener('click', (e) => {
-                            const indexToRemove = parseInt(e.target.dataset.index, 10);
-                            onRemoveCallback(indexToRemove);
-                        });
+                        btn.addEventListener('click', (e) => onRemoveCallback(parseInt(e.target.dataset.index, 10)));
                     });
                 }
             }
             
-            // --- LÓGICA DEL MODAL DE SELECCIÓN ---
             function openSelectionModal(title, data, currentTags, onSelectCallback, limit) {
                 modalStep1.classList.remove('hidden');
                 modalStep2.classList.add('hidden');
@@ -387,9 +301,7 @@
                 
                 function populateList(filter = '') {
                     modalList.innerHTML = '';
-                    const filteredData = data.filter(item => item.toLowerCase().includes(filter.toLowerCase()));
-                    
-                    filteredData.forEach(item => {
+                    data.filter(item => item.toLowerCase().includes(filter.toLowerCase())).forEach(item => {
                         const itemEl = document.createElement('div');
                         itemEl.className = 'modal-list-item';
                         itemEl.textContent = item;
@@ -404,13 +316,11 @@
                         modalList.appendChild(itemEl);
                     });
                 }
-
                 populateList();
                 modalSearch.onkeyup = () => populateList(modalSearch.value);
                 selectionModal.classList.remove('hidden');
             }
             
-            // --- LÓGICA ESPECÍFICA PARA RELLENOS (2 PASOS) ---
             function openFillingModal(onSelectCallback, currentFillings, limit) {
                 const showStep1 = () => {
                     modalTitle.textContent = 'Añadir Relleno (Paso 1 de 2)';
@@ -418,13 +328,7 @@
                     modalStep2.classList.add('hidden');
                     modalSearch.value = '';
                     modalList.innerHTML = '';
-
-                    const allTitulares = [
-                        ...Object.keys(fillingsData.incluidos).map(name => ({ name, hasCost: false })),
-                        ...Object.keys(fillingsData.conCosto).map(name => ({ name, hasCost: true }))
-                    ];
-
-                    allTitulares.forEach(titular => {
+                    [...Object.keys(fillingsData.incluidos).map(name => ({ name, hasCost: false })), ...Object.keys(fillingsData.conCosto).map(name => ({ name, hasCost: true }))].forEach(titular => {
                         const itemEl = document.createElement('div');
                         itemEl.className = 'modal-list-item';
                         if (titular.hasCost) itemEl.classList.add('cost-extra');
@@ -445,7 +349,6 @@
                         modalList.appendChild(itemEl);
                     });
                 }
-
                 const showStep2 = (titular, complementos) => {
                     modalStep1.classList.add('hidden');
                     modalStep2.classList.remove('hidden');
@@ -468,14 +371,12 @@
                     });
                     modalStep2Title.querySelector('.back-to-step1').addEventListener('click', showStep1);
                 }
-                
                 showStep1();
                 selectionModal.classList.remove('hidden');
             }
 
             modalCloseBtn.addEventListener('click', () => selectionModal.classList.add('hidden'));
 
-            // --- FUNCIONES PARA SABORES Y RELLENOS (NORMAL) ---
             function addCakeFlavor(flavor) {
                 if (selectedCakeFlavors.length < 2) {
                     selectedCakeFlavors.push(flavor);
@@ -505,14 +406,11 @@
             addCakeFlavorBtn.addEventListener('click', () => openSelectionModal('Sabor de Pan', cakeFlavorsData.normal, selectedCakeFlavors, addCakeFlavor, 2));
             addFillingBtn.addEventListener('click', () => openFillingModal(addFilling, selectedFillings, 2));
 
-            // --- LÓGICA DE RESTRICCIONES (NORMAL) ---
             function checkRestrictions() {
                 const hasNoFillingPan = selectedCakeFlavors.includes('Pastel de queso') || selectedCakeFlavors.includes('Queso/Flan');
                 const isMilHojas = selectedCakeFlavors.includes('Mil Hojas');
-                
                 fillingSection.classList.toggle('disabled-section', hasNoFillingPan || isMilHojas);
                 designDescriptionTextarea.disabled = isMilHojas;
-
                 if (hasNoFillingPan || isMilHojas) {
                     selectedFillings = [];
                     renderTags(fillingContainer, selectedFillings, removeFilling);
@@ -520,67 +418,8 @@
                     if(isMilHojas) designDescriptionTextarea.value = "Mil Hojas no lleva diseño";
                 }
             }
-            
-            // --- Función de Fetch con Timeout ---
-            async function fetchWithTimeout(resource, options = {}, timeout = 8000) { const controller = new AbortController(); const id = setTimeout(() => controller.abort(), timeout); const response = await fetch(resource, { ...options, signal: controller.signal }); clearTimeout(id); return response; }
 
-            // --- Lógica de Calendario ---
-            function initializeCalendar(authToken) {
-                if (calendar) calendar.destroy();
-                calendar = new FullCalendar.Calendar(calendarEl, {
-                    initialView: 'dayGridMonth', locale: 'es', headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
-                    events: function(fetchInfo, successCallback, failureCallback) {
-                        loadingEl.classList.remove('hidden');
-                        fetchWithTimeout('http://localhost:3000/api/folios', { method: 'GET', headers: { 'Authorization': `Bearer ${authToken}` }})
-                        .then(response => { if (response.status === 401) { handleLogout(); throw new Error('Token no válido o sesión expirada.'); } if (!response.ok) { throw new Error(`Error del servidor: ${response.status}`); } return response.json(); })
-                        .then(data => { const events = data.map(folio => ({ title: `Folio ${folio.folioNumber} - ${(folio.client ? folio.client.name : 'N/A')}`, start: `${folio.deliveryDate}T${folio.deliveryTime}`, extendedProps: { folioData: folio } })); successCallback(events); })
-                        .catch(error => { failureCallback(error); if (error.name === 'AbortError' || error.message.includes('Token no válido')) handleLogout(); })
-                        .finally(() => { loadingEl.classList.add('hidden'); });
-                    },
-                    eventClick: function(info) {
-                        const folio = info.event.extendedProps.folioData;
-                        document.getElementById('modalFolioNumber').innerText = `Folio: ${folio.folioNumber}`;
-                        document.getElementById('modalClientName').innerText = folio.client ? folio.client.name : 'N/A';
-                        document.getElementById('modalClientPhone').innerText = folio.client ? folio.client.phone : 'N/A';
-                        document.getElementById('modalPersons').innerText = folio.persons;
-                        document.getElementById('modalDescription').innerText = folio.designDescription;
-                        modal.classList.remove('hidden');
-                    }
-                });
-                calendar.render();
-            }
-
-            // --- Lógica de Vistas y Sesión ---
-            function showView(viewToShow) { calendarView.classList.add('hidden'); formView.classList.add('hidden'); if (viewToShow === 'calendar') calendarView.classList.remove('hidden'); else if (viewToShow === 'form') formView.classList.remove('hidden'); }
-            function showAppView(token) { loginView.classList.add('hidden'); appView.classList.remove('hidden'); initializeCalendar(token); }
-            function handleLogout() { localStorage.removeItem('authToken'); appView.classList.add('hidden'); loginView.classList.remove('hidden'); if (calendar) calendar.destroy(); alert("Sesión cerrada."); }
-
-            // --- Event Listeners ---
-            loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = emailInput.value;
-                const password = passwordInput.value;
-                loadingEl.classList.remove('hidden');
-                try {
-                    const response = await fetchWithTimeout('http://localhost:3000/api/auth/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) {
-                        throw new Error(data.message || 'Error al iniciar sesión');
-                    }
-                    localStorage.setItem('authToken', data.token);
-                    showAppView(data.token);
-                } catch (error) {
-                    loginError.textContent = error.message;
-                } finally {
-                    loadingEl.classList.add('hidden');
-                }
-            });
-
-            newFolioButton.addEventListener('click', () => {
+            document.getElementById('newFolioButton').addEventListener('click', () => {
                 folioForm.reset();
                 selectedFiles = []; renderImagePreviews();
                 additionalItems = []; renderAdditionalItems();
@@ -597,13 +436,16 @@
                 googleMapsLocationCheckbox.dispatchEvent(new Event('change'));
                 document.getElementById('formTitle').textContent = 'Crear Nuevo Folio';
                 folioTypeSelect.dispatchEvent(new Event('change'));
-                showView('form');
             });
             
-            cancelFormButton.addEventListener('click', () => { showView('calendar'); });
+            document.getElementById('cancelFormButton').addEventListener('click', () => {
+                 document.getElementById('formView').classList.add('hidden');
+                 document.getElementById('calendarView').classList.remove('hidden');
+            });
 
             folioForm.addEventListener('submit', async (e) => {
-                e.preventDefault(); loadingEl.classList.remove('hidden');
+                e.preventDefault(); 
+                document.getElementById('loading').classList.remove('hidden');
                 const authToken = localStorage.getItem('authToken');
                 const formData = new FormData();
                 let hour = parseInt(document.getElementById('deliveryHour').value);
@@ -630,21 +472,24 @@
                 formData.append('deliveryDate', document.getElementById('deliveryDate').value);
                 formData.append('deliveryTime', deliveryTime);
                 formData.append('folioType', folioTypeSelect.value);
-                formData.append('persons', document.getElementById('persons').value);
+                formData.append('persons', personsInput.value);
                 formData.append('shape', document.getElementById('shape').value);
-                formData.append('designDescription', document.getElementById('designDescription').value);
+                formData.append('designDescription', designDescriptionTextarea.value);
                 formData.append('dedication', document.getElementById('dedication').value);
                 formData.append('deliveryLocation', deliveryLocation);
-                formData.append('deliveryCost', document.getElementById('deliveryCost').value);
-                formData.append('total', document.getElementById('total').value);
-                formData.append('advancePayment', document.getElementById('advancePayment').value);
+                formData.append('deliveryCost', deliveryCostInput.value);
+                formData.append('total', totalInput.value);
+                formData.append('advancePayment', advanceInput.value);
                 formData.append('accessories', document.getElementById('accessories').value);
-                formData.append('hasExtraHeight', hasExtraHeightCheckbox.checked);
                 
                 const finalAdditionalItems = additionalItems.map(item => ({ name: `${item.quantity} x ${item.name}`, price: item.totalPrice }));
                 formData.append('additional', JSON.stringify(finalAdditionalItems));
                 
                 formData.append('isPaid', isPaidCheckbox.checked);
+                formData.append('hasExtraHeight', hasExtraHeightCheckbox.checked);
+                
+                const imageComments = selectedFiles.map(sf => sf.comment);
+                formData.append('imageComments', JSON.stringify(imageComments));
 
                 if (folioTypeSelect.value === 'Base/Especial') {
                     const tiers = tiersData.map((tier, index) => {
@@ -668,28 +513,23 @@
                     formData.append('complementFilling', document.getElementById('complementFilling').value);
                     formData.append('complementDescription', document.getElementById('complementDescription').value);
                 }
+
                 for (const fileData of selectedFiles) {
                     formData.append('referenceImages', fileData.file);
-                    formData.append('imageComments', fileData.comment);
                 }
 
                 try {
-                    const response = await fetchWithTimeout('http://localhost:3000/api/folios', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: formData });
+                    const response = await fetch('http://localhost:3000/api/folios', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: formData });
                     if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Error del servidor'); }
-                    alert('¡Folio creado con éxito!'); showView('calendar'); if(calendar) calendar.refetchEvents();
-                } catch (error) { alert('Error al crear el folio: ' + error.message); } finally { loadingEl.classList.add('hidden'); }
+                    alert('¡Folio creado con éxito!');
+                    window.location.reload();
+                } catch (error) { alert('Error al crear el folio: ' + error.message); } finally { document.getElementById('loading').classList.add('hidden'); }
             });
             
-            // --- LÓGICA DE ENTREGA ---
             inStorePickupCheckbox.addEventListener('change', function() {
-                const isChecked = this.checked;
-                deliveryAddressSection.classList.toggle('hidden', isChecked);
-                if (isChecked) {
-                    deliveryCostInput.value = '0';
-                    deliveryCostInput.readOnly = true;
-                } else {
-                    deliveryCostInput.readOnly = false;
-                }
+                deliveryAddressSection.classList.toggle('hidden', this.checked);
+                deliveryCostInput.readOnly = this.checked;
+                if (this.checked) deliveryCostInput.value = '0';
                 updateTotals();
             });
 
@@ -697,33 +537,19 @@
                 addressFields.classList.toggle('disabled-section', this.checked);
             });
 
-            // --- CÁLCULO DE SALDO CORREGIDO ---
             function getGrandTotal() {
                 const total = parseFloat(totalInput.value) || 0;
                 const delivery = parseFloat(deliveryCostInput.value) || 0;
                 const additionalFromList = additionalItems.reduce((sum, item) => sum + item.totalPrice, 0);
                 const persons = parseFloat(personsInput.value) || 0;
                 
-                const normalFillingCost = selectedFillings.reduce((sum, filling) => {
-                    if (filling.hasCost && persons > 0) {
-                        return sum + ((persons / 20) * 30);
-                    }
-                    return sum;
-                }, 0);
-
+                const normalFillingCost = selectedFillings.reduce((sum, filling) => (filling.hasCost && persons > 0) ? sum + ((persons / 20) * 30) : sum, 0);
                 const tierFillingCost = tiersData.reduce((sum, tier, index) => {
                     if (!tiersTableBody.children[index]) return sum;
                     const row = tiersTableBody.children[index];
                     const tierPersons = parseFloat(row.querySelector('.tier-persons-input').value) || 0;
-                    const tierCost = tier.fillings.reduce((tierSum, filling) => {
-                        if (filling.hasCost && tierPersons > 0) {
-                            return tierSum + ((tierPersons / 20) * 30);
-                        }
-                        return tierSum;
-                    }, 0);
-                    return sum + tierCost;
+                    return sum + tier.fillings.reduce((tierSum, filling) => (filling.hasCost && tierPersons > 0) ? tierSum + ((tierPersons / 20) * 30) : tierSum, 0);
                 }, 0);
-
                 return total + delivery + additionalFromList + normalFillingCost + tierFillingCost;
             }
 
@@ -735,30 +561,22 @@
 
             function updateTotals() {
                 if (isPaidCheckbox.checked) {
-                    const grandTotal = getGrandTotal();
-                    advanceInput.value = grandTotal.toFixed(2);
+                    advanceInput.value = getGrandTotal().toFixed(2);
                 }
                 calculateBalance();
             }
 
-            // --- EVENT LISTENERS PARA CUENTAS ---
             [totalInput, deliveryCostInput, personsInput].forEach(input => input.addEventListener('input', updateTotals));
             advanceInput.addEventListener('input', calculateBalance);
-            
             isPaidCheckbox.addEventListener('change', function() {
                 advanceInput.readOnly = this.checked;
                 updateTotals();
             });
-            
             tiersTableBody.addEventListener('input', (e) => {
-                if (e.target.classList.contains('tier-persons-input')) {
-                    updateTotals();
-                }
+                if (e.target.classList.contains('tier-persons-input')) updateTotals();
             });
 
-
-            // --- LÓGICA DE IMÁGENES ---
-           function renderImagePreviews() {
+            function renderImagePreviews() {
                 imagePreview.innerHTML = '';
                 selectedFiles.forEach((fileData, index) => {
                     const wrapper = document.createElement('div');
@@ -812,16 +630,12 @@
                     }
                 }
             });
-
-            // --- LÓGICA DE ADICIONALES ---
+            
             function renderAdditionalItems() {
                 additionalList.innerHTML = '';
                 additionalItems.forEach((item, index) => {
                     const li = document.createElement('li');
-                    li.innerHTML = `
-                        ${item.quantity} x ${item.name} - $${item.totalPrice.toFixed(2)}
-                        <button type="button" class="remove-additional-btn text-red-500 ml-2" data-index="${index}">[x]</button>
-                    `;
+                    li.innerHTML = `${item.quantity} x ${item.name} - $${item.totalPrice.toFixed(2)} <button type="button" class="remove-additional-btn text-red-500 ml-2" data-index="${index}">[x]</button>`;
                     additionalList.appendChild(li);
                 });
             }
@@ -854,7 +668,6 @@
                 }
             });
 
-            // --- LÓGICA DE PISOS (TIERS) ---
             function addTierRow() {
                 const index = tiersData.length;
                 tiersData.push({ panes: [], fillings: [] });
@@ -864,17 +677,10 @@
                 row.setAttribute('data-index', index);
                 row.innerHTML = `
                     <td class="p-2"><input type="number" class="tier-persons-input bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2" placeholder="Personas"></td>
-                    <td class="p-2">
-                        <div class="tag-container panes-container"></div>
-                        <button type="button" class="add-tier-pane-btn mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Pan</button>
-                    </td>
-                    <td class="p-2">
-                        <div class="tag-container fillings-container"></div>
-                        <button type="button" class="add-tier-filling-btn mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Relleno</button>
-                    </td>
+                    <td class="p-2"><div class="tag-container panes-container"></div><button type="button" class="add-tier-pane-btn mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Pan</button></td>
+                    <td class="p-2"><div class="tag-container fillings-container"></div><button type="button" class="add-tier-filling-btn mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Relleno</button></td>
                     <td class="p-2"><input type="text" class="tier-notes-input bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2" placeholder="Notas"></td>
-                    <td class="p-1 text-center"><button type="button" class="remove-tier-button text-red-500 font-bold px-2 text-lg">X</button></td>
-                `;
+                    <td class="p-1 text-center"><button type="button" class="remove-tier-button text-red-500 font-bold px-2 text-lg">X</button></td>`;
                 tiersTableBody.appendChild(row);
             }
 
@@ -882,7 +688,7 @@
                 const isSpecial = this.value === 'Base/Especial';
                 normalFields.classList.toggle('hidden', isSpecial);
                 specialFields.classList.toggle('hidden', !isSpecial);
-                if (isSpecial && tiersTableBody.children.length === 0) { addTierRow(); }
+                if (isSpecial && tiersTableBody.children.length === 0) addTierRow();
                 if (isSpecial) {
                     selectedCakeFlavors = [];
                     selectedFillings = [];
@@ -923,7 +729,7 @@
                 };
                 const removeTierFilling = (tierIndex, tagIndex) => {
                     tiersData[tierIndex].fillings.splice(tagIndex, 1);
-                    renderTags(tiersTableBody.children[tierIndex].querySelector('.fillings-container'), tiersData[tierIndex].fillings, (tagIndex) => removeTierFilling(tierIndex, tagIndex));
+                    renderTags(tiersTableBody.children[tierIndex].querySelector('.fillings-container'), tiersData[currentTierIndex].fillings, (tagIndex) => removeTierFilling(tierIndex, tagIndex));
                     updateTotals();
                 };
 
@@ -932,31 +738,21 @@
                 } else if (target.classList.contains('add-tier-filling-btn')) {
                     openFillingModal(addTierFilling, tiersData[currentTierIndex].fillings, 2);
                 } else if (target.classList.contains('remove-tier-button')) {
-                    const indexToRemove = parseInt(row.dataset.index, 10);
-                    tiersData.splice(indexToRemove, 1);
+                    tiersData.splice(parseInt(row.dataset.index, 10), 1);
                     row.remove();
                     Array.from(tiersTableBody.children).forEach((r, i) => r.setAttribute('data-index', i));
                     updateTotals();
                 } else if(target.closest('.tag-remove-btn')) {
                     const tagContainer = target.closest('.tag-container');
                     const tagIndex = parseInt(target.closest('.tag-remove-btn').dataset.index, 10);
-                    if (tagContainer.classList.contains('panes-container')) {
-                        removeTierPane(currentTierIndex, tagIndex);
-                    } else if (tagContainer.classList.contains('fillings-container')) {
-                        removeTierFilling(currentTierIndex, tagIndex);
-                    }
+                    if (tagContainer.classList.contains('panes-container')) removeTierPane(currentTierIndex, tagIndex);
+                    else if (tagContainer.classList.contains('fillings-container')) removeTierFilling(currentTierIndex, tagIndex);
                 }
             });
 
             addComplementCheckbox.addEventListener('change', function() {
                 complementForm.classList.toggle('hidden', !this.checked);
             });
-            
-            closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
-            logoutButton.addEventListener('click', handleLogout);
-
-            const storedToken = localStorage.getItem('authToken');
-            if (storedToken) { showAppView(storedToken); }
         });
     </script>
 </body>

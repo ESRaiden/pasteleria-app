@@ -2,16 +2,17 @@ const fs = require('fs').promises;
 const path = require('path');
 const { format, parseISO, startOfWeek, endOfWeek, getDate, getMonth, lastDayOfMonth } = require('date-fns');
 const { es } = require('date-fns/locale');
-const { Folio, Client, User, FolioEditHistory } = require('../models');
+const { Folio, Client, User, FolioEditHistory, sequelize } = require('../models');
+const { Op } = require('sequelize');
 const pdfService = require('../services/pdfService');
 
-// --- CREAR un nuevo folio (CORRECCIÓN DEFINITIVA) ---
+// --- CREAR un nuevo folio (Versión final con todos los campos) ---
 exports.createFolio = async (req, res) => {
   try {
-    // Leemos los datos, incluyendo los comentarios de las imágenes
     const { 
         clientName, clientPhone, total, advancePayment, deliveryDate, 
-        tiers, accessories, additional, isPaid, imageComments, ...folioData 
+        tiers, accessories, additional, isPaid, hasExtraHeight, imageComments, 
+        ...folioData 
     } = req.body;
 
     const [client] = await Client.findOrCreate({
@@ -19,7 +20,6 @@ exports.createFolio = async (req, res) => {
       defaults: { name: clientName }
     });
 
-    // Lógica para generar el número de folio
     const lastFourDigits = client.phone.slice(-4);
     const date = parseISO(deliveryDate);
     const monthInitial = format(date, 'MMMM', { locale: es }).charAt(0).toUpperCase();
@@ -27,24 +27,14 @@ exports.createFolio = async (req, res) => {
     const dayOfMonth = format(date, 'dd');
     const folioNumber = `${monthInitial}${dayInitial}-${dayOfMonth}-${lastFourDigits}`;
     
-    // Lógica para calcular costos
     const additionalData = typeof additional === 'string' ? JSON.parse(additional) : [];
     const additionalCost = additionalData.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
     const finalTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost;
-    const balance = finalTotal - advancePayment;
+    const balance = finalTotal - parseFloat(advancePayment);
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // 1. Nos aseguramos de que los comentarios siempre sean un arreglo
-    const comments = imageComments ? (Array.isArray(imageComments) ? imageComments : [imageComments]) : [];
-
-    // 2. Combinamos cada archivo de imagen con su comentario correspondiente por su índice
-    const imageUrls = req.files ? req.files.map((file, index) => {
-        return {
-            url: file.path,
-            comment: comments[index] || '' // Asigna el comentario del mismo índice, o '' si no existe
-        };
-    }) : [];
-    // --- FIN DE LA CORRECCIÓN ---
+    // Combina las rutas de las imágenes con sus comentarios
+    const imageUrls = req.files ? req.files.map(file => file.path) : [];
+    const comments = imageComments ? JSON.parse(imageComments) : [];
 
     const tiersData = typeof tiers === 'string' ? JSON.parse(tiers) : tiers;
 
@@ -57,11 +47,13 @@ exports.createFolio = async (req, res) => {
       balance,
       clientId: client.id,
       responsibleUserId: req.user.id,
-      imageUrls: imageUrls, // Ahora se guarda el objeto completo {url, comment}
+      imageUrls: imageUrls,
+      imageComments: comments,
       tiers: tiersData,
       accessories: accessories,
       additional: additionalData,
-      isPaid: isPaid === 'true'
+      isPaid: isPaid === 'true',
+      hasExtraHeight: hasExtraHeight === 'true'
     });
     res.status(201).json(newFolio);
   } catch (error) {
@@ -74,11 +66,27 @@ exports.createFolio = async (req, res) => {
 };
 
 
-// --- OBTENER TODOS los folios ---
+// --- OBTENER TODOS los folios (con funcionalidad de búsqueda) ---
 exports.getAllFolios = async (req, res) => {
   try {
+    const { q } = req.query;
+    let whereClause = {};
+
+    if (q) {
+      whereClause = {
+        [Op.or]: [
+          { folioNumber: { [Op.like]: `%${q}%` } },
+          { '$client.phone$': { [Op.like]: `%${q}%` } }
+        ]
+      };
+    }
+
     const folios = await Folio.findAll({
-      include: [ { model: Client, as: 'client', attributes: ['name', 'phone'] }, { model: User, as: 'responsibleUser', attributes: ['username'] } ],
+      where: whereClause,
+      include: [
+        { model: Client, as: 'client', attributes: ['name', 'phone'] },
+        { model: User, as: 'responsibleUser', attributes: ['username'] }
+      ],
       order: [['deliveryDate', 'ASC']]
     });
     res.status(200).json(folios);
@@ -91,7 +99,17 @@ exports.getAllFolios = async (req, res) => {
 exports.getFolioById = async (req, res) => {
     try {
         const folio = await Folio.findByPk(req.params.id, {
-            include: [ { model: Client, as: 'client', attributes: ['name', 'phone'] }, { model: User, as: 'responsibleUser', attributes: ['username'] }, { model: FolioEditHistory, as: 'editHistory', attributes: ['createdAt'], include: { model: User, as: 'editor', attributes: ['username'] }, order: [['createdAt', 'ASC']] } ]
+            include: [
+                { model: Client, as: 'client', attributes: ['name', 'phone'] },
+                { model: User, as: 'responsibleUser', attributes: ['username'] },
+                {
+                    model: FolioEditHistory,
+                    as: 'editHistory',
+                    attributes: ['createdAt'],
+                    include: { model: User, as: 'editor', attributes: ['username'] },
+                    order: [['createdAt', 'ASC']]
+                }
+            ]
         });
         if (!folio) { return res.status(404).json({ message: 'Folio no encontrado' }); }
         res.status(200).json(folio);
@@ -107,11 +125,14 @@ exports.updateFolio = async (req, res) => {
         const editorUserId = req.user.id;
         const folio = await Folio.findByPk(folioId);
         if (!folio) { return res.status(404).json({ message: 'Folio no encontrado' }); }
+        
         await folio.update(req.body);
+        
         if (req.body.total !== undefined || req.body.advancePayment !== undefined) {
           const updatedBalance = folio.total - folio.advancePayment;
           await folio.update({ balance: updatedBalance });
         }
+        
         await FolioEditHistory.create({ folioId: folioId, editorUserId: editorUserId });
         res.status(200).json(folio);
     } catch (error) {
@@ -124,6 +145,17 @@ exports.deleteFolio = async (req, res) => {
     try {
         const folio = await Folio.findByPk(req.params.id);
         if (!folio) { return res.status(404).json({ message: 'Folio no encontrado' }); }
+        
+        if (folio.imageUrls && folio.imageUrls.length > 0) {
+            for (const imageUrl of folio.imageUrls) {
+                try {
+                    await fs.unlink(path.join(__dirname, '..', '..', imageUrl));
+                } catch (err) {
+                    console.error(`No se pudo eliminar la imagen ${imageUrl}:`, err);
+                }
+            }
+        }
+        
         await folio.destroy();
         res.status(200).json({ message: 'Folio eliminado correctamente' });
     } catch (error) {
@@ -150,18 +182,16 @@ exports.generateFolioPdf = async (req, res) => {
     if (getMonth(startOfWeekDate) !== getMonth(deliveryDate)) { weekStartDay = 1; }
     if (getMonth(endOfWeekDate) !== getMonth(deliveryDate)) { weekEndDay = getDate(lastDayOfMonth(deliveryDate)); }
     const weekFolder = `Semana ${weekStartDay}-${weekEndDay}`;
-    const dayName = format(deliveryDate, 'EEEE', { locale: es });
-    const dayOfMonth = getDate(deliveryDate);
-    const dayFolder = `${dayName} ${dayOfMonth} de ${month}`;
+    const dayName = format(deliveryDate, 'EEEE dd', { locale: es });
+    const dayFolder = `${dayName} de ${month}`;
     const directoryPath = path.join(__dirname, '..', '..', 'FOLIOS_GENERADOS', month, weekFolder, dayFolder);
     await fs.mkdir(directoryPath, { recursive: true });
     
     const folioDataForPdf = folio.toJSON();
 
-    // --- LÓGICA PARA ASIGNAR COLORES SEGÚN EL DÍA ---
     const dayOfWeek = format(deliveryDate, 'EEEE', { locale: es });
-    let dayColor = '#F8F9FA'; 
-    let textColor = '#000000'; 
+    let dayColor = '#F8F9FA';
+    let textColor = '#000000';
 
     switch (dayOfWeek.toLowerCase()) {
         case 'lunes': dayColor = '#007bff'; textColor = '#ffffff'; break;
@@ -175,7 +205,7 @@ exports.generateFolioPdf = async (req, res) => {
     folioDataForPdf.dayColor = dayColor;
     folioDataForPdf.textColor = textColor;
 
-    folioDataForPdf.formattedDeliveryDate = format(deliveryDate, "EEEE dd 'de' MMMM 'de' yyyy", { locale: es, timeZone: 'UTC' });
+    folioDataForPdf.formattedDeliveryDate = format(deliveryDate, "EEEE dd 'de' MMMM 'de' yyyy", { locale: es });
     const [hour, minute] = folio.deliveryTime.split(':');
     const time = new Date();
     time.setHours(hour, minute);
@@ -193,30 +223,5 @@ exports.generateFolioPdf = async (req, res) => {
   } catch (error) {
     console.error('❌ Error al generar o guardar el PDF:', error);
     res.status(500).json({ message: 'Error al generar y guardar el PDF', error: error.message });
-  }
-};
-
-exports.updateImageComment = async (req, res) => {
-  try {
-    const { id, imageIndex } = req.params;
-    const { comment } = req.body;
-
-    const folio = await Folio.findByPk(id);
-    if (!folio) {
-      return res.status(404).json({ message: 'Folio no encontrado' });
-    }
-
-    const imageUrls = folio.imageUrls || [];
-    if (imageIndex < 0 || imageIndex >= imageUrls.length) {
-      return res.status(400).json({ message: 'Índice de imagen inválido' });
-    }
-
-    imageUrls[imageIndex].comment = comment;
-
-    await folio.update({ imageUrls });
-
-    res.status(200).json({ message: 'Comentario de imagen actualizado correctamente' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al actualizar el comentario de la imagen', error: error.message });
   }
 };

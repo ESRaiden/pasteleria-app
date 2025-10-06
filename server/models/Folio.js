@@ -70,7 +70,12 @@ const Folio = sequelize.define('Folio', {
     defaultValue: 'Nuevo'
   },
   imageUrls: {
-    type: DataTypes.JSON,
+    type: DataTypes.JSON, // Guardará las rutas de las imágenes
+    allowNull: true
+  },
+  // --- NUEVO CAMPO ---
+  imageComments: {
+    type: DataTypes.JSON, // Guardará los comentarios de las imágenes
     allowNull: true
   },
   tiers: {
@@ -82,7 +87,7 @@ const Folio = sequelize.define('Folio', {
     allowNull: true
   },
   additional: {
-    type: DataTypes.JSON, // CAMBIO: Ahora es JSON para guardar nombre y precio
+    type: DataTypes.JSON,
     allowNull: true
   },
   complementPersons: {
@@ -106,9 +111,10 @@ const Folio = sequelize.define('Folio', {
     allowNull: false,
     defaultValue: false
   },
-  imageComments: {
-    type: DataTypes.JSON,
-    allowNull: true
+  // --- NUEVO CAMPO ---
+  hasExtraHeight: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
   }
 }, { tableName: 'folios' });
 
