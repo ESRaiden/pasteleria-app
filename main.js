@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const viewCalendarButton = document.getElementById('viewCalendarButton');
     const loadingEl = document.getElementById('loading');
 
+    // Función para cambiar entre la vista de calendario y la de formulario
     function showView(viewToShow) {
         calendarView.classList.add('hidden');
         formView.classList.add('hidden');
@@ -19,25 +20,20 @@ document.addEventListener('DOMContentLoaded', function() {
             formView.classList.remove('hidden');
         }
     }
-
-    async function loadCalendarView() {
-        const response = await fetch('calendar.html');
-        const html = await response.text();
-        calendarView.innerHTML = html;
-        const authToken = localStorage.getItem('authToken');
-        if (window.initializeCalendar) {
-            window.initializeCalendar(authToken);
-        }
-    }
     
+    // Muestra la vista principal de la aplicación después del login
     function showAppView(token) {
         loginView.classList.add('hidden');
         appView.classList.remove('hidden');
-        loadCalendarView().then(() => {
-            showView('calendar');
-        });
+        showView('calendar'); // Muestra el calendario por defecto
+        
+        // Llama a la función global para inicializar el calendario
+        if (window.initializeCalendar) {
+            window.initializeCalendar(token);
+        }
     }
 
+    // Maneja el cierre de sesión
     function handleLogout() {
         localStorage.removeItem('authToken');
         appView.classList.add('hidden');
@@ -45,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
         alert("Sesión cerrada.");
     }
     
+    // Función de fetch con un tiempo de espera
     async function fetchWithTimeout(resource, options = {}, timeout = 8000) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
@@ -53,6 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return response;
     }
 
+    // Lógica para el formulario de login
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('email').value;
@@ -77,12 +75,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Escucha el evento personalizado cuando un folio se crea con éxito
+    window.addEventListener('folioCreated', () => {
+        showView('calendar');
+    });
+
+    // Event listeners para los botones de navegación
     logoutButton.addEventListener('click', handleLogout);
     newFolioButton.addEventListener('click', () => showView('form'));
     viewCalendarButton.addEventListener('click', () => showView('calendar'));
 
+    // Comprueba si ya existe un token al cargar la página
     const storedToken = localStorage.getItem('authToken');
     if (storedToken) {
         showAppView(storedToken);
     }
+
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Hacemos la función showView accesible globalmente para que otros scripts puedan llamarla.
+    window.showMainView = showView;
+    // --- FIN DE LA CORRECCIÓN ---
 });

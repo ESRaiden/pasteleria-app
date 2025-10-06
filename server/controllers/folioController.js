@@ -6,7 +6,7 @@ const { Folio, Client, User, FolioEditHistory, sequelize } = require('../models'
 const { Op } = require('sequelize');
 const pdfService = require('../services/pdfService');
 
-// --- CREAR un nuevo folio (Versión final con todos los campos) ---
+// --- CREAR un nuevo folio ---
 exports.createFolio = async (req, res) => {
   try {
     const { 
@@ -32,10 +32,8 @@ exports.createFolio = async (req, res) => {
     const finalTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost;
     const balance = finalTotal - parseFloat(advancePayment);
 
-    // Combina las rutas de las imágenes con sus comentarios
     const imageUrls = req.files ? req.files.map(file => file.path) : [];
     const comments = imageComments ? JSON.parse(imageComments) : [];
-
     const tiersData = typeof tiers === 'string' ? JSON.parse(tiers) : tiers;
 
     const newFolio = await Folio.create({
@@ -65,8 +63,7 @@ exports.createFolio = async (req, res) => {
   }
 };
 
-
-// --- OBTENER TODOS los folios (con funcionalidad de búsqueda) ---
+// --- OBTENER TODOS los folios (con búsqueda) ---
 exports.getAllFolios = async (req, res) => {
   try {
     const { q } = req.query;
@@ -118,27 +115,68 @@ exports.getFolioById = async (req, res) => {
     }
 };
 
-// --- ACTUALIZAR un folio existente ---
+// --- INICIO DE LA CORRECCIÓN: ACTUALIZAR un folio existente (Versión completa) ---
 exports.updateFolio = async (req, res) => {
     try {
         const folioId = req.params.id;
-        const editorUserId = req.user.id;
         const folio = await Folio.findByPk(folioId);
-        if (!folio) { return res.status(404).json({ message: 'Folio no encontrado' }); }
-        
-        await folio.update(req.body);
-        
-        if (req.body.total !== undefined || req.body.advancePayment !== undefined) {
-          const updatedBalance = folio.total - folio.advancePayment;
-          await folio.update({ balance: updatedBalance });
+        if (!folio) { 
+            return res.status(404).json({ message: 'Folio no encontrado' }); 
         }
+
+        const { 
+            clientName, clientPhone, total, advancePayment, deliveryDate, 
+            tiers, accessories, additional, isPaid, hasExtraHeight, imageComments,
+            existingImageUrls, existingImageComments,
+            ...folioData 
+        } = req.body;
         
-        await FolioEditHistory.create({ folioId: folioId, editorUserId: editorUserId });
+        // --- LÓGICA PARA ACTUALIZAR EL CLIENTE ---
+        const client = await Client.findByPk(folio.clientId);
+        if (client) {
+            await client.update({ name: clientName, phone: clientPhone });
+        }
+        // --- FIN LÓGICA PARA ACTUALIZAR EL CLIENTE ---
+        
+        const additionalData = typeof additional === 'string' ? JSON.parse(additional) : [];
+        const additionalCost = additionalData.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
+        const finalTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost;
+        const balance = finalTotal - parseFloat(advancePayment);
+
+        const newImageUrls = req.files ? req.files.map(file => file.path) : [];
+        const finalImageUrls = (existingImageUrls ? JSON.parse(existingImageUrls) : []).concat(newImageUrls);
+        
+        const newComments = imageComments ? JSON.parse(imageComments) : [];
+        const finalImageComments = (existingImageComments ? JSON.parse(existingImageComments) : []).concat(newComments);
+
+        const tiersData = typeof tiers === 'string' ? JSON.parse(tiers) : tiers;
+
+        await folio.update({
+            ...folioData,
+            deliveryDate,
+            total: finalTotal,
+            advancePayment,
+            balance,
+            imageUrls: finalImageUrls,
+            imageComments: finalImageComments,
+            tiers: tiersData,
+            accessories: accessories,
+            additional: additionalData,
+            isPaid: isPaid === 'true',
+            hasExtraHeight: hasExtraHeight === 'true'
+        });
+
+        await FolioEditHistory.create({ folioId: folioId, editorUserId: req.user.id });
+
         res.status(200).json(folio);
+
     } catch (error) {
+        console.error("ERROR AL ACTUALIZAR FOLIO:", error);
         res.status(400).json({ message: 'Error al actualizar el folio', error: error.message });
     }
 };
+// --- FIN DE LA CORRECCIÓN ---
+
 
 // --- ELIMINAR un folio ---
 exports.deleteFolio = async (req, res) => {
