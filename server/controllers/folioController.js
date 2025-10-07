@@ -6,13 +6,35 @@ const { Folio, Client, User, FolioEditHistory, sequelize } = require('../models'
 const { Op } = require('sequelize');
 const pdfService = require('../services/pdfService');
 
+// ==================== INICIO DE LA CORRECCIÓN ====================
+// Función auxiliar para calcular el costo de los rellenos
+const calculateFillingCost = (folioType, persons, fillings, tiers) => {
+    let cost = 0;
+    if (folioType === 'Normal') {
+        const numPersons = parseInt(persons, 10) || 0;
+        cost = (fillings || []).reduce((sum, filling) => {
+            return (filling.hasCost && numPersons > 0) ? sum + ((numPersons / 20) * 30) : sum;
+        }, 0);
+    } else if (folioType === 'Base/Especial') {
+        cost = (tiers || []).reduce((sum, tier) => {
+            const tierPersons = parseInt(tier.persons, 10) || 0;
+            const tierFillingCost = (tier.rellenos || []).reduce((tierSum, filling) => {
+                 return (filling.hasCost && tierPersons > 0) ? tierSum + ((tierPersons / 20) * 30) : tierSum;
+            }, 0);
+            return sum + tierFillingCost;
+        }, 0);
+    }
+    return cost;
+};
+// ===================== FIN DE LA CORRECCIÓN ======================
+
 // --- CREAR un nuevo folio ---
 exports.createFolio = async (req, res) => {
   try {
     const { 
         clientName, clientPhone, total, advancePayment, deliveryDate, 
         tiers, accessories, additional, isPaid, hasExtraHeight, imageComments, 
-        ...folioData 
+        cakeFlavor, filling, ...folioData 
     } = req.body;
 
     const [client] = await Client.findOrCreate({
@@ -26,31 +48,33 @@ exports.createFolio = async (req, res) => {
     const dayInitial = format(date, 'EEEE', { locale: es }).charAt(0).toUpperCase();
     const dayOfMonth = format(date, 'dd');
     
-    // ==================== INICIO DE LA CORRECCIÓN DEFINITIVA ====================
     let baseFolioNumber = `${monthInitial}${dayInitial}-${dayOfMonth}-${lastFourDigits}`;
     let finalFolioNumber = baseFolioNumber;
     let counter = 1;
 
-    // Bucle para asegurar que el número de folio sea único
     while (await Folio.findOne({ where: { folioNumber: finalFolioNumber } })) {
         finalFolioNumber = `${baseFolioNumber}-${counter}`;
         counter++;
     }
-    // ===================== FIN DE LA CORRECCIÓN DEFINITIVA ======================
     
-    const additionalData = typeof additional === 'string' ? JSON.parse(additional) : [];
+    const additionalData = JSON.parse(additional || '[]');
     const additionalCost = additionalData.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
-    const finalTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost;
+    
+    const tiersData = JSON.parse(tiers || '[]');
+    const fillingData = JSON.parse(filling || '[]');
+
+    const fillingCost = calculateFillingCost(folioData.folioType, folioData.persons, fillingData, tiersData);
+
+    const finalTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost + fillingCost;
     const balance = finalTotal - parseFloat(advancePayment);
 
     const imageUrls = req.files ? req.files.map(file => file.path) : [];
     const comments = imageComments ? JSON.parse(imageComments) : [];
-    const tiersData = typeof tiers === 'string' ? JSON.parse(tiers) : tiers;
 
     const newFolio = await Folio.create({
       ...folioData,
       deliveryDate,
-      folioNumber: finalFolioNumber, // Usamos el número de folio único
+      folioNumber: finalFolioNumber,
       total: finalTotal,
       advancePayment,
       balance,
@@ -61,15 +85,14 @@ exports.createFolio = async (req, res) => {
       tiers: tiersData,
       accessories: accessories,
       additional: additionalData,
+      cakeFlavor: cakeFlavor,
+      filling: filling,
       isPaid: isPaid === 'true',
       hasExtraHeight: hasExtraHeight === 'true'
     });
     res.status(201).json(newFolio);
   } catch (error) {
     console.error('ERROR DETALLADO AL CREAR FOLIO:', error);
-    if (error.name === 'SequelizeUniqueConstraintError') {
-        return res.status(400).json({ message: 'Error: Ya existe un folio con este número o un cliente con este teléfono.', error: error.message });
-    }
     res.status(400).json({ message: 'Error al crear el folio', error: error.message });
   }
 };
@@ -139,7 +162,7 @@ exports.updateFolio = async (req, res) => {
         const { 
             clientName, clientPhone, total, advancePayment, deliveryDate, 
             tiers, accessories, additional, isPaid, hasExtraHeight, imageComments,
-            existingImageUrls, existingImageComments,
+            existingImageUrls, existingImageComments, cakeFlavor, filling,
             ...folioData 
         } = req.body;
         
@@ -148,9 +171,15 @@ exports.updateFolio = async (req, res) => {
             await client.update({ name: clientName, phone: clientPhone });
         }
         
-        const additionalData = typeof additional === 'string' ? JSON.parse(additional) : [];
+        const additionalData = JSON.parse(additional || '[]');
         const additionalCost = additionalData.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
-        const finalTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost;
+        
+        const tiersData = JSON.parse(tiers || '[]');
+        const fillingData = JSON.parse(filling || '[]');
+
+        const fillingCost = calculateFillingCost(folioData.folioType, folioData.persons, fillingData, tiersData);
+
+        const finalTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost + fillingCost;
         const balance = finalTotal - parseFloat(advancePayment);
 
         const newImageUrls = req.files ? req.files.map(file => file.path) : [];
@@ -158,8 +187,6 @@ exports.updateFolio = async (req, res) => {
         
         const newComments = imageComments ? JSON.parse(imageComments) : [];
         const finalImageComments = (existingImageComments ? JSON.parse(existingImageComments) : []).concat(newComments);
-
-        const tiersData = typeof tiers === 'string' ? JSON.parse(tiers) : tiers;
 
         await folio.update({
             ...folioData,
@@ -172,6 +199,8 @@ exports.updateFolio = async (req, res) => {
             tiers: tiersData,
             accessories: accessories,
             additional: additionalData,
+            cakeFlavor: cakeFlavor,
+            filling: filling,
             isPaid: isPaid === 'true',
             hasExtraHeight: hasExtraHeight === 'true'
         });
@@ -234,6 +263,16 @@ exports.generateFolioPdf = async (req, res) => {
     await fs.mkdir(directoryPath, { recursive: true });
     
     const folioDataForPdf = folio.toJSON();
+    
+    if (folioDataForPdf.tiers && typeof folioDataForPdf.tiers === 'string') {
+        folioDataForPdf.tiers = JSON.parse(folioDataForPdf.tiers);
+    }
+    if (folioDataForPdf.cakeFlavor && typeof folioDataForPdf.cakeFlavor === 'string') {
+        folioDataForPdf.cakeFlavor = JSON.parse(folioDataForPdf.cakeFlavor).join(', ');
+    }
+    if (folioDataForPdf.filling && typeof folioDataForPdf.filling === 'string') {
+        folioDataForPdf.filling = JSON.parse(folioDataForPdf.filling).map(f => f.name).join('; ');
+    }
 
     const dayOfWeek = format(deliveryDate, 'EEEE', { locale: es });
     let dayColor = '#F8F9FA';

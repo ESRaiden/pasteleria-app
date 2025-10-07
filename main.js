@@ -12,57 +12,61 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- ELEMENTOS DEL FORMULARIO ---
     const folioForm = document.getElementById('folioForm'),
-          formTitle = document.getElementById('formTitle'),
-          clientNameInput = document.getElementById('clientName'),
-          clientPhoneInput = document.getElementById('clientPhone'),
-          deliveryDateInput = document.getElementById('deliveryDate'),
-          deliveryHourSelect = document.getElementById('deliveryHour'),
-          deliveryMinuteSelect = document.getElementById('deliveryMinute'),
-          deliveryPeriodSelect = document.getElementById('deliveryPeriod'),
-          folioTypeSelect = document.getElementById('folioType'),
-          personsInput = document.getElementById('persons'),
-          shapeInput = document.getElementById('shape'),
-          imageInput = document.getElementById('referenceImages'),
-          imagePreview = document.getElementById('imagePreview'),
-          totalInput = document.getElementById('total'),
-          advanceInput = document.getElementById('advancePayment'),
-          balanceInput = document.getElementById('balance'),
-          isPaidCheckbox = document.getElementById('isPaid'),
-          hasExtraHeightCheckbox = document.getElementById('hasExtraHeight'),
-          addComplementCheckbox = document.getElementById('addComplement'),
-          complementForm = document.getElementById('complementForm'),
-          accessoriesInput = document.getElementById('accessories'),
-          designDescriptionTextarea = document.getElementById('designDescription'),
-          dedicationInput = document.getElementById('dedication'),
-          deliveryCostInput = document.getElementById('deliveryCost'),
-          inStorePickupCheckbox = document.getElementById('inStorePickup'),
-          googleMapsLocationCheckbox = document.getElementById('googleMapsLocation'),
-          streetInput = document.getElementById('street'),
-          extNumberInput = document.getElementById('extNumber'),
-          intNumberInput = document.getElementById('intNumber'),
-          neighborhoodInput = document.getElementById('neighborhood'),
-          addressFields = document.getElementById('addressFields'),
-          cancelFormButton = document.getElementById('cancelFormButton'),
-          addCakeFlavorBtn = document.getElementById('addCakeFlavorBtn'),
-          addFillingBtn = document.getElementById('addFillingBtn'),
-          cakeFlavorContainer = document.getElementById('cakeFlavorContainer'),
-          fillingContainer = document.getElementById('fillingContainer'),
-          fillingSection = document.getElementById('fillingSection'),
-          selectionModal = document.getElementById('selectionModal'),
-          modalTitle = document.getElementById('modalTitle'),
-          modalSearch = document.getElementById('modalSearch'),
-          modalList = document.getElementById('modalList'),
-          modalCloseBtn = document.getElementById('modalCloseBtn'),
-          modalStep1 = document.getElementById('modal-step-1'),
-          modalStep2 = document.getElementById('modal-step-2'),
-          modalStep2Title = document.getElementById('modal-step-2-title'),
-          modalStep2List = document.getElementById('modal-step-2-list'),
-          tiersTableBody = document.getElementById('tiersTableBody'),
-          addTierButton = document.getElementById('addTierButton'),
-          additionalList = document.getElementById('additionalList'),
-          addAdditionalButton = document.getElementById('addAdditionalButton'),
-          normalFields = document.getElementById('normalFields'),
-          specialFields = document.getElementById('specialFields');
+        formTitle = document.getElementById('formTitle'),
+        clientNameInput = document.getElementById('clientName'),
+        clientPhoneInput = document.getElementById('clientPhone'),
+        deliveryDateInput = document.getElementById('deliveryDate'),
+        deliveryHourSelect = document.getElementById('deliveryHour'),
+        deliveryMinuteSelect = document.getElementById('deliveryMinute'),
+        deliveryPeriodSelect = document.getElementById('deliveryPeriod'),
+        folioTypeSelect = document.getElementById('folioType'),
+        personsInput = document.getElementById('persons'),
+        shapeInput = document.getElementById('shape'),
+        imageInput = document.getElementById('referenceImages'),
+        imagePreview = document.getElementById('imagePreview'),
+        totalInput = document.getElementById('total'),
+        advanceInput = document.getElementById('advancePayment'),
+        balanceInput = document.getElementById('balance'),
+        isPaidCheckbox = document.getElementById('isPaid'),
+        hasExtraHeightCheckbox = document.getElementById('hasExtraHeight'),
+        addComplementCheckbox = document.getElementById('addComplement'),
+        complementForm = document.getElementById('complementForm'),
+        accessoriesInput = document.getElementById('accessories'),
+        designDescriptionTextarea = document.getElementById('designDescription'),
+        dedicationInput = document.getElementById('dedication'),
+        deliveryCostInput = document.getElementById('deliveryCost'),
+        inStorePickupCheckbox = document.getElementById('inStorePickup'),
+        googleMapsLocationCheckbox = document.getElementById('googleMapsLocation'),
+        streetInput = document.getElementById('street'),
+        extNumberInput = document.getElementById('extNumber'),
+        intNumberInput = document.getElementById('intNumber'),
+        neighborhoodInput = document.getElementById('neighborhood'),
+        addressFields = document.getElementById('addressFields'),
+        cancelFormButton = document.getElementById('cancelFormButton'),
+        addCakeFlavorBtn = document.getElementById('addCakeFlavorBtn'),
+        addFillingBtn = document.getElementById('addFillingBtn'),
+        cakeFlavorContainer = document.getElementById('cakeFlavorContainer'),
+        fillingContainer = document.getElementById('fillingContainer'),
+        fillingSection = document.getElementById('fillingSection'),
+        selectionModal = document.getElementById('selectionModal'),
+        modalTitle = document.getElementById('modalTitle'),
+        modalSearch = document.getElementById('modalSearch'),
+        modalList = document.getElementById('modalList'),
+        modalCloseBtn = document.getElementById('modalCloseBtn'),
+        modalStep1 = document.getElementById('modal-step-1'),
+        modalStep2 = document.getElementById('modal-step-2'),
+        modalStep2Title = document.getElementById('modal-step-2-title'),
+        modalStep2List = document.getElementById('modal-step-2-list'),
+        tiersTableBody = document.getElementById('tiersTableBody'),
+        addTierButton = document.getElementById('addTierButton'),
+        additionalList = document.getElementById('additionalList'),
+        addAdditionalButton = document.getElementById('addAdditionalButton'),
+        normalFields = document.getElementById('normalFields'),
+        specialFields = document.getElementById('specialFields'),
+        complementPersonsInput = document.getElementById('complementPersons'),
+        complementFlavorInput = document.getElementById('complementFlavor'),
+        complementFillingInput = document.getElementById('complementFilling'),
+        complementDescriptionInput = document.getElementById('complementDescription');
 
     // --- MANEJO DE MODALES ---
     const dailyFoliosModal = document.getElementById('dailyFoliosModal');
@@ -87,7 +91,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let selectedFiles = [];
     let existingImages = [];
     let selectedCakeFlavors = [];
-    let selectedFillings = [];
+    // ==================== INICIO DE LA CORRECCIÓN ====================
+    let selectedRellenos = [];
+    // ===================== FIN DE LA CORRECCIÓN ======================
     let tiersData = [];
     let currentTierIndex = -1;
     
@@ -96,10 +102,12 @@ document.addEventListener('DOMContentLoaded', function() {
         normal: ['Pastel de queso', 'Pan de tres leches', 'Chocolate', 'Red Velvet', 'Mil Hojas', 'Zanahoria', 'Queso/Flan', 'Mantequilla'],
         tier: ['Mantequilla', 'Queso', 'Nata', 'Chocolate', 'Vainilla', 'Flan', 'Red Velvet']
     };
-    const fillingsData = {
+    // ==================== INICIO DE LA CORRECCIÓN ====================
+    const rellenosData = {
         'incluidos': { 'Mermelada': ['Zarzamora', 'Fresa', 'Piña', 'Durazno'], 'Manjar': ['Nuez', 'Coco', 'Almendra'], 'Dulce de Leche': ['Envinada', 'Nuez', 'Almendra', 'Coco'], 'Duraznos': ['Crema de Yogurth', 'Chantilly', 'Rompope'], 'Nuez': ['Manjar', 'Mocka', 'Capuchino'] },
         'conCosto': { 'Cajeta': ['Nuez', 'Coco', 'Almendra', 'Oreo'], 'Crema de Queso': ['Mermelada zarzamora', 'Mermelada fresa', 'Cajeta', 'Envinada'], 'Oreo': ['Manjar', 'Crema de yogurth fresa', 'Crema de chocolate', 'Chantilly'], 'Cremas': ['Mocka', 'Yogurth de fresa', 'Café con o sin brandy'], 'Chantilly con fresas': [], 'Nutella': [], 'Cocktail de frutas': ['Chantilly', 'Crema de queso', 'Crema de Yogurth'], 'Crema de queso con Chocoretas': [], 'Snickers / Milky Way': ['Manjar', 'Chantilly', 'Crema de yogurth fresa', 'Crema de chocolate'] }
     };
+    // ===================== FIN DE LA CORRECCIÓN ======================
 
     // --- FUNCIONES DE MANEJO DE VISTAS Y SESIÓN ---
     function showView(viewToShow) {
@@ -136,7 +144,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return response;
     }
 
-    // --- LÓGICA DEL FORMULARIO ---
+    function safeJsonParse(jsonString) {
+        if (!jsonString) return [];
+        try {
+            const result = JSON.parse(jsonString);
+            return Array.isArray(result) ? result : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    // --- LÓGICA DEL FORMULARIO (INICIALIZACIÓN Y FUNCIONES) ---
     for (let i = 1; i <= 12; i++) {
         const option = document.createElement('option'); option.value = i; option.textContent = i.toString().padStart(2, '0');
         deliveryHourSelect.appendChild(option);
@@ -150,12 +168,16 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedFiles = [];
         existingImages = [];
         selectedCakeFlavors = [];
-        selectedFillings = [];
+        // ==================== INICIO DE LA CORRECCIÓN ====================
+        selectedRellenos = [];
+        // ===================== FIN DE LA CORRECCIÓN ======================
         tiersData = [];
         additionalList.innerHTML = '';
         imagePreview.innerHTML = '';
         renderTags(cakeFlavorContainer, [], null);
+        // ==================== INICIO DE LA CORRECCIÓN ====================
         renderTags(fillingContainer, [], null);
+        // ===================== FIN DE LA CORRECCIÓN ======================
         tiersTableBody.innerHTML = '';
         inStorePickupCheckbox.dispatchEvent(new Event('change'));
         addComplementCheckbox.dispatchEvent(new Event('change'));
@@ -167,6 +189,9 @@ document.addEventListener('DOMContentLoaded', function() {
         resetForm();
         formTitle.textContent = `Editando Folio: ${folio.folioNumber}`;
         folioForm.dataset.editingId = folio.id;
+
+        folioTypeSelect.value = folio.folioType;
+        folioTypeSelect.dispatchEvent(new Event('change'));
 
         clientNameInput.value = folio.client.name;
         clientPhoneInput.value = folio.client.phone;
@@ -185,7 +210,6 @@ document.addEventListener('DOMContentLoaded', function() {
         deliveryPeriodSelect.value = parseInt(hour) >= 12 ? 'PM' : 'AM';
         
         isPaidCheckbox.checked = folio.isPaid;
-        // --- LÍNEA AÑADIDA ---
         hasExtraHeightCheckbox.checked = folio.hasExtraHeight;
         
         if (folio.additional && folio.additional.length > 0) {
@@ -193,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const match = item.name.match(/(\d+)\s*x\s*(.*)/);
                 if (match) {
                     const quantity = parseInt(match[1]);
-                    const name = match[2];
+                    const name = match[2].trim();
                     const price = parseFloat(item.price);
                     return { name, quantity, price: price / quantity, totalPrice: price };
                 }
@@ -201,6 +225,61 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             renderAdditionalItems();
         }
+        
+        // Cargar datos de Pastel Complementario
+        if (folio.complementPersons || folio.complementFlavor) {
+            addComplementCheckbox.checked = true;
+            complementPersonsInput.value = folio.complementPersons || '';
+            complementFlavorInput.value = folio.complementFlavor || '';
+            complementFillingInput.value = folio.complementFilling || '';
+            complementDescriptionInput.value = folio.complementDescription || '';
+        }
+        addComplementCheckbox.dispatchEvent(new Event('change'));
+        
+        if (folio.folioType === 'Normal') {
+            selectedCakeFlavors = safeJsonParse(folio.cakeFlavor);
+            // ==================== INICIO DE LA CORRECCIÓN ====================
+            selectedRellenos = safeJsonParse(folio.rellenos);
+            renderTags(cakeFlavorContainer, selectedCakeFlavors, removeCakeFlavor);
+            renderTags(fillingContainer, selectedRellenos, removeRelleno);
+            // ===================== FIN DE LA CORRECCIÓN ======================
+        } else if (folio.folioType === 'Base/Especial' && Array.isArray(folio.tiers)) {
+            tiersTableBody.innerHTML = '';
+            tiersData = [];
+            folio.tiers.forEach(tier => {
+                addTierRow(tier); 
+            });
+        }
+
+        const location = folio.deliveryLocation || '';
+        if (location === 'Recoge en Tienda') {
+            inStorePickupCheckbox.checked = true;
+        } else if (location === 'El cliente envía ubicación (Google Maps)') {
+            googleMapsLocationCheckbox.checked = true;
+        } else {
+            inStorePickupCheckbox.checked = false;
+            googleMapsLocationCheckbox.checked = false;
+            
+            const colMatch = location.match(/Col\.\s*([^,]+)/);
+            const intMatch = location.match(/Int\.\s*([^,]+)/);
+            
+            if (colMatch) neighborhoodInput.value = colMatch[1].trim();
+            if (intMatch) intNumberInput.value = intMatch[1].trim();
+            
+            let remainingLocation = location.replace(/Col\.\s*[^,]+,?/, '').replace(/Int\.\s*[^,]+,?/, '').trim();
+            const parts = remainingLocation.split(' ');
+            const lastPart = parts[parts.length - 1];
+
+            if (parts.length > 1 && !isNaN(parseFloat(lastPart))) {
+                extNumberInput.value = parts.pop();
+                streetInput.value = parts.join(' ');
+            } else {
+                streetInput.value = remainingLocation;
+                extNumberInput.value = '';
+            }
+        }
+        inStorePickupCheckbox.dispatchEvent(new Event('change'));
+        googleMapsLocationCheckbox.dispatchEvent(new Event('change'));
 
         if (folio.imageUrls && folio.imageUrls.length > 0) {
             existingImages = folio.imageUrls.map((url, index) => ({
@@ -208,18 +287,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 comment: (folio.imageComments && folio.imageComments[index]) ? folio.imageComments[index] : ''
             }));
         }
-        
         renderImagePreviews();
         
         const additionalCost = (folio.additional || []).reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
-        const baseCakeCost = parseFloat(folio.total) - parseFloat(folio.deliveryCost) - additionalCost;
-        totalInput.value = baseCakeCost.toFixed(2);
+        
+        let fillingCost = 0;
+        if (folio.folioType === 'Normal') {
+            const numPersons = parseInt(folio.persons, 10) || 0;
+            // ==================== INICIO DE LA CORRECCIÓN ====================
+            const rellenosArray = safeJsonParse(folio.rellenos);
+            fillingCost = rellenosArray.reduce((sum, relleno) => {
+                return (relleno && relleno.hasCost && numPersons > 0) ? sum + ((numPersons / 20) * 30) : sum;
+            }, 0);
+            // ===================== FIN DE LA CORRECCIÓN ======================
+        } else if (folio.folioType === 'Base/Especial') {
+            fillingCost = (folio.tiers || []).reduce((sum, tier) => {
+                if (!tier) return sum; 
+                const tierPersons = parseInt(tier.persons, 10) || 0;
+                const tierFillingCost = (tier.rellenos || []).reduce((tierSum, relleno) => {
+                    return (relleno && relleno.hasCost && tierPersons > 0) ? tierSum + ((tierPersons / 20) * 30) : tierSum;
+                }, 0);
+                return sum + tierFillingCost;
+            }, 0);
+        }
+
+        const baseCakeCost = parseFloat(folio.total) - parseFloat(folio.deliveryCost) - additionalCost - fillingCost;
+
+        totalInput.value = isNaN(baseCakeCost) ? '0.00' : baseCakeCost.toFixed(2);
         advanceInput.value = parseFloat(folio.advancePayment).toFixed(2);
         
         updateTotals();
     };
     
-    // --- EVENT LISTENERS ---
+    // --- EVENT LISTENERS GLOBALES ---
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('email').value;
@@ -243,6 +343,19 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingEl.classList.add('hidden');
         }
     });
+
+    logoutButton.addEventListener('click', handleLogout);
+    newFolioButton.addEventListener('click', () => {
+        resetForm();
+        showView('form');
+    });
+    viewCalendarButton.addEventListener('click', () => showView('calendar'));
+    cancelFormButton.addEventListener('click', () => {
+        resetForm();
+        showView('calendar');
+    });
+
+    // --- LÓGICA DEL FORMULARIO (EVENT LISTENERS Y FUNCIONES AUXILIARES) ---
 
     folioForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -288,9 +401,40 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('additional', JSON.stringify(finalAdditionalItems));
         
         formData.append('isPaid', isPaidCheckbox.checked);
-        // --- LÍNEA AÑADIDA ---
         formData.append('hasExtraHeight', hasExtraHeightCheckbox.checked);
-        
+
+        // Enviar datos del pastel complementario si el checkbox está activo
+        if (addComplementCheckbox.checked) {
+            formData.append('complementPersons', complementPersonsInput.value);
+            formData.append('complementFlavor', complementFlavorInput.value);
+            formData.append('complementFilling', complementFillingInput.value);
+            formData.append('complementDescription', complementDescriptionInput.value);
+        } else {
+            // Si no está activo, enviar valores vacíos para limpiar en la base de datos
+            formData.append('complementPersons', '');
+            formData.append('complementFlavor', '');
+            formData.append('complementFilling', '');
+            formData.append('complementDescription', '');
+        }
+
+        if (folioTypeSelect.value === 'Normal') {
+            formData.append('cakeFlavor', JSON.stringify(selectedCakeFlavors));
+            // ==================== INICIO DE LA CORRECCIÓN ====================
+            formData.append('rellenos', JSON.stringify(selectedRellenos));
+            // ===================== FIN DE LA CORRECCIÓN ======================
+        } else {
+            const currentTiersData = Array.from(tiersTableBody.children).map((row, index) => {
+                const tierState = tiersData[index] || { panes: [], rellenos: [] };
+                return {
+                    persons: row.querySelector('.tier-persons-input').value,
+                    panes: tierState.panes,
+                    rellenos: tierState.rellenos,
+                    notas: row.querySelector('.tier-notes-input').value
+                };
+            });
+            formData.append('tiers', JSON.stringify(currentTiersData));
+        }
+
         if (isEditing) {
             formData.append('existingImageUrls', JSON.stringify(existingImages.map(img => img.url)));
             formData.append('existingImageComments', JSON.stringify(existingImages.map(img => img.comment)));
@@ -324,23 +468,371 @@ document.addEventListener('DOMContentLoaded', function() {
         showView('calendar');
     });
 
-    logoutButton.addEventListener('click', handleLogout);
-    newFolioButton.addEventListener('click', () => showView('form'));
-    viewCalendarButton.addEventListener('click', () => showView('calendar'));
-    cancelFormButton.addEventListener('click', () => {
-        resetForm();
-        showView('calendar');
+    function renderImagePreviews() {
+        imagePreview.innerHTML = '';
+
+        existingImages.forEach((imgData, index) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'image-preview-wrapper w-full';
+            wrapper.innerHTML = `
+                <img src="http://localhost:3000/${imgData.url.replace(/\\/g, '/')}" class="w-full h-auto object-cover rounded-md border">
+                <button type="button" class="delete-image-btn existing" data-index="${index}">&times;</button>
+                <textarea placeholder="Añadir un comentario..." class="w-full text-sm p-2 mt-2 border rounded existing-comment" data-index="${index}">${imgData.comment}</textarea>
+            `;
+            imagePreview.appendChild(wrapper);
+        });
+
+        selectedFiles.forEach((fileData, index) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'image-preview-wrapper w-full';
+            wrapper.innerHTML = `
+                <img src="${URL.createObjectURL(fileData.file)}" class="w-full h-auto object-cover rounded-md border">
+                <button type="button" class="delete-image-btn new" data-index="${index}">&times;</button>
+                <textarea placeholder="Añadir un comentario..." class="w-full text-sm p-2 mt-2 border rounded new-comment" data-index="${index}">${fileData.comment}</textarea>
+            `;
+            imagePreview.appendChild(wrapper);
+        });
+    }
+
+    imageInput.addEventListener('change', () => {
+        const files = Array.from(imageInput.files);
+        if ((selectedFiles.length + existingImages.length + files.length) > 5) {
+            alert('Solo puedes subir un máximo de 5 imágenes en total.');
+            return;
+        }
+        selectedFiles.push(...files.map(file => ({ file, comment: '' })));
+        renderImagePreviews();
+        imageInput.value = '';
     });
 
+    imagePreview.addEventListener('click', (e) => {
+        if (e.target.classList.contains('delete-image-btn')) {
+            const index = parseInt(e.target.dataset.index, 10);
+            if (e.target.classList.contains('existing')) {
+                existingImages.splice(index, 1);
+            } else {
+                selectedFiles.splice(index, 1);
+            }
+            renderImagePreviews();
+        }
+    });
+
+    imagePreview.addEventListener('input', (e) => {
+        if (e.target.tagName === 'TEXTAREA') {
+            const index = parseInt(e.target.dataset.index, 10);
+            if (e.target.classList.contains('existing-comment')) {
+                if (existingImages[index]) existingImages[index].comment = e.target.value;
+            } else {
+                if (selectedFiles[index]) selectedFiles[index].comment = e.target.value;
+            }
+        }
+    });
+
+    function renderTags(container, tagsArray, onRemoveCallback) {
+        container.innerHTML = '';
+        (tagsArray || []).forEach((tagData, index) => {
+            const tagEl = document.createElement('div');
+            tagEl.className = 'tag';
+            const tagName = typeof tagData === 'object' ? tagData.name : tagData;
+            tagEl.innerHTML = `<span>${tagName}</span><button type="button" class="tag-remove-btn" data-index="${index}">&times;</button>`;
+            container.appendChild(tagEl);
+        });
+        if (onRemoveCallback) {
+             container.querySelectorAll('.tag-remove-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => onRemoveCallback(parseInt(e.target.dataset.index, 10)));
+            });
+        }
+    }
+    
+    function openSelectionModal(title, data, currentTags, onSelectCallback, limit) {
+        modalStep1.classList.remove('hidden');
+        modalStep2.classList.add('hidden');
+        modalTitle.textContent = title;
+        modalSearch.value = '';
+        
+        function populateList(filter = '') {
+            modalList.innerHTML = '';
+            data.filter(item => item.toLowerCase().includes(filter.toLowerCase())).forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'modal-list-item';
+                itemEl.textContent = item;
+                itemEl.addEventListener('click', () => {
+                    if (currentTags.length < limit) {
+                        onSelectCallback(item);
+                        selectionModal.classList.add('hidden');
+                    } else {
+                        alert(`Solo puedes seleccionar un máximo de ${limit}.`);
+                    }
+                });
+                modalList.appendChild(itemEl);
+            });
+        }
+        populateList();
+        modalSearch.onkeyup = () => populateList(modalSearch.value);
+        selectionModal.classList.remove('hidden');
+    }
+    
+    // ==================== INICIO DE LA CORRECCIÓN ====================
+    function openRellenoModal(onSelectCallback, currentRellenos, limit) {
+        const showStep1 = () => {
+            modalTitle.textContent = 'Añadir Relleno (Paso 1 de 2)';
+            modalStep1.classList.remove('hidden');
+            modalStep2.classList.add('hidden');
+            modalSearch.value = '';
+            modalList.innerHTML = '';
+            [...Object.keys(rellenosData.incluidos).map(name => ({ name, hasCost: false })), ...Object.keys(rellenosData.conCosto).map(name => ({ name, hasCost: true }))].forEach(titular => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'modal-list-item';
+                if (titular.hasCost) itemEl.classList.add('cost-extra');
+                itemEl.textContent = titular.name;
+                itemEl.addEventListener('click', () => {
+                    const complementos = (rellenosData.incluidos[titular.name] || rellenosData.conCosto[titular.name]);
+                    if (complementos && complementos.length > 0) {
+                        showStep2(titular, complementos);
+                    } else {
+                        if (currentRellenos.length < limit) {
+                            onSelectCallback(titular);
+                            selectionModal.classList.add('hidden');
+                        } else {
+                            alert(`Solo puedes seleccionar un máximo de ${limit} rellenos.`);
+                        }
+                    }
+                });
+                modalList.appendChild(itemEl);
+            });
+        }
+        const showStep2 = (titular, complementos) => {
+            modalStep1.classList.add('hidden');
+            modalStep2.classList.remove('hidden');
+            modalTitle.textContent = `Paso 2: Elige un complemento`;
+            modalStep2Title.innerHTML = `Complemento para "<b>${titular.name}</b>" <button type="button" class="back-to-step1 text-sm text-blue-600 hover:underline">(Volver)</button>`;
+            modalStep2List.innerHTML = '';
+            complementos.forEach(comp => {
+                const compEl = document.createElement('div');
+                compEl.className = 'modal-list-item';
+                compEl.textContent = comp;
+                compEl.addEventListener('click', () => {
+                     if (currentRellenos.length < limit) {
+                        onSelectCallback({ name: `${titular.name} con ${comp}`, hasCost: titular.hasCost });
+                        selectionModal.classList.add('hidden');
+                    } else {
+                        alert(`Solo puedes seleccionar un máximo de ${limit} rellenos.`);
+                    }
+                });
+                modalStep2List.appendChild(compEl);
+            });
+            modalStep2Title.querySelector('.back-to-step1').addEventListener('click', showStep1);
+        }
+        showStep1();
+        selectionModal.classList.remove('hidden');
+    }
+
+    modalCloseBtn.addEventListener('click', () => selectionModal.classList.add('hidden'));
+
+    function addCakeFlavor(flavor) { if (selectedCakeFlavors.length < 2) { selectedCakeFlavors.push(flavor); renderTags(cakeFlavorContainer, selectedCakeFlavors, removeCakeFlavor); checkRestrictions(); } }
+    function removeCakeFlavor(index) { selectedCakeFlavors.splice(index, 1); renderTags(cakeFlavorContainer, selectedCakeFlavors, removeCakeFlavor); checkRestrictions(); }
+    
+    function addRelleno(relleno) { if (selectedRellenos.length < 2) { selectedRellenos.push(relleno); renderTags(fillingContainer, selectedRellenos, removeRelleno); updateTotals(); } }
+    function removeRelleno(index) { selectedRellenos.splice(index, 1); renderTags(fillingContainer, selectedRellenos, removeRelleno); updateTotals(); }
+
+    addCakeFlavorBtn.addEventListener('click', () => openSelectionModal('Sabor de Pan', cakeFlavorsData.normal, selectedCakeFlavors, addCakeFlavor, 2));
+    addFillingBtn.addEventListener('click', () => openRellenoModal(addRelleno, selectedRellenos, 2));
+    // ===================== FIN DE LA CORRECCIÓN ======================
+
+    function checkRestrictions() {
+        const hasNoFillingPan = selectedCakeFlavors.includes('Pastel de queso') || selectedCakeFlavors.includes('Queso/Flan');
+        const isMilHojas = selectedCakeFlavors.includes('Mil Hojas');
+        fillingSection.classList.toggle('disabled-section', hasNoFillingPan || isMilHojas);
+        designDescriptionTextarea.disabled = isMilHojas;
+        if (hasNoFillingPan || isMilHojas) {
+            // ==================== INICIO DE LA CORRECCIÓN ====================
+            selectedRellenos = [];
+            renderTags(fillingContainer, selectedRellenos, removeRelleno);
+            // ===================== FIN DE LA CORRECCIÓN ======================
+            updateTotals();
+            if(isMilHojas) designDescriptionTextarea.value = "Mil Hojas no lleva diseño";
+        }
+    }
+    
+    inStorePickupCheckbox.addEventListener('change', function() { deliveryAddressSection.classList.toggle('hidden', this.checked); deliveryCostInput.readOnly = this.checked; if (this.checked) deliveryCostInput.value = '0'; updateTotals(); });
+    googleMapsLocationCheckbox.addEventListener('change', function() { addressFields.classList.toggle('disabled-section', this.checked); });
+
+    function getGrandTotal() {
+        const total = parseFloat(totalInput.value) || 0;
+        const delivery = parseFloat(deliveryCostInput.value) || 0;
+        const additionalFromList = additionalItems.reduce((sum, item) => sum + item.totalPrice, 0);
+        const persons = parseFloat(personsInput.value) || 0;
+        // ==================== INICIO DE LA CORRECCIÓN ====================
+        const normalFillingCost = selectedRellenos.reduce((sum, relleno) => (relleno && relleno.hasCost && persons > 0) ? sum + ((persons / 20) * 30) : sum, 0);
+        // ===================== FIN DE LA CORRECCIÓN ======================
+        const tierFillingCost = tiersData.reduce((sum, tier, index) => {
+            if (!tier || !tiersTableBody.children[index]) return sum;
+            const row = tiersTableBody.children[index];
+            const tierPersons = parseFloat(row.querySelector('.tier-persons-input').value) || 0;
+            return sum + (tier.rellenos || []).reduce((tierSum, relleno) => (relleno && relleno.hasCost && tierPersons > 0) ? tierSum + ((tierPersons / 20) * 30) : tierSum, 0);
+        }, 0);
+        return total + delivery + additionalFromList + normalFillingCost + tierFillingCost;
+    }
+
+    function calculateBalance() {
+        balanceInput.value = (getGrandTotal() - (parseFloat(advanceInput.value) || 0)).toFixed(2);
+    }
+
+    function updateTotals() {
+        if (isPaidCheckbox.checked) {
+            advanceInput.value = getGrandTotal().toFixed(2);
+        }
+        calculateBalance();
+    }
+
+    [totalInput, deliveryCostInput, personsInput].forEach(input => input.addEventListener('input', updateTotals));
+    advanceInput.addEventListener('input', calculateBalance);
+    isPaidCheckbox.addEventListener('change', function() {
+        advanceInput.readOnly = this.checked;
+        updateTotals();
+    });
+    tiersTableBody.addEventListener('input', (e) => {
+        if (e.target.classList.contains('tier-persons-input')) updateTotals();
+    });
+
+    function renderAdditionalItems() {
+        additionalList.innerHTML = '';
+        additionalItems.forEach((item, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `${item.quantity} x ${item.name} - $${item.totalPrice.toFixed(2)} <button type="button" class="remove-additional-btn text-red-500 ml-2" data-index="${index}">[x]</button>`;
+            additionalList.appendChild(li);
+        });
+    }
+
+    addAdditionalButton.addEventListener('click', () => {
+        const nameInput = document.getElementById('additionalName'), quantityInput = document.getElementById('additionalQuantity'), priceInput = document.getElementById('additionalPrice');
+        const name = nameInput.value.trim(), quantity = parseInt(quantityInput.value, 10), price = parseFloat(priceInput.value);
+        if (name && quantity > 0 && !isNaN(price)) {
+            additionalItems.push({ name, quantity, price, totalPrice: quantity * price });
+            renderAdditionalItems();
+            updateTotals();
+            nameInput.value = '';
+            quantityInput.value = '1';
+            priceInput.value = '';
+        } else {
+            alert('Por favor, completa la descripción, cantidad y precio del adicional.');
+        }
+    });
+
+    additionalList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-additional-btn')) {
+            additionalItems.splice(e.target.dataset.index, 1);
+            renderAdditionalItems();
+            updateTotals();
+        }
+    });
+
+    function addTierRow(tier = null) {
+        const index = tiersData.length;
+        tiersData.push(tier || { persons: '', panes: [], rellenos: [], notas: '' });
+    
+        const row = document.createElement('tr');
+        row.className = 'tier-row border-b';
+        row.dataset.index = index;
+        row.innerHTML = `<td class="p-2"><input type="number" class="tier-persons-input bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2" placeholder="Personas"></td><td class="p-2"><div class="tag-container panes-container"></div><button type="button" class="add-tier-pane-btn mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Pan</button></td><td class="p-2"><div class="tag-container fillings-container"></div><button type="button" class="add-tier-filling-btn mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium">+ Relleno</button></td><td class="p-2"><input type="text" class="tier-notes-input bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2" placeholder="Notas"></td><td class="p-1 text-center"><button type="button" class="remove-tier-button text-red-500 font-bold px-2 text-lg">X</button></td>`;
+        
+        if (tier) {
+            row.querySelector('.tier-persons-input').value = tier.persons || '';
+            row.querySelector('.tier-notes-input').value = tier.notas || '';
+            renderTags(row.querySelector('.panes-container'), tier.panes || [], (tagIndex) => removeTierPane(index, tagIndex));
+            renderTags(row.querySelector('.fillings-container'), tier.rellenos || [], (tagIndex) => removeTierFilling(index, tagIndex));
+        }
+        
+        tiersTableBody.appendChild(row);
+    }
+
+    folioTypeSelect.addEventListener('change', function() {
+        const isSpecial = this.value === 'Base/Especial';
+        normalFields.classList.toggle('hidden', isSpecial);
+        specialFields.classList.toggle('hidden', !isSpecial);
+        if (isSpecial && tiersTableBody.children.length === 0) {
+             addTierRow();
+        }
+        if (isSpecial) {
+            selectedCakeFlavors = [];
+            // ==================== INICIO DE LA CORRECCIÓN ====================
+            selectedRellenos = [];
+            renderTags(cakeFlavorContainer, [], null);
+            renderTags(fillingContainer, [], null);
+            // ===================== FIN DE LA CORRECCIÓN ======================
+        } else {
+            tiersData = [];
+            tiersTableBody.innerHTML = '';
+        }
+        updateTotals();
+    });
+    addTierButton.addEventListener('click', () => addTierRow());
+    
+    // --- Lógica para manejar la tabla de pisos (Tiers) ---
+    const removeTierPane = (tierIndex, tagIndex) => {
+        if (!tiersData[tierIndex]) return;
+        tiersData[tierIndex].panes.splice(tagIndex, 1);
+        const row = tiersTableBody.querySelector(`[data-index="${tierIndex}"]`);
+        if (row) {
+            renderTags(row.querySelector('.panes-container'), tiersData[tierIndex].panes, (newTagIndex) => removeTierPane(tierIndex, newTagIndex));
+        }
+    };
+    const removeTierFilling = (tierIndex, tagIndex) => {
+        if (!tiersData[tierIndex]) return;
+        tiersData[tierIndex].rellenos.splice(tagIndex, 1);
+        const row = tiersTableBody.querySelector(`[data-index="${tierIndex}"]`);
+        if (row) {
+            renderTags(row.querySelector('.fillings-container'), tiersData[tierIndex].rellenos, (newTagIndex) => removeTierFilling(tierIndex, newTagIndex));
+        }
+        updateTotals();
+    };
+
+    tiersTableBody.addEventListener('click', function(e) {
+        const target = e.target;
+        const row = target.closest('.tier-row');
+        if (!row) return;
+
+        currentTierIndex = parseInt(row.dataset.index, 10);
+
+        const addTierPane = (flavor) => {
+            if (tiersData[currentTierIndex] && tiersData[currentTierIndex].panes.length < 3) {
+                tiersData[currentTierIndex].panes.push(flavor);
+                renderTags(row.querySelector('.panes-container'), tiersData[currentTierIndex].panes, (tagIndex) => removeTierPane(currentTierIndex, tagIndex));
+            }
+        };
+        const addTierFilling = (relleno) => { if (tiersData[currentTierIndex] && tiersData[currentTierIndex].rellenos.length < 2) { tiersData[currentTierIndex].rellenos.push(relleno); renderTags(row.querySelector('.fillings-container'), tiersData[currentTierIndex].rellenos, (tagIndex) => removeTierFilling(currentTierIndex, tagIndex)); updateTotals();
+            }
+        };
+
+        if (target.classList.contains('add-tier-pane-btn')) {
+            openSelectionModal('Sabor de Pan (Piso)', cakeFlavorsData.tier, tiersData[currentTierIndex].panes, addTierPane, 3);
+        } else if (target.classList.contains('add-tier-filling-btn')) {
+            openRellenoModal(addTierFilling, tiersData[currentTierIndex].rellenos, 2);
+        } else if (target.classList.contains('remove-tier-button')) {
+            tiersData.splice(currentTierIndex, 1);
+            row.remove();
+            Array.from(tiersTableBody.children).forEach((r, i) => r.dataset.index = i);
+            updateTotals();
+        } else if(target.closest('.tag-remove-btn')) {
+            const tagContainer = target.closest('.tag-container');
+            const tagIndex = parseInt(target.closest('.tag-remove-btn').dataset.index, 10);
+            if (tagContainer.classList.contains('panes-container')) {
+                removeTierPane(currentTierIndex, tagIndex);
+            } else if (tagContainer.classList.contains('fillings-container')) {
+                removeTierFilling(currentTierIndex, tagIndex);
+            }
+        }
+    });
+
+    addComplementCheckbox.addEventListener('change', function() {
+        complementForm.classList.toggle('hidden', !this.checked);
+    });
+    
+    // --- INICIALIZACIÓN ---
     const storedToken = localStorage.getItem('authToken');
     if (storedToken) {
         showAppView(storedToken);
     }
 
     window.showMainView = showView;
-    
-    // El resto de la lógica del formulario (funciones de renderizado, cálculo, etc.) va aquí...
-    // (Este código es el que estaba en el <script> de tu index.html y no necesita cambios)
-    
-    // (Funciones: renderImagePreviews, imageInput listeners, renderTags, openSelectionModal, etc...)
 });

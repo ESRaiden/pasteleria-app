@@ -198,9 +198,14 @@
                 <thead><tr><th>Personas</th><th>Panes</th><th>Rellenos</th><th>Notas/Forma</th></tr></thead>
                 <tbody>
                     <% folio.tiers.forEach(function(tier) { %>
-                    <tr><td><%= tier.persons %></td><td><%= tier.panes %></td><td><%= tier.rellenos %></td><td><%= tier.notas %></td></tr>
+                    <tr>
+                        <td><%= tier.persons || '' %></td>
+                        <td><%= (tier.panes || []).join(', ') %></td>
+                        <td><%= (tier.rellenos || []).map(r => r.name).join('; ') %></td>
+                        <td><%= tier.notas || '' %></td>
+                    </tr>
                     <% }); %>
-                </tbody>
+                    </tbody>
             </table>
         </div>
         <% } %>
