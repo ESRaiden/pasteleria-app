@@ -26,11 +26,17 @@ exports.createFolio = async (req, res) => {
     const dayInitial = format(date, 'EEEE', { locale: es }).charAt(0).toUpperCase();
     const dayOfMonth = format(date, 'dd');
     
-    // ==================== INICIO DE LA CORRECCIÓN ====================
-    // Añadimos un componente de tiempo para asegurar que el folio sea único y evitar colisiones.
-    const uniqueSuffix = Date.now().toString().slice(-4);
-    const folioNumber = `${monthInitial}${dayInitial}-${dayOfMonth}-${lastFourDigits}-${uniqueSuffix}`;
-    // ===================== FIN DE LA CORRECCIÓN ======================
+    // ==================== INICIO DE LA CORRECCIÓN DEFINITIVA ====================
+    let baseFolioNumber = `${monthInitial}${dayInitial}-${dayOfMonth}-${lastFourDigits}`;
+    let finalFolioNumber = baseFolioNumber;
+    let counter = 1;
+
+    // Bucle para asegurar que el número de folio sea único
+    while (await Folio.findOne({ where: { folioNumber: finalFolioNumber } })) {
+        finalFolioNumber = `${baseFolioNumber}-${counter}`;
+        counter++;
+    }
+    // ===================== FIN DE LA CORRECCIÓN DEFINITIVA ======================
     
     const additionalData = typeof additional === 'string' ? JSON.parse(additional) : [];
     const additionalCost = additionalData.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
@@ -44,7 +50,7 @@ exports.createFolio = async (req, res) => {
     const newFolio = await Folio.create({
       ...folioData,
       deliveryDate,
-      folioNumber,
+      folioNumber: finalFolioNumber, // Usamos el número de folio único
       total: finalTotal,
       advancePayment,
       balance,
