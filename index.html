@@ -228,12 +228,20 @@
         </div>
 
         <div id="dailyFoliosModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
-                <div class="flex justify-between items-center border-b pb-3">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-2/3 lg:w-1/2 shadow-lg rounded-md bg-white">
+                <div class="flex justify-between items-center border-b pb-3 mb-4">
                     <h3 class="text-xl leading-6 font-bold text-gray-900" id="dailyFoliosTitle">Folios del Día</h3>
                     <button id="closeDailyFoliosModal" class="text-black text-2xl font-bold">&times;</button>
                 </div>
-                <div id="dailyFoliosList" class="mt-4 px-2 py-3 space-y-2 max-h-96 overflow-y-auto">
+                
+                <input type="text" id="dailyFolioSearch" class="w-full p-2 border border-gray-300 rounded-md mb-4" placeholder="Buscar en este día por folio o telefono...">
+
+                <div id="dailyFoliosList" class="space-y-2 max-h-72 overflow-y-auto">
+                    </div>
+
+                <div class="items-center px-4 py-3 mt-4 border-t space-x-2 text-right">
+                    <button id="printLabelsButton" class="px-4 py-2 bg-purple-500 text-white text-base font-medium rounded-md w-auto hover:bg-purple-600">Imprimir Etiquetas del Día</button>
+                    <button id="printOrdersButton" class="px-4 py-2 bg-indigo-500 text-white text-base font-medium rounded-md w-auto hover:bg-indigo-600">Imprimir Comandas del Día</button>
                 </div>
             </div>
         </div>
@@ -478,8 +486,6 @@
                     const response = await fetch(url, { method, headers: { 'Authorization': `Bearer ${authToken}` }, body: formData });
                     if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Error del servidor'); }
                     
-                    const successMessage = isEditing ? '¡Folio actualizado con éxito!' : '¡Folio creado con éxito!';
-                    alert(successMessage);
 
                     const event = new CustomEvent('folioCreated');
                     window.dispatchEvent(event);
@@ -759,13 +765,11 @@
                 specialFields.classList.toggle('hidden', !isSpecial);
                 if (isSpecial && tiersTableBody.children.length === 0) addTierRow();
                 if (isSpecial) {
-                    selectedCakeFlavors = [];
-                    selectedFillings = [];
+                    selectedCakeFlavors = [], selectedFillings = [];
                     renderTags(cakeFlavorContainer, [], null);
                     renderTags(fillingContainer, [], null);
                 } else {
-                    tiersData = [];
-                    tiersTableBody.innerHTML = '';
+                    tiersData = [], tiersTableBody.innerHTML = '';
                 }
                 updateTotals();
             });

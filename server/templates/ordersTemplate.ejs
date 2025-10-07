@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; margin: 20px; font-size: 10pt; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        .card { border: 2px dashed #999; padding: 15px; page-break-inside: avoid; }
+        .card h3 { margin-top: 0; }
+        .card p { margin: 4px 0; }
+        .account-details { border-top: 1px solid #ccc; margin-top: 10px; padding-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Comandas del Día: <%= new Date(folios[0].deliveryDate + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }) %></h1>
+    <div class="grid">
+        <% folios.forEach(folio => { %>
+            <div class="card">
+                <h3>Cliente: <%= folio.client.name %></h3>
+                <p><strong>Teléfono:</strong> <%= folio.client.phone %></p>
+                <p><strong>Dirección:</strong> <%= folio.deliveryLocation %></p>
+                <div class="account-details">
+                    <p><strong>Costo Pastel:</strong> $<%= (parseFloat(folio.total) - parseFloat(folio.deliveryCost) - (folio.additional || []).reduce((sum, item) => sum + parseFloat(item.price || 0), 0)).toFixed(2) %></p>
+                    <p><strong>Costo Envío:</strong> $<%= parseFloat(folio.deliveryCost).toFixed(2) %></p>
+                    <p><strong>Total:</strong> $<%= parseFloat(folio.total).toFixed(2) %></p>
+                    <p><strong>Anticipo:</strong> $<%= parseFloat(folio.advancePayment).toFixed(2) %></p>
+                    <p><strong>Resta:</strong> $<%= parseFloat(folio.balance).toFixed(2) %></p>
+                </div>
+            </div>
+        <% }); %>
+    </div>
+</body>
+</html>

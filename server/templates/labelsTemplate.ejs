@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { border: 2px dashed #999; padding: 15px; page-break-inside: avoid; }
+        .card h3 { margin-top: 0; font-size: 1.2em; }
+        .card p { margin: 5px 0; }
+        .extra-height { color: #d9534f; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Etiquetas del Día: <%= new Date(folios[0].deliveryDate + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }) %></h1>
+    <div class="grid">
+        <% folios.forEach(folio => { %>
+            <div class="card">
+                <h3>Folio: <%= folio.folioNumber %></h3>
+                <p><strong>ID:</strong> <%= folio.id %></p>
+                <p><strong>Forma:</strong> <%= folio.shape %></p>
+                <p><strong>Personas:</strong> <%= folio.persons %></p>
+                <% if (folio.hasExtraHeight) { %>
+                    <p class="extra-height">¡ALTURA EXTRA!</p>
+                <% } %>
+            </div>
+        <% }); %>
+    </div>
+</body>
+</html>

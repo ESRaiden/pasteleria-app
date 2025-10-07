@@ -11,7 +11,6 @@ function initializeCalendar(authToken) {
         const loadingEl = document.getElementById('loading');
         if (!query) loadingEl.classList.remove('hidden');
 
-        // Modificamos la URL para no enviar el query 'q' en la carga inicial
         const url = query ? `http://localhost:3000/api/folios?q=${query}` : 'http://localhost:3000/api/folios';
         
         fetch(url, {
@@ -23,7 +22,6 @@ function initializeCalendar(authToken) {
             return response.json();
         })
         .then(data => {
-            // Guardamos los datos de los folios solo en la carga inicial
             if (!query) {
                 allFoliosData = data;
             }
@@ -86,16 +84,19 @@ function initializeCalendar(authToken) {
         buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', list: 'Lista' },
         events: (fetchInfo, successCallback, failureCallback) => fetchFolios('', successCallback, failureCallback),
         
-        // ========= INICIO DE LA NUEVA FUNCIONALIDAD =========
         dateClick: function(info) {
             const dailyFoliosModal = document.getElementById('dailyFoliosModal');
+            dailyFoliosModal.dataset.date = info.dateStr;
+
             const foliosForDay = allFoliosData.filter(folio => folio.deliveryDate === info.dateStr);
             
             foliosForDay.sort((a, b) => a.deliveryTime.localeCompare(b.deliveryTime));
 
             const dailyFoliosList = document.getElementById('dailyFoliosList');
             const dailyFoliosTitle = document.getElementById('dailyFoliosTitle');
+            const dailySearchInput = document.getElementById('dailyFolioSearch');
             dailyFoliosList.innerHTML = '';
+            dailySearchInput.value = '';
 
             if (foliosForDay.length > 0) {
                 const date = new Date(info.dateStr + 'T12:00:00');
@@ -104,9 +105,17 @@ function initializeCalendar(authToken) {
 
                 foliosForDay.forEach(folio => {
                     const listItem = document.createElement('div');
-                    listItem.className = 'p-3 bg-gray-100 rounded-md cursor-pointer hover:bg-gray-200';
+                    listItem.className = 'folio-list-item p-3 bg-gray-100 rounded-md cursor-pointer hover:bg-gray-200 flex justify-between items-center';
+                    listItem.dataset.phone = folio.client?.phone || '';
+
                     const time = folio.deliveryTime.substring(0, 5);
-                    listItem.innerText = `${time} - Folio ${folio.folioNumber} - ${folio.client ? folio.client.name : 'N/A'}`;
+                    let itemHTML = `<span>${time} - Folio ${folio.folioNumber} - ${folio.client ? folio.client.name : 'N/A'}</span>`;
+                    
+                    if (folio.isPrinted) {
+                        itemHTML += `<span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">IMPRESO</span>`;
+                    }
+                    
+                    listItem.innerHTML = itemHTML;
                     
                     listItem.addEventListener('click', () => {
                         dailyFoliosModal.classList.add('hidden');
@@ -122,7 +131,6 @@ function initializeCalendar(authToken) {
             
             dailyFoliosModal.classList.remove('hidden');
         },
-        // ========= FIN DE LA NUEVA FUNCIONALIDAD =========
 
         eventClick: function(info) {
             const folio = info.event.extendedProps.folioData;
@@ -135,7 +143,7 @@ function initializeCalendar(authToken) {
     
     window.myAppCalendar = calendar;
 
-    // --- LÓGICA DE BÚSQUEDA EN TIEMPO REAL (SIN CAMBIOS) ---
+    // --- LÓGICA DE BÚSQUEDA GENERAL ---
     const searchInput = document.getElementById('folioSearchInput');
     const searchResultsContainer = document.getElementById('searchResults');
 
@@ -210,25 +218,16 @@ function initializeCalendar(authToken) {
     }
 
     document.addEventListener('click', (e) => {
-        if (!searchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
+        if (searchInput && searchResultsContainer && !searchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
             searchResultsContainer.classList.add('hidden');
         }
     });
-    // --- FIN DE LA LÓGICA DE BÚSQUEDA ---
 
+    // --- LÓGICA DE BOTONES ---
     const closeModalBtn = document.getElementById('closeModal');
     const editFolioButton = document.getElementById('editFolioButton');
     const viewPdfButton = document.getElementById('viewPdfButton');
     const modal = document.getElementById('folioModal');
-
-    // ========= INICIO DE CÓDIGO AÑADIDO =========
-    const dailyFoliosModal = document.getElementById('dailyFoliosModal');
-    const closeDailyFoliosModalBtn = document.getElementById('closeDailyFoliosModal');
-
-    if (closeDailyFoliosModalBtn) {
-        closeDailyFoliosModalBtn.addEventListener('click', () => dailyFoliosModal.classList.add('hidden'));
-    }
-    // ========= FIN DE CÓDIGO AÑADIDO =========
 
     if (closeModalBtn) { closeModalBtn.addEventListener('click', () => modal.classList.add('hidden')); }
     
@@ -238,17 +237,14 @@ function initializeCalendar(authToken) {
                 const folioId = window.currentEditingFolioId;
                 modal.classList.add('hidden');
                 document.getElementById('loading').classList.remove('hidden');
-
                 try {
                     const response = await fetch(`http://localhost:3000/api/folios/${folioId}`, {
                         headers: { 'Authorization': `Bearer ${authToken}` }
                     });
                     if (!response.ok) throw new Error('No se pudo cargar la información del folio para editar.');
-                    
                     const folioData = await response.json();
                     if (window.populateFormForEdit) window.populateFormForEdit(folioData);
                     if(window.showMainView) window.showMainView('form');
-
                 } catch (error) {
                     alert(error.message);
                 } finally {
@@ -264,6 +260,49 @@ function initializeCalendar(authToken) {
                 const urlWithToken = `http://localhost:3000/api/folios/${window.currentEditingFolioId}/pdf?token=${authToken}`;
                 window.open(urlWithToken, '_blank');
             }
+        });
+    }
+
+    const printLabelsButton = document.getElementById('printLabelsButton');
+    const printOrdersButton = document.getElementById('printOrdersButton');
+    const dailyFoliosModal = document.getElementById('dailyFoliosModal');
+
+    if (printLabelsButton) {
+        printLabelsButton.addEventListener('click', () => {
+            const date = dailyFoliosModal.dataset.date;
+            if (date) {
+                const url = `http://localhost:3000/api/folios/day-summary-pdf?type=labels&date=${date}&token=${authToken}`;
+                window.open(url, '_blank');
+            }
+        });
+    }
+
+    if (printOrdersButton) {
+        printOrdersButton.addEventListener('click', () => {
+            const date = dailyFoliosModal.dataset.date;
+            if (date) {
+                const url = `http://localhost:3000/api/folios/day-summary-pdf?type=orders&date=${date}&token=${authToken}`;
+                window.open(url, '_blank');
+            }
+        });
+    }
+
+    const dailySearchInput = document.getElementById('dailyFolioSearch');
+    if (dailySearchInput) {
+        dailySearchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            const listItems = document.querySelectorAll('#dailyFoliosList .folio-list-item');
+            
+            listItems.forEach(item => {
+                const text = item.innerText.toLowerCase();
+                const phone = item.dataset.phone;
+
+                if (text.includes(query) || phone.includes(query)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
         });
     }
 }

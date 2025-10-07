@@ -2,12 +2,11 @@ const pdf = require('html-pdf-node');
 const ejs = require('ejs');
 const path = require('path');
 
+// --- FUNCIÓN EXISTENTE PARA PDF INDIVIDUAL (SIN CAMBIOS) ---
 exports.createPdf = async (folioData) => {
   try {
     const templatePath = path.join(__dirname, '../templates/folioTemplate.ejs');
     const html = await ejs.renderFile(templatePath, { folio: folioData });
-
-    // --- INICIO DE LA CORRECCIÓN ---
 
     // 1. Creamos el texto del pie de página dinámicamente
     const footerText = `Pedido capturado por: ${folioData.responsibleUser.username} el ${new Date(folioData.createdAt).toLocaleString('es-MX')}`;
@@ -16,11 +15,11 @@ exports.createPdf = async (folioData) => {
     const options = { 
         format: 'Letter',
         printBackground: true,
-        displayHeaderFooter: true, // <-- MUY IMPORTANTE: Habilita el pie de página
+        displayHeaderFooter: true, // <-- Habilita el pie de página
         margin: {
             top: '25px',
             right: '25px',
-            bottom: '40px', // <-- Aumentamos el margen inferior para dar espacio
+            bottom: '40px', // <-- Espacio para el pie de página
             left: '25px'
         },
         // 3. Añadimos la plantilla del pie de página
@@ -30,17 +29,66 @@ exports.createPdf = async (folioData) => {
           </div>
         `
     };
-    // --- FIN DE LA CORRECCIÓN ---
 
     const file = { content: html };
-
     const pdfBuffer = await pdf.generatePdf(file, options);
-    console.log('✅ PDF generado con pie de página corregido.');
-
+    console.log('✅ PDF de folio individual generado con pie de página.');
     return pdfBuffer;
 
   } catch (error) {
-    console.error('❌ Error durante la creación del PDF:', error);
+    console.error('❌ Error durante la creación del PDF individual:', error);
     throw error;
   }
 };
+
+// --- INICIO DEL CÓDIGO AÑADIDO ---
+
+/**
+ * Función genérica para crear PDFs masivos (etiquetas y comandas).
+ * @param {string} templateName - El nombre del archivo de plantilla EJS (sin la extensión).
+ * @param {Array} folios - Un array de objetos de folio.
+ * @returns {Promise<Buffer>} - El buffer del PDF generado.
+ */
+async function generateBulkPdf(templateName, folios) {
+    try {
+        const templatePath = path.join(__dirname, `../templates/${templateName}.ejs`);
+        const html = await ejs.renderFile(templatePath, { folios });
+
+        const options = { 
+            format: 'Letter',
+            printBackground: true,
+            margin: {
+                top: '20px',
+                right: '20px',
+                bottom: '20px',
+                left: '20px'
+            }
+        };
+
+        const file = { content: html };
+        const pdfBuffer = await pdf.generatePdf(file, options);
+        console.log(`✅ PDF masivo de ${templateName} generado.`);
+        return pdfBuffer;
+
+    } catch (error) {
+        console.error(`❌ Error durante la creación del PDF de ${templateName}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Crea un PDF con las etiquetas de producción para un conjunto de folios.
+ * @param {Array} folios - Un array de objetos de folio.
+ */
+exports.createLabelsPdf = async (folios) => {
+    return generateBulkPdf('labelsTemplate', folios);
+};
+
+/**
+ * Crea un PDF con las comandas de envío para un conjunto de folios.
+ * @param {Array} folios - Un array de objetos de folio.
+ */
+exports.createOrdersPdf = async (folios) => {
+    return generateBulkPdf('ordersTemplate', folios);
+};
+// --- FIN DEL CÓDIGO AÑADIDO ---

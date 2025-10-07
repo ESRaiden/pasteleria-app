@@ -25,7 +25,12 @@ exports.createFolio = async (req, res) => {
     const monthInitial = format(date, 'MMMM', { locale: es }).charAt(0).toUpperCase();
     const dayInitial = format(date, 'EEEE', { locale: es }).charAt(0).toUpperCase();
     const dayOfMonth = format(date, 'dd');
-    const folioNumber = `${monthInitial}${dayInitial}-${dayOfMonth}-${lastFourDigits}`;
+    
+    // ==================== INICIO DE LA CORRECCIÓN ====================
+    // Añadimos un componente de tiempo para asegurar que el folio sea único y evitar colisiones.
+    const uniqueSuffix = Date.now().toString().slice(-4);
+    const folioNumber = `${monthInitial}${dayInitial}-${dayOfMonth}-${lastFourDigits}-${uniqueSuffix}`;
+    // ===================== FIN DE LA CORRECCIÓN ======================
     
     const additionalData = typeof additional === 'string' ? JSON.parse(additional) : [];
     const additionalCost = additionalData.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
@@ -73,6 +78,7 @@ exports.getAllFolios = async (req, res) => {
       whereClause = {
         [Op.or]: [
           { folioNumber: { [Op.like]: `%${q}%` } },
+          { '$client.name$': { [Op.like]: `%${q}%` } },
           { '$client.phone$': { [Op.like]: `%${q}%` } }
         ]
       };
@@ -84,7 +90,7 @@ exports.getAllFolios = async (req, res) => {
         { model: Client, as: 'client', attributes: ['name', 'phone'] },
         { model: User, as: 'responsibleUser', attributes: ['username'] }
       ],
-      order: [['deliveryDate', 'ASC']]
+      order: [['deliveryDate', 'ASC'], ['deliveryTime', 'ASC']]
     });
     res.status(200).json(folios);
   } catch (error) {
@@ -115,7 +121,7 @@ exports.getFolioById = async (req, res) => {
     }
 };
 
-// --- INICIO DE LA CORRECCIÓN: ACTUALIZAR un folio existente (Versión completa) ---
+// --- ACTUALIZAR un folio existente (Versión completa) ---
 exports.updateFolio = async (req, res) => {
     try {
         const folioId = req.params.id;
@@ -131,12 +137,10 @@ exports.updateFolio = async (req, res) => {
             ...folioData 
         } = req.body;
         
-        // --- LÓGICA PARA ACTUALIZAR EL CLIENTE ---
         const client = await Client.findByPk(folio.clientId);
         if (client) {
             await client.update({ name: clientName, phone: clientPhone });
         }
-        // --- FIN LÓGICA PARA ACTUALIZAR EL CLIENTE ---
         
         const additionalData = typeof additional === 'string' ? JSON.parse(additional) : [];
         const additionalCost = additionalData.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
@@ -175,8 +179,6 @@ exports.updateFolio = async (req, res) => {
         res.status(400).json({ message: 'Error al actualizar el folio', error: error.message });
     }
 };
-// --- FIN DE LA CORRECCIÓN ---
-
 
 // --- ELIMINAR un folio ---
 exports.deleteFolio = async (req, res) => {
@@ -201,7 +203,7 @@ exports.deleteFolio = async (req, res) => {
     }
 };
 
-// --- FUNCIÓN PARA GENERAR Y GUARDAR EL PDF ---
+// --- GENERAR PDF INDIVIDUAL Y MARCAR COMO IMPRESO ---
 exports.generateFolioPdf = async (req, res) => {
   try {
     const folio = await Folio.findByPk(req.params.id, {
@@ -254,6 +256,10 @@ exports.generateFolioPdf = async (req, res) => {
     await fs.writeFile(filePath, pdfBuffer);
     console.log(`✅ PDF guardado en: ${filePath}`);
 
+    if (!folio.isPrinted) {
+        await folio.update({ isPrinted: true });
+    }
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=${fileName}`);
     res.send(pdfBuffer);
@@ -262,4 +268,65 @@ exports.generateFolioPdf = async (req, res) => {
     console.error('❌ Error al generar o guardar el PDF:', error);
     res.status(500).json({ message: 'Error al generar y guardar el PDF', error: error.message });
   }
+};
+
+// --- NUEVA FUNCIÓN: Marcar un folio como impreso manualmente ---
+exports.markAsPrinted = async (req, res) => {
+    try {
+        const folio = await Folio.findByPk(req.params.id);
+        if (!folio) {
+            return res.status(404).json({ message: 'Folio no encontrado' });
+        }
+        await folio.update({ isPrinted: true });
+        res.status(200).json({ message: 'Folio marcado como impreso.' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al marcar como impreso', error: error.message });
+    }
+};
+
+// --- NUEVA FUNCIÓN: Generar PDFs masivos (Etiquetas y Comandas) ---
+exports.generateDaySummaryPdf = async (req, res) => {
+    const { date, type } = req.query;
+
+    if (!date || !type) {
+        return res.status(400).json({ message: 'Faltan los parámetros "date" o "type".' });
+    }
+
+    try {
+        let whereClause = { deliveryDate: date };
+
+        if (type === 'orders') {
+            whereClause.deliveryLocation = {
+                [Op.ne]: 'Recoge en Tienda'
+            };
+        }
+
+        const foliosDelDia = await Folio.findAll({
+            where: whereClause,
+            include: [{ model: Client, as: 'client' }],
+            order: [['deliveryTime', 'ASC']]
+        });
+
+        if (foliosDelDia.length === 0) {
+            return res.status(404).send(`<h1>No se encontraron ${type === 'labels' ? 'etiquetas' : 'comandas'} para la fecha ${date}.</h1>`);
+        }
+
+        let pdfBuffer;
+        if (type === 'labels') {
+            pdfBuffer = await pdfService.createLabelsPdf(foliosDelDia);
+        } else if (type === 'orders') {
+            pdfBuffer = await pdfService.createOrdersPdf(foliosDelDia);
+        } else {
+            return res.status(400).json({ message: 'Tipo de PDF no válido.' });
+        }
+        
+        const fileName = `Resumen_${type}_${date}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename=${fileName}`);
+        res.send(pdfBuffer);
+
+    } catch (error) {
+        console.error(`Error al generar PDF de ${type}:`, error);
+        res.status(500).json({ message: 'Error al generar el PDF masivo', error: error.message });
+    }
 };

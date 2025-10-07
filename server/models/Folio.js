@@ -73,7 +73,6 @@ const Folio = sequelize.define('Folio', {
     type: DataTypes.JSON, // Guardará las rutas de las imágenes
     allowNull: true
   },
-  // --- NUEVO CAMPO ---
   imageComments: {
     type: DataTypes.JSON, // Guardará los comentarios de las imágenes
     allowNull: true
@@ -111,9 +110,15 @@ const Folio = sequelize.define('Folio', {
     allowNull: false,
     defaultValue: false
   },
-  // --- NUEVO CAMPO ---
   hasExtraHeight: {
       type: DataTypes.BOOLEAN,
+      allowNull: false, // Es mejor que no sea nulo
+      defaultValue: false
+  },
+  // --- NUEVO CAMPO AÑADIDO ---
+  isPrinted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: false
   }
 }, { tableName: 'folios' });
