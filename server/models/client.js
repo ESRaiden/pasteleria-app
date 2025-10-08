@@ -10,7 +10,13 @@ const Client = sequelize.define('Client', {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true
+  },
+  // ==================== INICIO DE LA CORRECCIÓN ====================
+  phone2: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
+  // ===================== FIN DE LA CORRECCIÓN ======================
 }, {
   tableName: 'clients'
 });

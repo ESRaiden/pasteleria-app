@@ -53,8 +53,9 @@
                     <h3 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Datos del Cliente</h3>
                     <div class="grid md:grid-cols-2 gap-6 mb-6">
                         <div><label for="clientName" class="block mb-2 text-sm font-medium">Nombre del Cliente</label><input type="text" id="clientName" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required></div>
-                        <div><label for="clientPhone" class="block mb-2 text-sm font-medium">Teléfono del Cliente</label><input type="tel" id="clientPhone" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required></div>
-                    </div>
+                        <div><label for="clientPhone" class="block mb-2 text-sm font-medium">Teléfono Principal</label><input type="tel" id="clientPhone" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required></div>
+                        <div><label for="clientPhone2" class="block mb-2 text-sm font-medium">Teléfono Adicional (Opcional)</label><input type="tel" id="clientPhone2" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
+                        </div>
                     <h3 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Detalles del Pedido Principal</h3>
                     <div class="grid md:grid-cols-2 gap-6 mb-6">
                         <div><label for="deliveryDate" class="block mb-2 text-sm font-medium">Fecha de Entrega</label><input type="date" id="deliveryDate" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5" required></div>
@@ -123,6 +124,7 @@
                     <div id="complementsContainer" class="space-y-4 mb-4">
                         </div>
                     <button type="button" id="addComplementButton" class="text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">+ Añadir Complemento</button>
+                    
                     <h3 class="text-lg font-semibold my-6 text-gray-700 border-b pb-2">Diseño y Adicionales</h3>
                     <div class="space-y-6">
                         <div>

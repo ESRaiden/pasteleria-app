@@ -30,15 +30,19 @@ const calculateFillingCost = (folioType, persons, fillings, tiers) => {
 exports.createFolio = async (req, res) => {
   try {
     const { 
-        clientName, clientPhone, total, advancePayment, deliveryDate, 
+        clientName, clientPhone, clientPhone2, total, advancePayment, deliveryDate, 
         tiers, accessories, additional, isPaid, hasExtraHeight, imageComments, 
         cakeFlavor, filling, complements, ...folioData 
     } = req.body;
 
-    const [client] = await Client.findOrCreate({
+    const [client, created] = await Client.findOrCreate({
       where: { phone: clientPhone },
-      defaults: { name: clientName }
+      defaults: { name: clientName, phone2: clientPhone2 }
     });
+
+    if (!created && client.phone2 !== clientPhone2) {
+        await client.update({ phone2: clientPhone2 });
+    }
 
     const lastFourDigits = client.phone.slice(-4);
     const date = parseISO(deliveryDate);
@@ -108,7 +112,8 @@ exports.getAllFolios = async (req, res) => {
         [Op.or]: [
           { folioNumber: { [Op.like]: `%${q}%` } },
           { '$client.name$': { [Op.like]: `%${q}%` } },
-          { '$client.phone$': { [Op.like]: `%${q}%` } }
+          { '$client.phone$': { [Op.like]: `%${q}%` } },
+          { '$client.phone2$': { [Op.like]: `%${q}%` } }
         ]
       };
     }
@@ -116,7 +121,7 @@ exports.getAllFolios = async (req, res) => {
     const folios = await Folio.findAll({
       where: whereClause,
       include: [
-        { model: Client, as: 'client', attributes: ['name', 'phone'] },
+        { model: Client, as: 'client', attributes: ['name', 'phone', 'phone2'] },
         { model: User, as: 'responsibleUser', attributes: ['username'] }
       ],
       order: [['deliveryDate', 'ASC'], ['deliveryTime', 'ASC']]
@@ -132,7 +137,7 @@ exports.getFolioById = async (req, res) => {
     try {
         const folio = await Folio.findByPk(req.params.id, {
             include: [
-                { model: Client, as: 'client', attributes: ['name', 'phone'] },
+                { model: Client, as: 'client', attributes: ['name', 'phone', 'phone2'] },
                 { model: User, as: 'responsibleUser', attributes: ['username'] },
                 {
                     model: FolioEditHistory,
@@ -160,7 +165,7 @@ exports.updateFolio = async (req, res) => {
         }
 
         const { 
-            clientName, clientPhone, total, advancePayment, deliveryDate, 
+            clientName, clientPhone, clientPhone2, total, advancePayment, deliveryDate, 
             tiers, accessories, additional, isPaid, hasExtraHeight, imageComments,
             existingImageUrls, existingImageComments, cakeFlavor, filling,
             complements, ...folioData 
@@ -168,7 +173,7 @@ exports.updateFolio = async (req, res) => {
         
         const client = await Client.findByPk(folio.clientId);
         if (client) {
-            await client.update({ name: clientName, phone: clientPhone });
+            await client.update({ name: clientName, phone: clientPhone, phone2: clientPhone2 });
         }
         
         const additionalData = JSON.parse(additional || '[]');
@@ -216,7 +221,6 @@ exports.updateFolio = async (req, res) => {
         res.status(400).json({ message: 'Error al actualizar el folio', error: error.message });
     }
 };
-
 
 // --- ELIMINAR un folio ---
 exports.deleteFolio = async (req, res) => {
@@ -318,7 +322,6 @@ exports.generateFolioPdf = async (req, res) => {
   }
 };
 
-
 exports.markAsPrinted = async (req, res) => {
     try {
         const folio = await Folio.findByPk(req.params.id);
@@ -332,7 +335,6 @@ exports.markAsPrinted = async (req, res) => {
     }
 };
 
-// ==================== INICIO DE LA CORRECCIÓN ====================
 exports.generateDaySummaryPdf = async (req, res) => {
     const { date, type } = req.query;
 
@@ -358,20 +360,18 @@ exports.generateDaySummaryPdf = async (req, res) => {
             for (const folio of foliosDelDia) {
                 const pastelesDelFolio = [];
 
-                // Pastel principal o pisos
                 if (folio.folioType === 'Base/Especial' && folio.tiers && folio.tiers.length > 0) {
                     folio.tiers.forEach(tier => {
                         pastelesDelFolio.push({
                             ...folio.toJSON(),
                             persons: tier.persons,
-                            shape: tier.notas || folio.shape // Usar notas del piso si existen
+                            shape: tier.notas || folio.shape
                         });
                     });
-                } else { // Folio "Normal"
+                } else {
                     pastelesDelFolio.push(folio.toJSON());
                 }
 
-                // Complementos
                 if (folio.complements && folio.complements.length > 0) {
                     folio.complements.forEach(comp => {
                         pastelesDelFolio.push({
@@ -382,7 +382,6 @@ exports.generateDaySummaryPdf = async (req, res) => {
                     });
                 }
 
-                // Asignar sufijos si hay más de un pastel
                 if (pastelesDelFolio.length > 1) {
                     pastelesDelFolio.forEach((pastel, index) => {
                         pastel.folioNumber = `${pastel.folioNumber}-${index + 1}`;
@@ -414,4 +413,3 @@ exports.generateDaySummaryPdf = async (req, res) => {
         res.status(500).json({ message: 'Error al generar el PDF masivo', error: error.message });
     }
 };
-// ===================== FIN DE LA CORRECCIÓN ======================

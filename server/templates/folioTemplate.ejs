@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        /* --- ESTILOS GLOBALES (VERSIÓN FINAL ESTRUCTURAL) --- */
+        /* --- ESTILOS GLOBALES (VERSIÓN BALANCEADA FINAL) --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             font-size: 9.5pt;
@@ -41,7 +41,7 @@
             border: 1px solid #e9ecef; border-radius: 8px; padding: 9px; 
             margin-bottom: 10px; page-break-inside: avoid; 
         }
-        .full-width { grid-column: 1 / -1; } /* Ocupa todo el ancho */
+        .full-width { grid-column: 1 / -1; }
 
         .section-title { font-size: 10pt; font-weight: bold; color: #d9534f; text-transform: uppercase; margin-bottom: 7px; border-bottom: 1px solid #f0f0f0; padding-bottom: 4px; }
         .data-item { margin-bottom: 4px; line-height: 1.35; }
@@ -91,6 +91,9 @@
                 <div class="section-title">Cliente</div>
                 <div class="data-item"><span class="data-label">Nombre:</span> <%= folio.client.name %></div>
                 <div class="data-item"><span class="data-label">Teléfono:</span> <%= folio.client.phone %></div>
+                <% if (folio.client.phone2) { %>
+                    <div class="data-item"><span class="data-label">Tel. Adicional:</span> <%= folio.client.phone2 %></div>
+                <% } %>
                 <div class="data-item"><span class="data-label">Entrega:</span> <%= folio.deliveryLocation %></div>
             </div>
 

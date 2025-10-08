@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', function() {
         formTitle = document.getElementById('formTitle'),
         clientNameInput = document.getElementById('clientName'),
         clientPhoneInput = document.getElementById('clientPhone'),
+        // ==================== INICIO DE LA CORRECCIÓN ====================
+        clientPhone2Input = document.getElementById('clientPhone2'),
+        // ===================== FIN DE LA CORRECCIÓN ======================
         deliveryDateInput = document.getElementById('deliveryDate'),
         deliveryHourSelect = document.getElementById('deliveryHour'),
         deliveryMinuteSelect = document.getElementById('deliveryMinute'),
@@ -29,6 +32,8 @@ document.addEventListener('DOMContentLoaded', function() {
         balanceInput = document.getElementById('balance'),
         isPaidCheckbox = document.getElementById('isPaid'),
         hasExtraHeightCheckbox = document.getElementById('hasExtraHeight'),
+        complementsContainer = document.getElementById('complementsContainer'),
+        addComplementButton = document.getElementById('addComplementButton'),
         accessoriesInput = document.getElementById('accessories'),
         designDescriptionTextarea = document.getElementById('designDescription'),
         dedicationInput = document.getElementById('dedication'),
@@ -61,11 +66,6 @@ document.addEventListener('DOMContentLoaded', function() {
         addAdditionalButton = document.getElementById('addAdditionalButton'),
         normalFields = document.getElementById('normalFields'),
         specialFields = document.getElementById('specialFields');
-
-    // ==================== INICIO DE LA CORRECCIÓN ====================
-    const complementsContainer = document.getElementById('complementsContainer');
-    const addComplementButton = document.getElementById('addComplementButton');
-    // ===================== FIN DE LA CORRECCIÓN ======================
 
     // --- MANEJO DE MODALES ---
     const dailyFoliosModal = document.getElementById('dailyFoliosModal');
@@ -170,9 +170,7 @@ document.addEventListener('DOMContentLoaded', function() {
         renderTags(cakeFlavorContainer, [], null);
         renderTags(fillingContainer, [], null);
         tiersTableBody.innerHTML = '';
-        // ==================== INICIO DE LA CORRECCIÓN ====================
         complementsContainer.innerHTML = '';
-        // ===================== FIN DE LA CORRECCIÓN ======================
         inStorePickupCheckbox.dispatchEvent(new Event('change'));
         folioTypeSelect.dispatchEvent(new Event('change'));
         updateTotals();
@@ -188,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         clientNameInput.value = folio.client.name;
         clientPhoneInput.value = folio.client.phone;
+        clientPhone2Input.value = folio.client.phone2 || ''; // Cargar teléfono 2
         deliveryDateInput.value = folio.deliveryDate;
         personsInput.value = folio.persons;
         shapeInput.value = folio.shape;
@@ -219,15 +218,13 @@ document.addEventListener('DOMContentLoaded', function() {
             renderAdditionalItems();
         }
         
-        // ==================== INICIO DE LA CORRECCIÓN ====================
         if (folio.complements && Array.isArray(folio.complements) && folio.complements.length > 0) {
             folio.complements.forEach(comp => addComplementRow(comp));
         }
-        // ===================== FIN DE LA CORRECCIÓN ======================
         
         if (folio.folioType === 'Normal') {
             selectedCakeFlavors = safeJsonParse(folio.cakeFlavor);
-            selectedRellenos = safeJsonParse(folio.filling); // Corregido para usar `filling`
+            selectedRellenos = safeJsonParse(folio.filling);
             renderTags(cakeFlavorContainer, selectedCakeFlavors, removeCakeFlavor);
             renderTags(fillingContainer, selectedRellenos, removeRelleno);
         } else if (folio.folioType === 'Base/Especial' && Array.isArray(folio.tiers)) {
@@ -239,21 +236,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const location = folio.deliveryLocation || '';
+        googleMapsLocationCheckbox.checked = location.includes('El cliente envía ubicación (Google Maps)');
+        
         if (location === 'Recoge en Tienda') {
             inStorePickupCheckbox.checked = true;
-        } else if (location === 'El cliente envía ubicación (Google Maps)') {
-            googleMapsLocationCheckbox.checked = true;
         } else {
             inStorePickupCheckbox.checked = false;
-            googleMapsLocationCheckbox.checked = false;
+            let addressPart = location.replace('El cliente envía ubicación (Google Maps)', '').replace('(','').replace(')','').trim();
             
-            const colMatch = location.match(/Col\.\s*([^,]+)/);
-            const intMatch = location.match(/Int\.\s*([^,]+)/);
+            const colMatch = addressPart.match(/Col\.\s*([^,]+)/);
+            const intMatch = addressPart.match(/Int\.\s*([^,]+)/);
             
             if (colMatch) neighborhoodInput.value = colMatch[1].trim();
             if (intMatch) intNumberInput.value = intMatch[1].trim();
             
-            let remainingLocation = location.replace(/Col\.\s*[^,]+,?/, '').replace(/Int\.\s*[^,]+,?/, '').trim();
+            let remainingLocation = addressPart.replace(/Col\.\s*[^,]+,?/, '').replace(/Int\.\s*[^,]+,?/, '').trim();
             const parts = remainingLocation.split(' ');
             const lastPart = parts[parts.length - 1];
 
@@ -266,7 +263,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         inStorePickupCheckbox.dispatchEvent(new Event('change'));
-        googleMapsLocationCheckbox.dispatchEvent(new Event('change'));
 
         if (folio.imageUrls && folio.imageUrls.length > 0) {
             existingImages = folio.imageUrls.map((url, index) => ({
@@ -340,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
         showView('calendar');
     });
 
-    // --- LÓGICA DEL FORMULARIO (EVENT LISTENERS Y FUNCIONES AUXILIARES) ---
+    // --- LÓGICA DEL FORMULARIO ---
 
     folioForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -358,17 +354,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (deliveryPeriodSelect.value === 'AM' && hour === 12) { hour = 0; }
         const deliveryTime = `${hour.toString().padStart(2, '0')}:${deliveryMinuteSelect.value}:00`;
 
+        // ==================== INICIO DE LA CORRECCIÓN ====================
         let deliveryLocation = '';
         if (inStorePickupCheckbox.checked) {
             deliveryLocation = 'Recoge en Tienda';
-        } else if (googleMapsLocationCheckbox.checked) {
-            deliveryLocation = 'El cliente envía ubicación (Google Maps)';
         } else {
-            deliveryLocation = [`${streetInput.value || ''} ${extNumberInput.value || ''}`.trim(), intNumberInput.value ? `Int. ${intNumberInput.value}` : '', neighborhoodInput.value ? `Col. ${neighborhoodInput.value}` : ''].filter(Boolean).join(', ');
+            const address = [`${streetInput.value || ''} ${extNumberInput.value || ''}`.trim(), intNumberInput.value ? `Int. ${intNumberInput.value}` : '', neighborhoodInput.value ? `Col. ${neighborhoodInput.value}` : ''].filter(Boolean).join(', ');
+            if (googleMapsLocationCheckbox.checked) {
+                deliveryLocation = `El cliente envía ubicación (Google Maps)${address ? ` (${address})` : ''}`;
+            } else {
+                deliveryLocation = address;
+            }
         }
+        // ===================== FIN DE LA CORRECCIÓN ======================
 
         formData.append('clientName', clientNameInput.value);
         formData.append('clientPhone', clientPhoneInput.value);
+        formData.append('clientPhone2', clientPhone2Input.value); // Enviar teléfono 2
         formData.append('deliveryDate', deliveryDateInput.value);
         formData.append('deliveryTime', deliveryTime);
         formData.append('folioType', folioTypeSelect.value);
@@ -388,7 +390,6 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('isPaid', isPaidCheckbox.checked);
         formData.append('hasExtraHeight', hasExtraHeightCheckbox.checked);
 
-        // ==================== INICIO DE LA CORRECCIÓN ====================
         const complementsData = [];
         document.querySelectorAll('.complement-form').forEach(form => {
             complementsData.push({
@@ -399,7 +400,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
         formData.append('complements', JSON.stringify(complementsData));
-        // ===================== FIN DE LA CORRECCIÓN ======================
 
         if (folioTypeSelect.value === 'Normal') {
             formData.append('cakeFlavor', JSON.stringify(selectedCakeFlavors));
@@ -632,8 +632,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    inStorePickupCheckbox.addEventListener('change', function() { deliveryAddressSection.classList.toggle('hidden', this.checked); deliveryCostInput.readOnly = this.checked; if (this.checked) deliveryCostInput.value = '0'; updateTotals(); });
-    googleMapsLocationCheckbox.addEventListener('change', function() { addressFields.classList.toggle('disabled-section', this.checked); });
+    // ==================== INICIO DE LA CORRECCIÓN ====================
+    inStorePickupCheckbox.addEventListener('change', function() { 
+        deliveryAddressSection.classList.toggle('hidden', this.checked); 
+        deliveryCostInput.readOnly = this.checked; 
+        if (this.checked) deliveryCostInput.value = '0'; 
+        updateTotals(); 
+    });
+
+    // Se elimina el listener que deshabilitaba los campos
+    // googleMapsLocationCheckbox.addEventListener('change', function() { addressFields.classList.toggle('disabled-section', this.checked); });
+    // ===================== FIN DE LA CORRECCIÓN ======================
 
     function getGrandTotal() {
         const total = parseFloat(totalInput.value) || 0;
@@ -798,7 +807,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // ==================== INICIO DE LA CORRECCIÓN ====================
     function addComplementRow(complement = null) {
         const complementIndex = complementsContainer.children.length;
         const formWrapper = document.createElement('div');
@@ -839,7 +847,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     addComplementButton.addEventListener('click', () => addComplementRow());
-    // ===================== FIN DE LA CORRECCIÓN ======================
     
     // --- INICIALIZACIÓN ---
     const storedToken = localStorage.getItem('authToken');

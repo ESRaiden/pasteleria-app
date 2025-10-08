@@ -2,12 +2,18 @@
 <html>
 <head>
     <style>
-        body { font-family: sans-serif; margin: 20px; font-size: 10pt; }
-        .grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
-        .card { border: 2px dashed #999; padding: 15px; page-break-inside: avoid; }
-        .card h3 { margin-top: 0; }
-        .card p { margin: 4px 0; }
-        .account-details { border-top: 1px solid #ccc; margin-top: 10px; padding-top: 10px; }
+        body { font-family: sans-serif; margin: 20px;
+        font-size: 10pt; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 15px;
+        }
+        .card { border: 2px dashed #999; padding: 15px; page-break-inside: avoid;
+        }
+        .card h3 { margin-top: 0;
+        }
+        .card p { margin: 4px 0;
+        }
+        .account-details { border-top: 1px solid #ccc; margin-top: 10px; padding-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -17,6 +23,9 @@
             <div class="card">
                 <h3>Cliente: <%= folio.client.name %></h3>
                 <p><strong>Teléfono:</strong> <%= folio.client.phone %></p>
+                <% if (folio.client.phone2) { %>
+                    <p><strong>Tel. Adicional:</strong> <%= folio.client.phone2 %></p>
+                <% } %>
                 <p><strong>Dirección:</strong> <%= folio.deliveryLocation %></p>
                 <div class="account-details">
                     <p><strong>Costo Pastel:</strong> $<%= (parseFloat(folio.total) - parseFloat(folio.deliveryCost) - (folio.additional || []).reduce((sum, item) => sum + parseFloat(item.price || 0), 0)).toFixed(2) %></p>
@@ -26,7 +35,8 @@
                     <p><strong>Resta:</strong> $<%= parseFloat(folio.balance).toFixed(2) %></p>
                 </div>
             </div>
-        <% }); %>
+        <% });
+        %>
     </div>
 </body>
 </html>
