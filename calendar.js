@@ -57,8 +57,6 @@ function initializeCalendar(authToken) {
 
         modalFolioNumber.innerText = `Folio: ${folio.folioNumber}`;
 
-        // ==================== INICIO DE LA CORRECCIÓN ====================
-        // Se añade la clase 'break-words' al párrafo de la descripción
         modalContent.innerHTML = `
             <p><strong>Cliente:</strong> ${folio.client?.name || 'N/A'}</p>
             <p><strong>Teléfono:</strong> <a href="tel:${folio.client?.phone}" class="text-blue-500 hover:underline">${folio.client?.phone || 'N/A'}</a></p>
@@ -69,7 +67,6 @@ function initializeCalendar(authToken) {
             <p><strong>Total:</strong> $${parseFloat(folio.total).toFixed(2)}</p>
             <p><strong>Resta:</strong> $${parseFloat(folio.balance).toFixed(2)}</p>
         `;
-        // ===================== FIN DE LA CORRECCIÓN ======================
     }
 
     if (calendar) {
@@ -258,10 +255,13 @@ function initializeCalendar(authToken) {
         });
     }
 
+    // ==================== INICIO DE LA CORRECCIÓN ====================
     if (viewPdfButton) {
         viewPdfButton.addEventListener('click', () => {
             if (window.currentEditingFolioId) {
-                const urlWithToken = `http://localhost:3000/api/folios/${window.currentEditingFolioId}/pdf?token=${authToken}`;
+                // Se obtiene el token más reciente directamente desde localStorage
+                const currentToken = localStorage.getItem('authToken');
+                const urlWithToken = `http://localhost:3000/api/folios/${window.currentEditingFolioId}/pdf?token=${currentToken}`;
                 window.open(urlWithToken, '_blank');
             }
         });
@@ -269,13 +269,13 @@ function initializeCalendar(authToken) {
 
     const printLabelsButton = document.getElementById('printLabelsButton');
     const printOrdersButton = document.getElementById('printOrdersButton');
-    const dailyFoliosModal = document.getElementById('dailyFoliosModal');
-
+    
     if (printLabelsButton) {
         printLabelsButton.addEventListener('click', () => {
             const date = dailyFoliosModal.dataset.date;
             if (date) {
-                const url = `http://localhost:3000/api/folios/day-summary-pdf?type=labels&date=${date}&token=${authToken}`;
+                const currentToken = localStorage.getItem('authToken');
+                const url = `http://localhost:3000/api/folios/day-summary-pdf?type=labels&date=${date}&token=${currentToken}`;
                 window.open(url, '_blank');
             }
         });
@@ -285,11 +285,13 @@ function initializeCalendar(authToken) {
         printOrdersButton.addEventListener('click', () => {
             const date = dailyFoliosModal.dataset.date;
             if (date) {
-                const url = `http://localhost:3000/api/folios/day-summary-pdf?type=orders&date=${date}&token=${authToken}`;
+                const currentToken = localStorage.getItem('authToken');
+                const url = `http://localhost:3000/api/folios/day-summary-pdf?type=orders&date=${date}&token=${currentToken}`;
                 window.open(url, '_blank');
             }
         });
     }
+    // ===================== FIN DE LA CORRECCIÓN ======================
 
     const dailySearchInput = document.getElementById('dailyFolioSearch');
     if (dailySearchInput) {
