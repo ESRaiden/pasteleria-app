@@ -189,10 +189,9 @@
     const hasImages = (folio.imageUrls && folio.imageUrls.length > 0);
     if (hasTiers || hasImages) { 
     %>
-    <div class="page-break"></div>
     <div>
         <% if (hasTiers) { %>
-        <div class="section">
+        <div class="section" style="margin-top: 25px;">
             <div class="section-title">Estructura por Pisos</div>
             <table class="table">
                 <thead><tr><th>Personas</th><th>Panes</th><th>Rellenos</th><th>Notas/Forma</th></tr></thead>
@@ -205,7 +204,7 @@
                         <td><%= tier.notas || '' %></td>
                     </tr>
                     <% }); %>
-                    </tbody>
+                </tbody>
             </table>
         </div>
         <% } %>
