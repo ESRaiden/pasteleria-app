@@ -6,8 +6,7 @@ const { Folio, Client, User, FolioEditHistory, sequelize } = require('../models'
 const { Op } = require('sequelize');
 const pdfService = require('../services/pdfService');
 
-// ==================== INICIO DE LA CORRECCIÓN ====================
-// Función auxiliar para calcular el costo de los rellenos
+
 const calculateFillingCost = (folioType, persons, fillings, tiers) => {
     let cost = 0;
     if (folioType === 'Normal') {
@@ -26,7 +25,6 @@ const calculateFillingCost = (folioType, persons, fillings, tiers) => {
     }
     return cost;
 };
-// ===================== FIN DE LA CORRECCIÓN ======================
 
 // --- CREAR un nuevo folio ---
 exports.createFolio = async (req, res) => {
@@ -34,7 +32,7 @@ exports.createFolio = async (req, res) => {
     const { 
         clientName, clientPhone, total, advancePayment, deliveryDate, 
         tiers, accessories, additional, isPaid, hasExtraHeight, imageComments, 
-        cakeFlavor, filling, ...folioData 
+        cakeFlavor, filling, complements, ...folioData 
     } = req.body;
 
     const [client] = await Client.findOrCreate({
@@ -62,6 +60,7 @@ exports.createFolio = async (req, res) => {
     
     const tiersData = JSON.parse(tiers || '[]');
     const fillingData = JSON.parse(filling || '[]');
+    const complementsData = JSON.parse(complements || '[]');
 
     const fillingCost = calculateFillingCost(folioData.folioType, folioData.persons, fillingData, tiersData);
 
@@ -87,6 +86,7 @@ exports.createFolio = async (req, res) => {
       additional: additionalData,
       cakeFlavor: cakeFlavor,
       filling: filling,
+      complements: complementsData,
       isPaid: isPaid === 'true',
       hasExtraHeight: hasExtraHeight === 'true'
     });
@@ -163,7 +163,7 @@ exports.updateFolio = async (req, res) => {
             clientName, clientPhone, total, advancePayment, deliveryDate, 
             tiers, accessories, additional, isPaid, hasExtraHeight, imageComments,
             existingImageUrls, existingImageComments, cakeFlavor, filling,
-            ...folioData 
+            complements, ...folioData 
         } = req.body;
         
         const client = await Client.findByPk(folio.clientId);
@@ -176,6 +176,7 @@ exports.updateFolio = async (req, res) => {
         
         const tiersData = JSON.parse(tiers || '[]');
         const fillingData = JSON.parse(filling || '[]');
+        const complementsData = JSON.parse(complements || '[]');
 
         const fillingCost = calculateFillingCost(folioData.folioType, folioData.persons, fillingData, tiersData);
 
@@ -201,6 +202,7 @@ exports.updateFolio = async (req, res) => {
             additional: additionalData,
             cakeFlavor: cakeFlavor,
             filling: filling,
+            complements: complementsData,
             isPaid: isPaid === 'true',
             hasExtraHeight: hasExtraHeight === 'true'
         });
@@ -214,6 +216,7 @@ exports.updateFolio = async (req, res) => {
         res.status(400).json({ message: 'Error al actualizar el folio', error: error.message });
     }
 };
+
 
 // --- ELIMINAR un folio ---
 exports.deleteFolio = async (req, res) => {
@@ -315,7 +318,7 @@ exports.generateFolioPdf = async (req, res) => {
   }
 };
 
-// --- NUEVA FUNCIÓN: Marcar un folio como impreso manualmente ---
+
 exports.markAsPrinted = async (req, res) => {
     try {
         const folio = await Folio.findByPk(req.params.id);
@@ -329,7 +332,7 @@ exports.markAsPrinted = async (req, res) => {
     }
 };
 
-// --- NUEVA FUNCIÓN: Generar PDFs masivos (Etiquetas y Comandas) ---
+// ==================== INICIO DE LA CORRECCIÓN ====================
 exports.generateDaySummaryPdf = async (req, res) => {
     const { date, type } = req.query;
 
@@ -338,29 +341,65 @@ exports.generateDaySummaryPdf = async (req, res) => {
     }
 
     try {
-        let whereClause = { deliveryDate: date };
-
-        if (type === 'orders') {
-            whereClause.deliveryLocation = {
-                [Op.ne]: 'Recoge en Tienda'
-            };
-        }
-
         const foliosDelDia = await Folio.findAll({
-            where: whereClause,
+            where: { deliveryDate: date },
             include: [{ model: Client, as: 'client' }],
             order: [['deliveryTime', 'ASC']]
         });
 
         if (foliosDelDia.length === 0) {
-            return res.status(404).send(`<h1>No se encontraron ${type === 'labels' ? 'etiquetas' : 'comandas'} para la fecha ${date}.</h1>`);
+            return res.status(404).send(`<h1>No se encontraron folios para la fecha ${date}.</h1>`);
         }
 
         let pdfBuffer;
+
         if (type === 'labels') {
-            pdfBuffer = await pdfService.createLabelsPdf(foliosDelDia);
+            const etiquetas = [];
+            for (const folio of foliosDelDia) {
+                const pastelesDelFolio = [];
+
+                // Pastel principal o pisos
+                if (folio.folioType === 'Base/Especial' && folio.tiers && folio.tiers.length > 0) {
+                    folio.tiers.forEach(tier => {
+                        pastelesDelFolio.push({
+                            ...folio.toJSON(),
+                            persons: tier.persons,
+                            shape: tier.notas || folio.shape // Usar notas del piso si existen
+                        });
+                    });
+                } else { // Folio "Normal"
+                    pastelesDelFolio.push(folio.toJSON());
+                }
+
+                // Complementos
+                if (folio.complements && folio.complements.length > 0) {
+                    folio.complements.forEach(comp => {
+                        pastelesDelFolio.push({
+                            ...folio.toJSON(),
+                            persons: comp.persons,
+                            shape: comp.description || 'Complemento'
+                        });
+                    });
+                }
+
+                // Asignar sufijos si hay más de un pastel
+                if (pastelesDelFolio.length > 1) {
+                    pastelesDelFolio.forEach((pastel, index) => {
+                        pastel.folioNumber = `${pastel.folioNumber}-${index + 1}`;
+                        etiquetas.push(pastel);
+                    });
+                } else if (pastelesDelFolio.length === 1) {
+                    etiquetas.push(pastelesDelFolio[0]);
+                }
+            }
+            pdfBuffer = await pdfService.createLabelsPdf(etiquetas);
+
         } else if (type === 'orders') {
-            pdfBuffer = await pdfService.createOrdersPdf(foliosDelDia);
+            const foliosParaComanda = foliosDelDia.filter(f => f.deliveryLocation !== 'Recoge en Tienda');
+            if (foliosParaComanda.length === 0) {
+                 return res.status(404).send(`<h1>No se encontraron comandas para la fecha ${date}.</h1>`);
+            }
+            pdfBuffer = await pdfService.createOrdersPdf(foliosParaComanda);
         } else {
             return res.status(400).json({ message: 'Tipo de PDF no válido.' });
         }
@@ -375,3 +414,4 @@ exports.generateDaySummaryPdf = async (req, res) => {
         res.status(500).json({ message: 'Error al generar el PDF masivo', error: error.message });
     }
 };
+// ===================== FIN DE LA CORRECCIÓN ======================

@@ -29,8 +29,6 @@ document.addEventListener('DOMContentLoaded', function() {
         balanceInput = document.getElementById('balance'),
         isPaidCheckbox = document.getElementById('isPaid'),
         hasExtraHeightCheckbox = document.getElementById('hasExtraHeight'),
-        addComplementCheckbox = document.getElementById('addComplement'),
-        complementForm = document.getElementById('complementForm'),
         accessoriesInput = document.getElementById('accessories'),
         designDescriptionTextarea = document.getElementById('designDescription'),
         dedicationInput = document.getElementById('dedication'),
@@ -62,11 +60,12 @@ document.addEventListener('DOMContentLoaded', function() {
         additionalList = document.getElementById('additionalList'),
         addAdditionalButton = document.getElementById('addAdditionalButton'),
         normalFields = document.getElementById('normalFields'),
-        specialFields = document.getElementById('specialFields'),
-        complementPersonsInput = document.getElementById('complementPersons'),
-        complementFlavorInput = document.getElementById('complementFlavor'),
-        complementFillingInput = document.getElementById('complementFilling'),
-        complementDescriptionInput = document.getElementById('complementDescription');
+        specialFields = document.getElementById('specialFields');
+
+    // ==================== INICIO DE LA CORRECCIÓN ====================
+    const complementsContainer = document.getElementById('complementsContainer');
+    const addComplementButton = document.getElementById('addComplementButton');
+    // ===================== FIN DE LA CORRECCIÓN ======================
 
     // --- MANEJO DE MODALES ---
     const dailyFoliosModal = document.getElementById('dailyFoliosModal');
@@ -91,9 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let selectedFiles = [];
     let existingImages = [];
     let selectedCakeFlavors = [];
-    // ==================== INICIO DE LA CORRECCIÓN ====================
     let selectedRellenos = [];
-    // ===================== FIN DE LA CORRECCIÓN ======================
     let tiersData = [];
     let currentTierIndex = -1;
     
@@ -102,12 +99,10 @@ document.addEventListener('DOMContentLoaded', function() {
         normal: ['Pastel de queso', 'Pan de tres leches', 'Chocolate', 'Red Velvet', 'Mil Hojas', 'Zanahoria', 'Queso/Flan', 'Mantequilla'],
         tier: ['Mantequilla', 'Queso', 'Nata', 'Chocolate', 'Vainilla', 'Flan', 'Red Velvet']
     };
-    // ==================== INICIO DE LA CORRECCIÓN ====================
     const rellenosData = {
         'incluidos': { 'Mermelada': ['Zarzamora', 'Fresa', 'Piña', 'Durazno'], 'Manjar': ['Nuez', 'Coco', 'Almendra'], 'Dulce de Leche': ['Envinada', 'Nuez', 'Almendra', 'Coco'], 'Duraznos': ['Crema de Yogurth', 'Chantilly', 'Rompope'], 'Nuez': ['Manjar', 'Mocka', 'Capuchino'] },
         'conCosto': { 'Cajeta': ['Nuez', 'Coco', 'Almendra', 'Oreo'], 'Crema de Queso': ['Mermelada zarzamora', 'Mermelada fresa', 'Cajeta', 'Envinada'], 'Oreo': ['Manjar', 'Crema de yogurth fresa', 'Crema de chocolate', 'Chantilly'], 'Cremas': ['Mocka', 'Yogurth de fresa', 'Café con o sin brandy'], 'Chantilly con fresas': [], 'Nutella': [], 'Cocktail de frutas': ['Chantilly', 'Crema de queso', 'Crema de Yogurth'], 'Crema de queso con Chocoretas': [], 'Snickers / Milky Way': ['Manjar', 'Chantilly', 'Crema de yogurth fresa', 'Crema de chocolate'] }
     };
-    // ===================== FIN DE LA CORRECCIÓN ======================
 
     // --- FUNCIONES DE MANEJO DE VISTAS Y SESIÓN ---
     function showView(viewToShow) {
@@ -168,19 +163,17 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedFiles = [];
         existingImages = [];
         selectedCakeFlavors = [];
-        // ==================== INICIO DE LA CORRECCIÓN ====================
         selectedRellenos = [];
-        // ===================== FIN DE LA CORRECCIÓN ======================
         tiersData = [];
         additionalList.innerHTML = '';
         imagePreview.innerHTML = '';
         renderTags(cakeFlavorContainer, [], null);
-        // ==================== INICIO DE LA CORRECCIÓN ====================
         renderTags(fillingContainer, [], null);
-        // ===================== FIN DE LA CORRECCIÓN ======================
         tiersTableBody.innerHTML = '';
+        // ==================== INICIO DE LA CORRECCIÓN ====================
+        complementsContainer.innerHTML = '';
+        // ===================== FIN DE LA CORRECCIÓN ======================
         inStorePickupCheckbox.dispatchEvent(new Event('change'));
-        addComplementCheckbox.dispatchEvent(new Event('change'));
         folioTypeSelect.dispatchEvent(new Event('change'));
         updateTotals();
     }
@@ -226,23 +219,17 @@ document.addEventListener('DOMContentLoaded', function() {
             renderAdditionalItems();
         }
         
-        // Cargar datos de Pastel Complementario
-        if (folio.complementPersons || folio.complementFlavor) {
-            addComplementCheckbox.checked = true;
-            complementPersonsInput.value = folio.complementPersons || '';
-            complementFlavorInput.value = folio.complementFlavor || '';
-            complementFillingInput.value = folio.complementFilling || '';
-            complementDescriptionInput.value = folio.complementDescription || '';
+        // ==================== INICIO DE LA CORRECCIÓN ====================
+        if (folio.complements && Array.isArray(folio.complements) && folio.complements.length > 0) {
+            folio.complements.forEach(comp => addComplementRow(comp));
         }
-        addComplementCheckbox.dispatchEvent(new Event('change'));
+        // ===================== FIN DE LA CORRECCIÓN ======================
         
         if (folio.folioType === 'Normal') {
             selectedCakeFlavors = safeJsonParse(folio.cakeFlavor);
-            // ==================== INICIO DE LA CORRECCIÓN ====================
-            selectedRellenos = safeJsonParse(folio.rellenos);
+            selectedRellenos = safeJsonParse(folio.filling); // Corregido para usar `filling`
             renderTags(cakeFlavorContainer, selectedCakeFlavors, removeCakeFlavor);
             renderTags(fillingContainer, selectedRellenos, removeRelleno);
-            // ===================== FIN DE LA CORRECCIÓN ======================
         } else if (folio.folioType === 'Base/Especial' && Array.isArray(folio.tiers)) {
             tiersTableBody.innerHTML = '';
             tiersData = [];
@@ -294,12 +281,10 @@ document.addEventListener('DOMContentLoaded', function() {
         let fillingCost = 0;
         if (folio.folioType === 'Normal') {
             const numPersons = parseInt(folio.persons, 10) || 0;
-            // ==================== INICIO DE LA CORRECCIÓN ====================
-            const rellenosArray = safeJsonParse(folio.rellenos);
+            const rellenosArray = safeJsonParse(folio.filling);
             fillingCost = rellenosArray.reduce((sum, relleno) => {
                 return (relleno && relleno.hasCost && numPersons > 0) ? sum + ((numPersons / 20) * 30) : sum;
             }, 0);
-            // ===================== FIN DE LA CORRECCIÓN ======================
         } else if (folio.folioType === 'Base/Especial') {
             fillingCost = (folio.tiers || []).reduce((sum, tier) => {
                 if (!tier) return sum; 
@@ -403,25 +388,22 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('isPaid', isPaidCheckbox.checked);
         formData.append('hasExtraHeight', hasExtraHeightCheckbox.checked);
 
-        // Enviar datos del pastel complementario si el checkbox está activo
-        if (addComplementCheckbox.checked) {
-            formData.append('complementPersons', complementPersonsInput.value);
-            formData.append('complementFlavor', complementFlavorInput.value);
-            formData.append('complementFilling', complementFillingInput.value);
-            formData.append('complementDescription', complementDescriptionInput.value);
-        } else {
-            // Si no está activo, enviar valores vacíos para limpiar en la base de datos
-            formData.append('complementPersons', '');
-            formData.append('complementFlavor', '');
-            formData.append('complementFilling', '');
-            formData.append('complementDescription', '');
-        }
+        // ==================== INICIO DE LA CORRECCIÓN ====================
+        const complementsData = [];
+        document.querySelectorAll('.complement-form').forEach(form => {
+            complementsData.push({
+                persons: form.querySelector('.complement-persons').value,
+                flavor: form.querySelector('.complement-flavor').value,
+                filling: form.querySelector('.complement-filling').value,
+                description: form.querySelector('.complement-description').value,
+            });
+        });
+        formData.append('complements', JSON.stringify(complementsData));
+        // ===================== FIN DE LA CORRECCIÓN ======================
 
         if (folioTypeSelect.value === 'Normal') {
             formData.append('cakeFlavor', JSON.stringify(selectedCakeFlavors));
-            // ==================== INICIO DE LA CORRECCIÓN ====================
-            formData.append('rellenos', JSON.stringify(selectedRellenos));
-            // ===================== FIN DE LA CORRECCIÓN ======================
+            formData.append('filling', JSON.stringify(selectedRellenos));
         } else {
             const currentTiersData = Array.from(tiersTableBody.children).map((row, index) => {
                 const tierState = tiersData[index] || { panes: [], rellenos: [] };
@@ -572,7 +554,6 @@ document.addEventListener('DOMContentLoaded', function() {
         selectionModal.classList.remove('hidden');
     }
     
-    // ==================== INICIO DE LA CORRECCIÓN ====================
     function openRellenoModal(onSelectCallback, currentRellenos, limit) {
         const showStep1 = () => {
             modalTitle.textContent = 'Añadir Relleno (Paso 1 de 2)';
@@ -637,7 +618,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     addCakeFlavorBtn.addEventListener('click', () => openSelectionModal('Sabor de Pan', cakeFlavorsData.normal, selectedCakeFlavors, addCakeFlavor, 2));
     addFillingBtn.addEventListener('click', () => openRellenoModal(addRelleno, selectedRellenos, 2));
-    // ===================== FIN DE LA CORRECCIÓN ======================
 
     function checkRestrictions() {
         const hasNoFillingPan = selectedCakeFlavors.includes('Pastel de queso') || selectedCakeFlavors.includes('Queso/Flan');
@@ -645,10 +625,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fillingSection.classList.toggle('disabled-section', hasNoFillingPan || isMilHojas);
         designDescriptionTextarea.disabled = isMilHojas;
         if (hasNoFillingPan || isMilHojas) {
-            // ==================== INICIO DE LA CORRECCIÓN ====================
             selectedRellenos = [];
             renderTags(fillingContainer, selectedRellenos, removeRelleno);
-            // ===================== FIN DE LA CORRECCIÓN ======================
             updateTotals();
             if(isMilHojas) designDescriptionTextarea.value = "Mil Hojas no lleva diseño";
         }
@@ -662,9 +640,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const delivery = parseFloat(deliveryCostInput.value) || 0;
         const additionalFromList = additionalItems.reduce((sum, item) => sum + item.totalPrice, 0);
         const persons = parseFloat(personsInput.value) || 0;
-        // ==================== INICIO DE LA CORRECCIÓN ====================
         const normalFillingCost = selectedRellenos.reduce((sum, relleno) => (relleno && relleno.hasCost && persons > 0) ? sum + ((persons / 20) * 30) : sum, 0);
-        // ===================== FIN DE LA CORRECCIÓN ======================
         const tierFillingCost = tiersData.reduce((sum, tier, index) => {
             if (!tier || !tiersTableBody.children[index]) return sum;
             const row = tiersTableBody.children[index];
@@ -755,11 +731,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (isSpecial) {
             selectedCakeFlavors = [];
-            // ==================== INICIO DE LA CORRECCIÓN ====================
             selectedRellenos = [];
             renderTags(cakeFlavorContainer, [], null);
             renderTags(fillingContainer, [], null);
-            // ===================== FIN DE LA CORRECCIÓN ======================
         } else {
             tiersData = [];
             tiersTableBody.innerHTML = '';
@@ -824,9 +798,48 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    addComplementCheckbox.addEventListener('change', function() {
-        complementForm.classList.toggle('hidden', !this.checked);
-    });
+    // ==================== INICIO DE LA CORRECCIÓN ====================
+    function addComplementRow(complement = null) {
+        const complementIndex = complementsContainer.children.length;
+        const formWrapper = document.createElement('div');
+        formWrapper.className = 'complement-form relative space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50';
+        formWrapper.dataset.index = complementIndex;
+
+        formWrapper.innerHTML = `
+            <button type="button" class="absolute top-2 right-2 remove-complement-btn text-red-500 font-bold text-lg">X</button>
+            <h4 class="text-md font-semibold text-gray-600">Complemento ${complementIndex + 1}</h4>
+            <div class="grid md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block mb-2 text-sm font-medium">Personas</label>
+                    <input type="number" step="5" class="complement-persons bg-white border border-gray-300 text-sm rounded-lg block w-full p-2.5" value="${complement?.persons || ''}">
+                </div>
+                <div>
+                    <label class="block mb-2 text-sm font-medium">Sabor del Pan</label>
+                    <input type="text" class="complement-flavor bg-white border border-gray-300 text-sm rounded-lg block w-full p-2.5" value="${complement?.flavor || ''}">
+                </div>
+                <div>
+                    <label class="block mb-2 text-sm font-medium">Relleno</label>
+                    <input type="text" class="complement-filling bg-white border border-gray-300 text-sm rounded-lg block w-full p-2.5" value="${complement?.filling || ''}">
+                </div>
+            </div>
+            <div>
+                <label class="block mb-2 text-sm font-medium">Descripción</label>
+                <textarea rows="2" class="complement-description block p-2.5 w-full text-sm text-gray-900 bg-white rounded-lg border border-gray-300">${complement?.description || ''}</textarea>
+            </div>
+        `;
+        complementsContainer.appendChild(formWrapper);
+
+        formWrapper.querySelector('.remove-complement-btn').addEventListener('click', () => {
+            formWrapper.remove();
+            // Re-indexar los títulos por si se borra uno intermedio
+            document.querySelectorAll('.complement-form').forEach((form, index) => {
+                form.querySelector('h4').textContent = `Complemento ${index + 1}`;
+            });
+        });
+    }
+
+    addComplementButton.addEventListener('click', () => addComplementRow());
+    // ===================== FIN DE LA CORRECCIÓN ======================
     
     // --- INICIALIZACIÓN ---
     const storedToken = localStorage.getItem('authToken');

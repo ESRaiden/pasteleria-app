@@ -89,22 +89,13 @@ const Folio = sequelize.define('Folio', {
     type: DataTypes.JSON,
     allowNull: true
   },
-  complementPersons: {
-    type: DataTypes.INTEGER,
-    allowNull: true
+  // ==================== INICIO DE LA CORRECCIÓN ====================
+  // Se eliminan los campos individuales de complemento y se reemplazan por un campo JSON.
+  complements: {
+      type: DataTypes.JSON,
+      allowNull: true
   },
-  complementFlavor: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  complementFilling: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  complementDescription: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
+  // ===================== FIN DE LA CORRECCIÓN ======================
   isPaid: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
@@ -112,10 +103,9 @@ const Folio = sequelize.define('Folio', {
   },
   hasExtraHeight: {
       type: DataTypes.BOOLEAN,
-      allowNull: false, // Es mejor que no sea nulo
+      allowNull: false, 
       defaultValue: false
   },
-  // --- NUEVO CAMPO AÑADIDO ---
   isPrinted: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

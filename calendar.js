@@ -56,16 +56,20 @@ function initializeCalendar(authToken) {
         const formattedTime = `${hour12}:${minute} ${period}`;
 
         modalFolioNumber.innerText = `Folio: ${folio.folioNumber}`;
+
+        // ==================== INICIO DE LA CORRECCIÓN ====================
+        // Se añade la clase 'break-words' al párrafo de la descripción
         modalContent.innerHTML = `
             <p><strong>Cliente:</strong> ${folio.client?.name || 'N/A'}</p>
             <p><strong>Teléfono:</strong> <a href="tel:${folio.client?.phone}" class="text-blue-500 hover:underline">${folio.client?.phone || 'N/A'}</a></p>
             <p><strong>Fecha de Entrega:</strong> ${new Date(folio.deliveryDate + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             <p><strong>Hora de Entrega:</strong> ${formattedTime}</p>
             <p><strong>Personas:</strong> ${folio.persons}</p>
-            <p><strong>Descripción:</strong> ${folio.designDescription}</p>
+            <p class="break-words"><strong>Descripción:</strong> ${folio.designDescription}</p>
             <p><strong>Total:</strong> $${parseFloat(folio.total).toFixed(2)}</p>
             <p><strong>Resta:</strong> $${parseFloat(folio.balance).toFixed(2)}</p>
         `;
+        // ===================== FIN DE LA CORRECCIÓN ======================
     }
 
     if (calendar) {
