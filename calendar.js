@@ -281,6 +281,7 @@ function initializeCalendar(authToken, userRole) {
                     window.openPdfViewer([currentFolio], 0);
                 }
                 modal.classList.add('hidden');
+                calendar.refetchEvents();
             }
         });
     }
