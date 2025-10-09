@@ -123,7 +123,8 @@ function initializeCalendar(authToken) {
                     
                     listItem.addEventListener('click', () => {
                         dailyFoliosModal.classList.add('hidden');
-                        window.currentEditingFolioId = folio.id;
+                        // --- CORRECCIÓN ---
+                        window.currentEditingFolio = folio;
                         populateFolioModal(folio);
                         document.getElementById('folioModal').classList.remove('hidden');
                     });
@@ -142,7 +143,8 @@ function initializeCalendar(authToken) {
             foliosForDay.sort((a, b) => a.deliveryTime.localeCompare(b.deliveryTime));
             dailyFoliosCache = foliosForDay; // Guardamos la lista al hacer clic en un evento también
 
-            window.currentEditingFolioId = folio.id;
+            // --- CORRECCIÓN ---
+            window.currentEditingFolio = folio;
             populateFolioModal(folio);
             document.getElementById('folioModal').classList.remove('hidden');
         }
@@ -218,7 +220,8 @@ function initializeCalendar(authToken) {
                     // Cuando se busca, no tenemos un "día" seleccionado, así que vaciamos la caché
                     dailyFoliosCache = [];
                     
-                    window.currentEditingFolioId = folioData.id;
+                    // --- CORRECCIÓN ---
+                    window.currentEditingFolio = folioData;
                     populateFolioModal(folioData);
                     document.getElementById('folioModal').classList.remove('hidden');
                 } catch (error) {
@@ -244,17 +247,13 @@ function initializeCalendar(authToken) {
     
     if (editFolioButton) {
         editFolioButton.addEventListener('click', async () => {
-            if (window.currentEditingFolioId) {
-                const folioId = window.currentEditingFolioId;
+            const currentFolio = window.currentEditingFolio;
+            if (currentFolio) {
                 modal.classList.add('hidden');
                 document.getElementById('loading').classList.remove('hidden');
                 try {
-                    const response = await fetch(`http://localhost:3000/api/folios/${folioId}`, {
-                        headers: { 'Authorization': `Bearer ${authToken}` }
-                    });
-                    if (!response.ok) throw new Error('No se pudo cargar la información del folio para editar.');
-                    const folioData = await response.json();
-                    if (window.populateFormForEdit) window.populateFormForEdit(folioData);
+                    // No es necesario volver a pedir los datos, ya los tenemos en currentFolio
+                    if (window.populateFormForEdit) window.populateFormForEdit(currentFolio);
                     if(window.showMainView) window.showMainView('form');
                 } catch (error) {
                     alert(error.message);
@@ -265,32 +264,35 @@ function initializeCalendar(authToken) {
         });
     }
 
+    // --- BLOQUE DE CÓDIGO CORREGIDO ---
     if (viewPdfButton) {
         viewPdfButton.addEventListener('click', () => {
-            if (window.currentEditingFolioId) {
+            const currentFolio = window.currentEditingFolio;
+    
+            if (currentFolio) {
                 // Buscamos el folio actual en la lista del día que ya guardamos
-                const currentFolioIndex = dailyFoliosCache.findIndex(f => f.id === window.currentEditingFolioId);
+                const currentFolioIndex = dailyFoliosCache.findIndex(f => f.id === currentFolio.id);
                 
+                // Si la caché del día existe y el folio está en ella, la usamos para la navegación
                 if (currentFolioIndex !== -1 && dailyFoliosCache.length > 0) {
-                    // Llamamos a la nueva función que controlará el visor
                     window.openPdfViewer(dailyFoliosCache, currentFolioIndex);
-                    modal.classList.add('hidden'); // Ocultamos el modal de detalles
                 } else {
-                    // Si por alguna razón no está en la caché (ej. búsqueda), lo abrimos como antes
-                    const currentToken = localStorage.getItem('authToken');
-                    const urlWithToken = `http://localhost:3000/api/folios/${window.currentEditingFolioId}/pdf?token=${currentToken}`;
-                    window.open(urlWithToken, '_blank');
+                    // Si no, simplemente abrimos el visor con el folio actual en una lista de un solo elemento
+                    // Esto deshabilita la navegación y evita abrir una nueva pestaña.
+                    window.openPdfViewer([currentFolio], 0);
                 }
+                modal.classList.add('hidden'); // Ocultamos el modal de detalles en ambos casos
             }
         });
     }
+    // --- FIN DEL BLOQUE CORREGIDO ---
 
     const printLabelsButton = document.getElementById('printLabelsButton');
     const printOrdersButton = document.getElementById('printOrdersButton');
     
     if (printLabelsButton) {
         printLabelsButton.addEventListener('click', () => {
-            const date = dailyFoliosModal.dataset.date;
+            const date = document.getElementById('dailyFoliosModal').dataset.date;
             if (date) {
                 const currentToken = localStorage.getItem('authToken');
                 const url = `http://localhost:3000/api/folios/day-summary-pdf?type=labels&date=${date}&token=${currentToken}`;
@@ -301,7 +303,7 @@ function initializeCalendar(authToken) {
 
     if (printOrdersButton) {
         printOrdersButton.addEventListener('click', () => {
-            const date = dailyFoliosModal.dataset.date;
+            const date = document.getElementById('dailyFoliosModal').dataset.date;
             if (date) {
                 const currentToken = localStorage.getItem('authToken');
                 const url = `http://localhost:3000/api/folios/day-summary-pdf?type=orders&date=${date}&token=${currentToken}`;
