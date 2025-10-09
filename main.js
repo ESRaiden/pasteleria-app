@@ -69,6 +69,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- MANEJO DE MODALES ---
     const dailyFoliosModal = document.getElementById('dailyFoliosModal');
     const closeDailyFoliosModalBtn = document.getElementById('closeDailyFoliosModal');
+    
+    // --- INICIO DE CÓDIGO AÑADIDO ---
+    const registerModal = document.getElementById('registerModal');
+    const showRegisterModalLink = document.getElementById('showRegisterModalLink');
+    const closeRegisterModalBtn = document.getElementById('closeRegisterModal');
+    const registerForm = document.getElementById('registerForm');
+    // --- FIN DE CÓDIGO AÑADIDO ---
 
     if (closeDailyFoliosModalBtn) {
         closeDailyFoliosModalBtn.addEventListener('click', () => {
@@ -83,6 +90,61 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // --- INICIO DE CÓDIGO AÑADIDO: LÓGICA DE REGISTRO ---
+    if (showRegisterModalLink) {
+        showRegisterModalLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerModal.classList.remove('hidden');
+        });
+    }
+    
+    if (closeRegisterModalBtn) {
+        closeRegisterModalBtn.addEventListener('click', () => {
+            registerModal.classList.add('hidden');
+            registerForm.reset();
+            document.getElementById('registerError').textContent = '';
+        });
+    }
+    
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const role = document.getElementById('registerRole').value;
+            const errorEl = document.getElementById('registerError');
+            
+            loadingEl.classList.remove('hidden');
+            errorEl.textContent = '';
+    
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, role }),
+                });
+    
+                const data = await response.json();
+    
+                if (!response.ok) {
+                    throw new Error(data.message || 'Error en el registro.');
+                }
+    
+                alert('¡Usuario registrado con éxito! Ahora puedes iniciar sesión.');
+                registerModal.classList.add('hidden');
+                registerForm.reset();
+    
+            } catch (error) {
+                errorEl.textContent = error.message;
+            } finally {
+                loadingEl.classList.add('hidden');
+            }
+        });
+    }
+    // --- FIN DE CÓDIGO AÑADIDO ---
+
 
     // --- VARIABLES DE ESTADO DEL FORMULARIO ---
     let additionalItems = [];
