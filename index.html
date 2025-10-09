@@ -43,6 +43,7 @@
                     <div>
                         <button id="viewCalendarButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Ver Calendario</button>
                         <button id="newFolioButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg ml-4">+ Nuevo Folio</button>
+                        <button id="manageUsersButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg ml-4 hidden">Administrar Usuarios</button>
                         <button id="logoutButton" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg ml-4">Cerrar Sesión</button>
                     </div>
                 </div>
@@ -210,6 +211,30 @@
                 <div id='calendar'></div>
             </div>
         </main>
+
+        <main id="userManagementView" class="p-4 md:p-8 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Administración de Usuarios</h2>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-600">ID</th>
+                                <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-600">Nombre de Usuario</th>
+                                <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-600">Correo Electrónico</th>
+                                <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-600">Rol</th>
+                                <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-600">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userListBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
         
         <div id="folioModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
              <div class="relative top-10 mx-auto p-5 border w-11/12 md:w-2/3 lg:w-1/2 shadow-lg rounded-md bg-white">
@@ -314,6 +339,7 @@
              <p id="registerError" class="text-red-500 text-center mt-4"></p>
         </div>
     </div>
+    
     <script src="main.js"></script>
     <script src="calendar.js"></script>
 </body>

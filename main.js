@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const appView = document.getElementById('appView');
     const calendarView = document.getElementById('calendarView');
     const formView = document.getElementById('formView');
+    const userManagementView = document.getElementById('userManagementView');
+    const manageUsersButton = document.getElementById('manageUsersButton');
     const loginForm = document.getElementById('loginForm');
     const logoutButton = document.getElementById('logoutButton');
     const newFolioButton = document.getElementById('newFolioButton');
@@ -69,13 +71,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- MANEJO DE MODALES ---
     const dailyFoliosModal = document.getElementById('dailyFoliosModal');
     const closeDailyFoliosModalBtn = document.getElementById('closeDailyFoliosModal');
-    
-    // --- INICIO DE CÓDIGO AÑADIDO ---
     const registerModal = document.getElementById('registerModal');
     const showRegisterModalLink = document.getElementById('showRegisterModalLink');
     const closeRegisterModalBtn = document.getElementById('closeRegisterModal');
     const registerForm = document.getElementById('registerForm');
-    // --- FIN DE CÓDIGO AÑADIDO ---
 
     if (closeDailyFoliosModalBtn) {
         closeDailyFoliosModalBtn.addEventListener('click', () => {
@@ -91,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // --- INICIO DE CÓDIGO AÑADIDO: LÓGICA DE REGISTRO ---
+    // --- LÓGICA DE REGISTRO ---
     if (showRegisterModalLink) {
         showRegisterModalLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -143,8 +142,102 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    // --- FIN DE CÓDIGO AÑADIDO ---
 
+    // --- FUNCIÓN PARA CARGAR USUARIOS ---
+    async function loadUsers() {
+        const userListBody = document.getElementById('userListBody');
+        const authToken = localStorage.getItem('authToken');
+        
+        userListBody.innerHTML = `<tr><td colspan="5" class="text-center p-4">Cargando usuarios...</td></tr>`;
+
+        try {
+            const response = await fetch('http://localhost:3000/api/users', {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+
+            if (!response.ok) {
+                throw new Error('No se pudieron cargar los usuarios. Es posible que no tengas permisos.');
+            }
+
+            const users = await response.json();
+            userListBody.innerHTML = '';
+
+            if (users.length === 0) {
+                userListBody.innerHTML = `<tr><td colspan="5" class="text-center p-4">No se encontraron usuarios.</td></tr>`;
+                return;
+            }
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.className = 'border-b';
+                row.innerHTML = `
+                    <td class="py-2 px-4">${user.id}</td>
+                    <td class="py-2 px-4">${user.username}</td>
+                    <td class="py-2 px-4">${user.email}</td>
+                    <td class="py-2 px-4" data-field="role">${user.role}</td>
+                    <td class="py-2 px-4">
+                        <button class="text-blue-500 hover:underline text-sm edit-user-btn" data-user-id="${user.id}">Editar</button>
+                        <button class="text-red-500 hover:underline text-sm ml-2 delete-user-btn" data-user-id="${user.id}">Eliminar</button>
+                    </td>
+                `;
+                userListBody.appendChild(row);
+            });
+
+        } catch (error) {
+            userListBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">${error.message}</td></tr>`;
+        }
+    }
+
+    document.getElementById('userListBody').addEventListener('click', async (e) => {
+        const target = e.target;
+        const authToken = localStorage.getItem('authToken');
+        const userId = target.dataset.userId;
+    
+        if (target.classList.contains('delete-user-btn')) {
+            if (confirm(`¿Estás seguro de que quieres eliminar al usuario con ID ${userId}?`)) {
+                try {
+                    const response = await fetch(`http://localhost:3000/api/users/${userId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message);
+                    alert(result.message);
+                    loadUsers();
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                }
+            }
+        }
+    
+        if (target.classList.contains('edit-user-btn')) {
+            const currentRole = target.closest('tr').querySelector('[data-field="role"]').textContent;
+            const newRole = prompt(`Introduce el nuevo rol para el usuario con ID ${userId} (Opciones: Administrador, Usuario, Decorador):`, currentRole);
+            
+            const validRoles = ['Administrador', 'Usuario', 'Decorador'];
+            if (newRole && validRoles.includes(newRole)) {
+                try {
+                    const response = await fetch(`http://localhost:3000/api/users/${userId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ role: newRole })
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message);
+                    alert(result.message);
+                    loadUsers();
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                }
+            } else if (newRole !== null) {
+                alert('Rol no válido. Por favor, introduce uno de los roles permitidos.');
+            }
+        }
+    });
 
     // --- VARIABLES DE ESTADO DEL FORMULARIO ---
     let additionalItems = [];
@@ -169,19 +262,28 @@ document.addEventListener('DOMContentLoaded', function() {
     function showView(viewToShow) {
         calendarView.classList.add('hidden');
         formView.classList.add('hidden');
+        userManagementView.classList.add('hidden');
+
         if (viewToShow === 'calendar') {
             calendarView.classList.remove('hidden');
         } else if (viewToShow === 'form') {
             formView.classList.remove('hidden');
+        } else if (viewToShow === 'userManagement') {
+            userManagementView.classList.remove('hidden');
         }
     }
     
-    function showAppView(token) {
+    function showAppView(token, role) {
         loginView.classList.add('hidden');
         appView.classList.remove('hidden');
         showView('calendar');
+
+        if (role === 'Administrador') {
+            manageUsersButton.classList.remove('hidden');
+        }
+
         if (window.initializeCalendar) {
-            window.initializeCalendar(token);
+            window.initializeCalendar(token, role);
         }
     }
 
@@ -378,7 +480,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(data.message || 'Error al iniciar sesión');
             }
             localStorage.setItem('authToken', data.token);
-            showAppView(data.token);
+
+            const tokenPayload = JSON.parse(atob(data.token.split('.')[1]));
+            const userRole = tokenPayload.role;
+            window.currentUserRole = userRole; 
+
+            showAppView(data.token, userRole); 
         } catch (error) {
             document.getElementById('loginError').textContent = error.message;
         } finally {
@@ -396,6 +503,13 @@ document.addEventListener('DOMContentLoaded', function() {
         resetForm();
         showView('calendar');
     });
+
+    if (manageUsersButton) {
+        manageUsersButton.addEventListener('click', () => {
+            showView('userManagement');
+            loadUsers();
+        });
+    }
 
     // --- LÓGICA DEL FORMULARIO ---
     folioForm.addEventListener('submit', async (e) => {
@@ -894,7 +1008,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         formWrapper.querySelector('.remove-complement-btn').addEventListener('click', () => {
             formWrapper.remove();
-            // Re-indexar los títulos por si se borra uno intermedio
             document.querySelectorAll('.complement-form').forEach((form, index) => {
                 form.querySelector('h4').textContent = `Complemento ${index + 1}`;
             });
@@ -906,7 +1019,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- INICIALIZACIÓN ---
     const storedToken = localStorage.getItem('authToken');
     if (storedToken) {
-        showAppView(storedToken);
+        const tokenPayload = JSON.parse(atob(storedToken.split('.')[1]));
+        const userRole = tokenPayload.role;
+        window.currentUserRole = userRole;
+        showAppView(storedToken, userRole);
     }
 
     window.showMainView = showView;
@@ -943,9 +1059,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentFolioIndex = index;
         updatePdfViewer();
         pdfViewerModal.classList.remove('hidden');
-        // --- INICIO CORRECCIÓN DE FOCO ---
         setTimeout(() => window.focus(), 100); 
-        // --- FIN CORRECCIÓN DE FOCO ---
     };
 
     function closePdfViewer() {
@@ -969,7 +1083,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- INICIO CORRECCIÓN DE FOCO Y TECLA ESCAPE ---
     window.addEventListener('keydown', (e) => {
         if (e.key === "Escape" && !pdfViewerModal.classList.contains('hidden')) {
             closePdfViewer();
@@ -981,5 +1094,4 @@ document.addEventListener('DOMContentLoaded', function() {
             window.focus();
         }
     });
-    // --- FIN CORRECCIÓN DE FOCO Y TECLA ESCAPE ---
 });

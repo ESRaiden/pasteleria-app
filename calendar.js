@@ -1,5 +1,5 @@
 // Esta función se encarga de inicializar y controlar todo el calendario.
-function initializeCalendar(authToken) {
+function initializeCalendar(authToken, userRole) {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
 
@@ -70,6 +70,20 @@ function initializeCalendar(authToken) {
         `;
     }
 
+    function showFolioModalWithRoleCheck(folio) {
+        window.currentEditingFolio = folio;
+        populateFolioModal(folio);
+
+        const deleteBtn = document.getElementById('deleteFolioButton');
+        if (userRole === 'Administrador') {
+            deleteBtn.style.display = 'inline-block';
+        } else {
+            deleteBtn.style.display = 'none';
+        }
+
+        document.getElementById('folioModal').classList.remove('hidden');
+    }
+
     if (calendar) {
         calendar.destroy();
     }
@@ -94,7 +108,7 @@ function initializeCalendar(authToken) {
             
             foliosForDay.sort((a, b) => a.deliveryTime.localeCompare(b.deliveryTime));
             
-            dailyFoliosCache = foliosForDay; // Guardamos la lista de folios del día
+            dailyFoliosCache = foliosForDay;
 
             const dailyFoliosList = document.getElementById('dailyFoliosList');
             const dailyFoliosTitle = document.getElementById('dailyFoliosTitle');
@@ -123,9 +137,7 @@ function initializeCalendar(authToken) {
                     
                     listItem.addEventListener('click', () => {
                         dailyFoliosModal.classList.add('hidden');
-                        window.currentEditingFolio = folio;
-                        populateFolioModal(folio);
-                        document.getElementById('folioModal').classList.remove('hidden');
+                        showFolioModalWithRoleCheck(folio);
                     });
                     dailyFoliosList.appendChild(listItem);
                 });
@@ -140,11 +152,9 @@ function initializeCalendar(authToken) {
             const folio = info.event.extendedProps.folioData;
             const foliosForDay = allFoliosData.filter(f => f.deliveryDate === folio.deliveryDate);
             foliosForDay.sort((a, b) => a.deliveryTime.localeCompare(b.deliveryTime));
-            dailyFoliosCache = foliosForDay; // Guardamos la lista al hacer clic en un evento también
+            dailyFoliosCache = foliosForDay;
 
-            window.currentEditingFolio = folio;
-            populateFolioModal(folio);
-            document.getElementById('folioModal').classList.remove('hidden');
+            showFolioModalWithRoleCheck(folio);
         }
     });
     calendar.render();
@@ -217,9 +227,7 @@ function initializeCalendar(authToken) {
 
                     dailyFoliosCache = [];
                     
-                    window.currentEditingFolio = folioData;
-                    populateFolioModal(folioData);
-                    document.getElementById('folioModal').classList.remove('hidden');
+                    showFolioModalWithRoleCheck(folioData);
                 } catch (error) {
                     console.error('Error fetching folio details:', error);
                 }

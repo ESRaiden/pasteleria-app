@@ -28,3 +28,51 @@ exports.createUser = async (req, res) => {
     res.status(500).json({ message: 'Error al crear el usuario', error: error.message });
   }
 };
+
+// ACTUALIZAR un usuario existente (ej. cambiar rol)
+exports.updateUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { role } = req.body; // Por ahora, solo permitimos cambiar el rol
+
+    if (req.user.id == userId && role !== 'Administrador') {
+        return res.status(403).json({ message: 'No puedes quitarte tu propio rol de administrador.' });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado.' });
+    }
+
+    user.role = role;
+    await user.save();
+
+    const userResponse = user.toJSON();
+    delete userResponse.password;
+
+    res.status(200).json({ message: 'Usuario actualizado correctamente.', user: userResponse });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar el usuario.', error: error.message });
+  }
+};
+
+// ELIMINAR un usuario
+exports.deleteUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    if (req.user.id == userId) {
+      return res.status(403).json({ message: 'No puedes eliminar tu propia cuenta de administrador.' });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado.' });
+    }
+
+    await user.destroy();
+    res.status(200).json({ message: 'Usuario eliminado correctamente.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al eliminar el usuario.', error: error.message });
+  }
+};
