@@ -123,7 +123,6 @@ function initializeCalendar(authToken) {
                     
                     listItem.addEventListener('click', () => {
                         dailyFoliosModal.classList.add('hidden');
-                        // --- CORRECCIÓN ---
                         window.currentEditingFolio = folio;
                         populateFolioModal(folio);
                         document.getElementById('folioModal').classList.remove('hidden');
@@ -143,7 +142,6 @@ function initializeCalendar(authToken) {
             foliosForDay.sort((a, b) => a.deliveryTime.localeCompare(b.deliveryTime));
             dailyFoliosCache = foliosForDay; // Guardamos la lista al hacer clic en un evento también
 
-            // --- CORRECCIÓN ---
             window.currentEditingFolio = folio;
             populateFolioModal(folio);
             document.getElementById('folioModal').classList.remove('hidden');
@@ -217,10 +215,8 @@ function initializeCalendar(authToken) {
                     const response = await fetch(`http://localhost:3000/api/folios/${folioId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
                     const folioData = await response.json();
 
-                    // Cuando se busca, no tenemos un "día" seleccionado, así que vaciamos la caché
                     dailyFoliosCache = [];
                     
-                    // --- CORRECCIÓN ---
                     window.currentEditingFolio = folioData;
                     populateFolioModal(folioData);
                     document.getElementById('folioModal').classList.remove('hidden');
@@ -242,6 +238,7 @@ function initializeCalendar(authToken) {
     const editFolioButton = document.getElementById('editFolioButton');
     const viewPdfButton = document.getElementById('viewPdfButton');
     const modal = document.getElementById('folioModal');
+    const deleteFolioButton = document.getElementById('deleteFolioButton');
 
     if (closeModalBtn) { closeModalBtn.addEventListener('click', () => modal.classList.add('hidden')); }
     
@@ -252,7 +249,6 @@ function initializeCalendar(authToken) {
                 modal.classList.add('hidden');
                 document.getElementById('loading').classList.remove('hidden');
                 try {
-                    // No es necesario volver a pedir los datos, ya los tenemos en currentFolio
                     if (window.populateFormForEdit) window.populateFormForEdit(currentFolio);
                     if(window.showMainView) window.showMainView('form');
                 } catch (error) {
@@ -264,28 +260,57 @@ function initializeCalendar(authToken) {
         });
     }
 
-    // --- BLOQUE DE CÓDIGO CORREGIDO ---
     if (viewPdfButton) {
         viewPdfButton.addEventListener('click', () => {
             const currentFolio = window.currentEditingFolio;
     
             if (currentFolio) {
-                // Buscamos el folio actual en la lista del día que ya guardamos
                 const currentFolioIndex = dailyFoliosCache.findIndex(f => f.id === currentFolio.id);
                 
-                // Si la caché del día existe y el folio está en ella, la usamos para la navegación
                 if (currentFolioIndex !== -1 && dailyFoliosCache.length > 0) {
                     window.openPdfViewer(dailyFoliosCache, currentFolioIndex);
                 } else {
-                    // Si no, simplemente abrimos el visor con el folio actual en una lista de un solo elemento
-                    // Esto deshabilita la navegación y evita abrir una nueva pestaña.
                     window.openPdfViewer([currentFolio], 0);
                 }
-                modal.classList.add('hidden'); // Ocultamos el modal de detalles en ambos casos
+                modal.classList.add('hidden');
             }
         });
     }
-    // --- FIN DEL BLOQUE CORREGIDO ---
+
+    if (deleteFolioButton) {
+        deleteFolioButton.addEventListener('click', async () => {
+            const currentFolio = window.currentEditingFolio;
+    
+            if (currentFolio) {
+                if (confirm(`¿Estás seguro de que deseas eliminar el folio ${currentFolio.folioNumber}? Esta acción no se puede deshacer.`)) {
+                    const folioId = currentFolio.id;
+                    modal.classList.add('hidden');
+                    document.getElementById('loading').classList.remove('hidden');
+    
+                    try {
+                        const response = await fetch(`http://localhost:3000/api/folios/${folioId}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${authToken}` }
+                        });
+    
+                        const result = await response.json();
+    
+                        if (!response.ok) {
+                            throw new Error(result.message || 'No se pudo eliminar el folio.');
+                        }
+    
+                        alert(result.message);
+                        calendar.refetchEvents();
+    
+                    } catch (error) {
+                        alert(`Error: ${error.message}`);
+                    } finally {
+                        document.getElementById('loading').classList.add('hidden');
+                    }
+                }
+            }
+        });
+    }
 
     const printLabelsButton = document.getElementById('printLabelsButton');
     const printOrdersButton = document.getElementById('printOrdersButton');
