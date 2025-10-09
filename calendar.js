@@ -5,6 +5,7 @@ function initializeCalendar(authToken) {
 
     let calendar;
     let allFoliosData = []; // Variable para almacenar todos los folios
+    let dailyFoliosCache = []; // Variable para guardar los folios del día seleccionado
 
     // Función para buscar y obtener los folios desde el servidor.
     function fetchFolios(query = '', successCallback, failureCallback) {
@@ -53,7 +54,7 @@ function initializeCalendar(authToken) {
         const [hour, minute] = timeString.split(':');
         const hour12 = (parseInt(hour) % 12) || 12;
         const period = parseInt(hour) >= 12 ? 'PM' : 'AM';
-        const formattedTime = `${hour12}:${minute} ${period}`;
+        const formattedTime = `${hour12.toString().padStart(2, '0')}:${minute} ${period}`;
 
         modalFolioNumber.innerText = `Folio: ${folio.folioNumber}`;
 
@@ -92,6 +93,8 @@ function initializeCalendar(authToken) {
             const foliosForDay = allFoliosData.filter(folio => folio.deliveryDate === info.dateStr);
             
             foliosForDay.sort((a, b) => a.deliveryTime.localeCompare(b.deliveryTime));
+            
+            dailyFoliosCache = foliosForDay; // Guardamos la lista de folios del día
 
             const dailyFoliosList = document.getElementById('dailyFoliosList');
             const dailyFoliosTitle = document.getElementById('dailyFoliosTitle');
@@ -135,6 +138,10 @@ function initializeCalendar(authToken) {
 
         eventClick: function(info) {
             const folio = info.event.extendedProps.folioData;
+            const foliosForDay = allFoliosData.filter(f => f.deliveryDate === folio.deliveryDate);
+            foliosForDay.sort((a, b) => a.deliveryTime.localeCompare(b.deliveryTime));
+            dailyFoliosCache = foliosForDay; // Guardamos la lista al hacer clic en un evento también
+
             window.currentEditingFolioId = folio.id;
             populateFolioModal(folio);
             document.getElementById('folioModal').classList.remove('hidden');
@@ -207,6 +214,9 @@ function initializeCalendar(authToken) {
                 try {
                     const response = await fetch(`http://localhost:3000/api/folios/${folioId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
                     const folioData = await response.json();
+
+                    // Cuando se busca, no tenemos un "día" seleccionado, así que vaciamos la caché
+                    dailyFoliosCache = [];
                     
                     window.currentEditingFolioId = folioData.id;
                     populateFolioModal(folioData);
@@ -255,14 +265,22 @@ function initializeCalendar(authToken) {
         });
     }
 
-    // ==================== INICIO DE LA CORRECCIÓN ====================
     if (viewPdfButton) {
         viewPdfButton.addEventListener('click', () => {
             if (window.currentEditingFolioId) {
-                // Se obtiene el token más reciente directamente desde localStorage
-                const currentToken = localStorage.getItem('authToken');
-                const urlWithToken = `http://localhost:3000/api/folios/${window.currentEditingFolioId}/pdf?token=${currentToken}`;
-                window.open(urlWithToken, '_blank');
+                // Buscamos el folio actual en la lista del día que ya guardamos
+                const currentFolioIndex = dailyFoliosCache.findIndex(f => f.id === window.currentEditingFolioId);
+                
+                if (currentFolioIndex !== -1 && dailyFoliosCache.length > 0) {
+                    // Llamamos a la nueva función que controlará el visor
+                    window.openPdfViewer(dailyFoliosCache, currentFolioIndex);
+                    modal.classList.add('hidden'); // Ocultamos el modal de detalles
+                } else {
+                    // Si por alguna razón no está en la caché (ej. búsqueda), lo abrimos como antes
+                    const currentToken = localStorage.getItem('authToken');
+                    const urlWithToken = `http://localhost:3000/api/folios/${window.currentEditingFolioId}/pdf?token=${currentToken}`;
+                    window.open(urlWithToken, '_blank');
+                }
             }
         });
     }
@@ -291,7 +309,6 @@ function initializeCalendar(authToken) {
             }
         });
     }
-    // ===================== FIN DE LA CORRECCIÓN ======================
 
     const dailySearchInput = document.getElementById('dailyFolioSearch');
     if (dailySearchInput) {

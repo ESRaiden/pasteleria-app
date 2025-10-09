@@ -256,6 +256,23 @@
         </div>
     </div>
 
+    <div id="pdfViewerModal" class="fixed inset-0 bg-gray-900 hidden z-50">
+        <div class="relative h-full w-full">
+            <iframe id="pdfFrame" class="w-full h-full border-none" src=""></iframe>
+
+            <button id="prevFolioBtn" class="pdf-nav-btn left-4 z-10">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <button id="nextFolioBtn" class="pdf-nav-btn right-4 z-10">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+
+            <div class="absolute bottom-0 left-0 right-0 z-20 p-4 bg-black bg-opacity-50 flex justify-between items-center transition-opacity duration-300 opacity-0 hover:opacity-100">
+                <h3 id="pdfViewerTitle" class="text-white text-lg font-bold select-none">Visor de Folios</h3>
+                <button id="closePdfViewer" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Cerrar Visor</button>
+            </div>
+        </div>
+    </div>
     <script src="main.js"></script>
     <script src="calendar.js"></script>
 </body>

@@ -15,9 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formTitle = document.getElementById('formTitle'),
         clientNameInput = document.getElementById('clientName'),
         clientPhoneInput = document.getElementById('clientPhone'),
-        // ==================== INICIO DE LA CORRECCIÓN ====================
         clientPhone2Input = document.getElementById('clientPhone2'),
-        // ===================== FIN DE LA CORRECCIÓN ======================
         deliveryDateInput = document.getElementById('deliveryDate'),
         deliveryHourSelect = document.getElementById('deliveryHour'),
         deliveryMinuteSelect = document.getElementById('deliveryMinute'),
@@ -45,6 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
         intNumberInput = document.getElementById('intNumber'),
         neighborhoodInput = document.getElementById('neighborhood'),
         addressFields = document.getElementById('addressFields'),
+        deliveryAddressSection = document.getElementById('deliveryAddressSection'),
         cancelFormButton = document.getElementById('cancelFormButton'),
         addCakeFlavorBtn = document.getElementById('addCakeFlavorBtn'),
         addFillingBtn = document.getElementById('addFillingBtn'),
@@ -186,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         clientNameInput.value = folio.client.name;
         clientPhoneInput.value = folio.client.phone;
-        clientPhone2Input.value = folio.client.phone2 || ''; // Cargar teléfono 2
+        clientPhone2Input.value = folio.client.phone2 || '';
         deliveryDateInput.value = folio.deliveryDate;
         personsInput.value = folio.persons;
         shapeInput.value = folio.shape;
@@ -337,7 +336,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // --- LÓGICA DEL FORMULARIO ---
-
     folioForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const editingId = folioForm.dataset.editingId;
@@ -354,7 +352,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (deliveryPeriodSelect.value === 'AM' && hour === 12) { hour = 0; }
         const deliveryTime = `${hour.toString().padStart(2, '0')}:${deliveryMinuteSelect.value}:00`;
 
-        // ==================== INICIO DE LA CORRECCIÓN ====================
         let deliveryLocation = '';
         if (inStorePickupCheckbox.checked) {
             deliveryLocation = 'Recoge en Tienda';
@@ -366,11 +363,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 deliveryLocation = address;
             }
         }
-        // ===================== FIN DE LA CORRECCIÓN ======================
 
         formData.append('clientName', clientNameInput.value);
         formData.append('clientPhone', clientPhoneInput.value);
-        formData.append('clientPhone2', clientPhone2Input.value); // Enviar teléfono 2
+        formData.append('clientPhone2', clientPhone2Input.value);
         formData.append('deliveryDate', deliveryDateInput.value);
         formData.append('deliveryTime', deliveryTime);
         formData.append('folioType', folioTypeSelect.value);
@@ -632,17 +628,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ==================== INICIO DE LA CORRECCIÓN ====================
     inStorePickupCheckbox.addEventListener('change', function() { 
         deliveryAddressSection.classList.toggle('hidden', this.checked); 
         deliveryCostInput.readOnly = this.checked; 
-        if (this.checked) deliveryCostInput.value = '0'; 
+        if (this.checked) {
+            deliveryCostInput.value = '0'; 
+        }
         updateTotals(); 
     });
-
-    // Se elimina el listener que deshabilitaba los campos
-    // googleMapsLocationCheckbox.addEventListener('change', function() { addressFields.classList.toggle('disabled-section', this.checked); });
-    // ===================== FIN DE LA CORRECCIÓN ======================
 
     function getGrandTotal() {
         const total = parseFloat(totalInput.value) || 0;
@@ -855,4 +848,76 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.showMainView = showView;
+
+    // ==================== LÓGICA DEL VISOR DE PDFS (CORREGIDA) ====================
+    const pdfViewerModal = document.getElementById('pdfViewerModal');
+    const closePdfViewerBtn = document.getElementById('closePdfViewer');
+    const pdfViewerTitle = document.getElementById('pdfViewerTitle');
+    const pdfFrame = document.getElementById('pdfFrame');
+    const prevFolioBtn = document.getElementById('prevFolioBtn');
+    const nextFolioBtn = document.getElementById('nextFolioBtn');
+
+    let currentFolioList = [];
+    let currentFolioIndex = -1;
+
+    function updatePdfViewer() {
+        if (currentFolioIndex < 0 || currentFolioIndex >= currentFolioList.length) {
+            return;
+        }
+
+        const folio = currentFolioList[currentFolioIndex];
+        const authToken = localStorage.getItem('authToken');
+        const pdfUrl = `http://localhost:3000/api/folios/${folio.id}/pdf?token=${authToken}`;
+
+        pdfViewerTitle.innerText = `Viendo Folio: ${folio.folioNumber} (${currentFolioIndex + 1} de ${currentFolioList.length})`;
+        pdfFrame.src = pdfUrl;
+
+        prevFolioBtn.disabled = currentFolioIndex === 0;
+        nextFolioBtn.disabled = currentFolioIndex === currentFolioList.length - 1;
+    }
+
+    window.openPdfViewer = (folios, index) => {
+        currentFolioList = folios;
+        currentFolioIndex = index;
+        updatePdfViewer();
+        pdfViewerModal.classList.remove('hidden');
+        // --- INICIO CORRECCIÓN DE FOCO ---
+        setTimeout(() => window.focus(), 100); 
+        // --- FIN CORRECCIÓN DE FOCO ---
+    };
+
+    function closePdfViewer() {
+        pdfViewerModal.classList.add('hidden');
+        pdfFrame.src = 'about:blank';
+    }
+
+    closePdfViewerBtn.addEventListener('click', closePdfViewer);
+
+    prevFolioBtn.addEventListener('click', () => {
+        if (currentFolioIndex > 0) {
+            currentFolioIndex--;
+            updatePdfViewer();
+        }
+    });
+
+    nextFolioBtn.addEventListener('click', () => {
+        if (currentFolioIndex < currentFolioList.length - 1) {
+            currentFolioIndex++;
+            updatePdfViewer();
+        }
+    });
+
+    // --- INICIO CORRECCIÓN DE FOCO Y TECLA ESCAPE ---
+    window.addEventListener('keydown', (e) => {
+        if (e.key === "Escape" && !pdfViewerModal.classList.contains('hidden')) {
+            closePdfViewer();
+        }
+    });
+
+    window.addEventListener('mouseover', () => {
+        if (!pdfViewerModal.classList.contains('hidden')) {
+            window.focus();
+        }
+    });
+    // --- FIN CORRECCIÓN DE FOCO Y TECLA ESCAPE ---
 });

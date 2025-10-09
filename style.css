@@ -57,24 +57,43 @@ input:read-only, input:disabled, textarea:disabled { background-color: #e9ecef; 
     font-size: 0.8rem; color: #ef4444; margin-left: 8px;
 }
 
-/* --- INICIO DE LA CORRECCIÓN: ESTILOS PARA EL MODAL DE VISTA PREVIA --- */
-
-/* Oculta el modal cuando tiene la clase 'hidden' */
-#folioModal.hidden {
-    display: none;
-}
-
-/* Estilos del fondo oscuro y contenedor principal del modal */
-#folioModal {
+/* --- ESTILOS PARA MODALES GENERALES (Folio, DailyFolios) --- */
+#folioModal, #dailyFoliosModal {
     position: fixed;
-    inset: 0; /* Equivalente a top: 0; right: 0; bottom: 0; left: 0; */
+    inset: 0;
     background-color: rgba(0, 0, 0, 0.6);
     overflow-y: auto;
     height: 100%;
     width: 100%;
-    display: flex; /* La clave para centrar vertical y horizontalmente */
+    display: flex;
+    align-items: flex-start; /* Alinea al inicio para que el top-10/top-20 funcione */
+    justify-content: center;
+    z-index: 50;
+    padding-top: 5vh; /* Añade un poco de espacio superior */
+}
+
+/* --- ESTILOS VISOR PDF PANTALLA COMPLETA --- */
+.pdf-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.3);
+    color: white;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 50; /* Asegura que esté por encima del resto del contenido */
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
 }
-/* --- FIN DE LA CORRECCIÓN --- */
+
+.pdf-nav-btn:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+.pdf-nav-btn:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+}
