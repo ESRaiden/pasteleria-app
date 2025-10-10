@@ -312,6 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // ==================== INICIO DE LA CORRECCIÓN ====================
     function showAppView(token, role) {
         loginView.classList.add('hidden');
         appView.classList.remove('hidden');
@@ -323,8 +324,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (window.initializeCalendar) {
             window.initializeCalendar(token, role);
+
+            // FIX: Forzamos la recarga de eventos en la carga inicial
+            // para evitar una condición de carrera al abrir el archivo directamente.
+            setTimeout(() => {
+                if (window.myAppCalendar) {
+                    window.myAppCalendar.refetchEvents();
+                }
+            }, 100);
         }
     }
+    // ===================== FIN DE LA CORRECCIÓN ======================
 
     function handleLogout() {
         localStorage.removeItem('authToken');
