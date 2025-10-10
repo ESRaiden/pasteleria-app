@@ -1016,15 +1016,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     addComplementButton.addEventListener('click', () => addComplementRow());
     
-    // --- INICIALIZACIÓN ---
-    const storedToken = localStorage.getItem('authToken');
-    if (storedToken) {
-        const tokenPayload = JSON.parse(atob(storedToken.split('.')[1]));
-        const userRole = tokenPayload.role;
-        window.currentUserRole = userRole;
-        showAppView(storedToken, userRole);
-    }
-
     window.showMainView = showView;
 
     // ==================== LÓGICA DEL VISOR DE PDFS (CORREGIDA) ====================
