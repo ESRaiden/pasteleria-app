@@ -335,6 +335,19 @@ exports.markAsPrinted = async (req, res) => {
     }
 };
 
+exports.cancelFolio = async (req, res) => {
+    try {
+        const folio = await Folio.findByPk(req.params.id);
+        if (!folio) {
+            return res.status(404).json({ message: 'Folio no encontrado' });
+        }
+        await folio.update({ status: 'Cancelado' });
+        res.status(200).json({ message: 'El folio ha sido cancelado.' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al cancelar el folio', error: error.message });
+    }
+};
+
 exports.generateDaySummaryPdf = async (req, res) => {
     const { date, type } = req.query;
 

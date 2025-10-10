@@ -12,14 +12,22 @@
         }
         .page-break { page-break-before: always; }
         .paid-watermark { 
-            position: fixed; z-index: -1; top: 50%; left: 50%; 
+            position: fixed;
+            z-index: -1; top: 50%; left: 50%; 
             transform: translate(-50%, -50%) rotate(-45deg); 
             font-size: 100px; font-weight: bold; color: rgba(40, 167, 69, 0.15);
+        }
+        .cancel-watermark { 
+            position: fixed;
+            z-index: -1; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%) rotate(-45deg); 
+            font-size: 100px; font-weight: bold; color: rgba(220, 53, 69, 0.15);
         }
 
         /* --- ENCABEZADO Y FOLIO --- */
         .header {
-            display: flex; justify-content: space-between; align-items: flex-start;
+            display: flex;
+            justify-content: space-between; align-items: flex-start;
             padding-bottom: 10px; border-bottom: 2px solid #f0f0f0;
         }
         .header-info { text-align: left; }
@@ -38,12 +46,14 @@
             margin-top: 12px;
         }
         .section { 
-            border: 1px solid #e9ecef; border-radius: 8px; padding: 9px; 
+            border: 1px solid #e9ecef;
+            border-radius: 8px; padding: 9px; 
             margin-bottom: 10px; page-break-inside: avoid; 
         }
         .full-width { grid-column: 1 / -1; }
 
-        .section-title { font-size: 10pt; font-weight: bold; color: #d9534f; text-transform: uppercase; margin-bottom: 7px; border-bottom: 1px solid #f0f0f0; padding-bottom: 4px; }
+        .section-title { font-size: 10pt; font-weight: bold; color: #d9534f; text-transform: uppercase; margin-bottom: 7px;
+            border-bottom: 1px solid #f0f0f0; padding-bottom: 4px; }
         .data-item { margin-bottom: 4px; line-height: 1.35; }
         .data-label { font-weight: bold; color: #495057; }
         .account-item { display: flex; justify-content: space-between; margin-bottom: 3px; }
@@ -73,6 +83,7 @@
 <body>
     <div>
         <% if (folio.isPaid) { %><div class="paid-watermark">PAGADO</div><% } %>
+        <% if (folio.status === 'Cancelado') { %><div class="cancel-watermark">CANCELADO</div><% } %>
 
         <div class="header">
             <div class="header-info">

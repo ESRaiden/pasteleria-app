@@ -38,7 +38,10 @@ router.route('/:id')
 // Ruta especial para generar el PDF de un solo folio
 router.get('/:id/pdf', folioController.generateFolioPdf);
 
-// --- NUEVA RUTA PARA MARCAR UN FOLIO COMO IMPRESO ---
+// --- RUTA PARA MARCAR UN FOLIO COMO IMPRESO ---
 router.patch('/:id/mark-as-printed', folioController.markAsPrinted);
+
+// --- NUEVA RUTA PARA CANCELAR UN FOLIO ---
+router.patch('/:id/cancel', folioController.cancelFolio);
 
 module.exports = router;

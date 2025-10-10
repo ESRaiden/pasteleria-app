@@ -75,11 +75,28 @@ function initializeCalendar(authToken, userRole) {
         populateFolioModal(folio);
 
         const deleteBtn = document.getElementById('deleteFolioButton');
+        const editBtn = document.getElementById('editFolioButton');
+        const cancelBtn = document.getElementById('cancelFolioButton');
+
         if (userRole === 'Administrador') {
             deleteBtn.style.display = 'inline-block';
         } else {
             deleteBtn.style.display = 'none';
         }
+
+        // Deshabilitar botones si el folio está cancelado
+        if (folio.status === 'Cancelado') {
+            editBtn.disabled = true;
+            cancelBtn.disabled = true;
+            editBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            cancelBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            editBtn.disabled = false;
+            cancelBtn.disabled = false;
+            editBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            cancelBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
 
         document.getElementById('folioModal').classList.remove('hidden');
     }
@@ -127,14 +144,19 @@ function initializeCalendar(authToken, userRole) {
                     listItem.dataset.phone = folio.client?.phone || '';
 
                     const time = folio.deliveryTime.substring(0, 5);
-                    let itemHTML = `<span>${time} - Folio ${folio.folioNumber} - ${folio.client ? folio.client.name : 'N/A'}</span>`;
                     
-                    if (folio.isPrinted) {
-                        itemHTML += `<span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">IMPRESO</span>`;
+                    let statusTag = '';
+                    if (folio.status === 'Cancelado') {
+                        statusTag = `<span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded-full">CANCELADO</span>`;
+                    } else if (folio.isPrinted) {
+                        statusTag = `<span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">IMPRESO</span>`;
                     }
                     
-                    listItem.innerHTML = itemHTML;
-                    
+                    listItem.innerHTML = `
+                        <span>${time} - Folio ${folio.folioNumber} - ${folio.client ? folio.client.name : 'N/A'}</span>
+                        ${statusTag}
+                    `;
+
                     listItem.addEventListener('click', () => {
                         dailyFoliosModal.classList.add('hidden');
                         showFolioModalWithRoleCheck(folio);
@@ -247,6 +269,32 @@ function initializeCalendar(authToken, userRole) {
     const viewPdfButton = document.getElementById('viewPdfButton');
     const modal = document.getElementById('folioModal');
     const deleteFolioButton = document.getElementById('deleteFolioButton');
+    const cancelFolioButton = document.getElementById('cancelFolioButton');
+
+    if(cancelFolioButton){
+        cancelFolioButton.addEventListener('click', async () => {
+            const currentFolio = window.currentEditingFolio;
+            if (currentFolio && confirm(`¿Estás seguro de que deseas CANCELAR el folio ${currentFolio.folioNumber}?`)) {
+                modal.classList.add('hidden');
+                document.getElementById('loading').classList.remove('hidden');
+                try {
+                    const response = await fetch(`http://localhost:3000/api/folios/${currentFolio.id}/cancel`, {
+                        method: 'PATCH',
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message);
+                    alert(result.message);
+                    calendar.refetchEvents();
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                } finally {
+                    document.getElementById('loading').classList.add('hidden');
+                }
+            }
+        });
+    }
+
 
     if (closeModalBtn) { closeModalBtn.addEventListener('click', () => modal.classList.add('hidden')); }
     
