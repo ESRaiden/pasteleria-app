@@ -253,9 +253,48 @@ document.addEventListener('DOMContentLoaded', function() {
         normal: ['Pastel de queso', 'Pan de tres leches', 'Chocolate', 'Red Velvet', 'Mil Hojas', 'Zanahoria', 'Queso/Flan', 'Mantequilla'],
         tier: ['Mantequilla', 'Queso', 'Nata', 'Chocolate', 'Vainilla', 'Flan', 'Red Velvet']
     };
+
     const rellenosData = {
-        'incluidos': { 'Mermelada': ['Zarzamora', 'Fresa', 'Piña', 'Durazno'], 'Manjar': ['Nuez', 'Coco', 'Almendra'], 'Dulce de Leche': ['Envinada', 'Nuez', 'Almendra', 'Coco'], 'Duraznos': ['Crema de Yogurth', 'Chantilly', 'Rompope'], 'Nuez': ['Manjar', 'Mocka', 'Capuchino'] },
-        'conCosto': { 'Cajeta': ['Nuez', 'Coco', 'Almendra', 'Oreo'], 'Crema de Queso': ['Mermelada zarzamora', 'Mermelada fresa', 'Cajeta', 'Envinada'], 'Oreo': ['Manjar', 'Crema de yogurth fresa', 'Crema de chocolate', 'Chantilly'], 'Cremas': ['Mocka', 'Yogurth de fresa', 'Café con o sin brandy'], 'Chantilly con fresas': [], 'Nutella': [], 'Cocktail de frutas': ['Chantilly', 'Crema de queso', 'Crema de Yogurth'], 'Crema de queso con Chocoretas': [], 'Snickers / Milky Way': ['Manjar', 'Chantilly', 'Crema de yogurth fresa', 'Crema de chocolate'] }
+        'incluidos': {
+            'Mermelada':      { suboptions: ['Fresa', 'Zarzamora', 'Piña', 'Durazno'], separator: ' de ' },
+            'Manjar':         { suboptions: ['Snickers', 'Nuez', 'Almendra', 'Coco'], separator: ' con ' },
+            'Dulce de Leche': { suboptions: ['Envinada', 'Nuez', 'Almendra', 'Coco'], separator: ' con ' },
+            'Duraznos':       { suboptions: ['Crema de Yogurth', 'Chantilly', 'Rompope'], separator: ' con ' },
+            'Nuez':           { suboptions: ['Manjar', 'Mocka', 'Capuchino'], separator: ' con ' }
+        },
+        'conCosto': {
+            'Chantilly':            { suboptions: ['Durazno', 'Cocktail de Frutas', 'Snickers'], separator: ' con ' },
+            'Cajeta':               { suboptions: ['Nuez', 'Coco', 'Almendra', 'Oreo'], separator: ' con ' },
+            'Crema de Queso':       { suboptions: ['Mermelada zarzamora', 'Mermelada fresa', 'Cajeta', 'Envinada'], separator: ' con ' },
+            'Oreo':                 { suboptions: ['Manjar', 'Crema de yogurth fresa', 'Crema de chocolate', 'Chantilly'], separator: ' con ' },
+            'Cremas':               { suboptions: ['Mocka', 'Yogurth de fresa', 'Café con o sin brandy'], separator: ' con ' },
+            'Cocktail de frutas':   { suboptions: ['Chantilly', 'Crema de queso', 'Crema de Yogurth'], separator: ' con ' },
+            'Snickers / Milky Way': { suboptions: ['Manjar', 'Chantilly', 'Crema de yogurth fresa', 'Crema de chocolate'], separator: ' con ' },
+            'Chantilly con fresas': { suboptions: [] },
+            'Nutella':              { suboptions: [] },
+            'Crema de queso con Chocoretas': { suboptions: [] }
+        }
+    };
+    
+    const rellenosDataEspecial = {
+        principales: [
+            { name: 'CREMA DE QUESO', suboptions: [] },
+            { name: 'CREMA DE NUTELLA', suboptions: [] },
+            { name: 'PIÑA DE COCO', suboptions: [] },
+            { name: 'CAJETA CON', suboptions: ['NUEZ', 'COCO'], separator: ' ' },
+            { name: 'MERMELADA', suboptions: ['FRESA', 'ZARZAMORA', 'PIÑA', 'DURAZNO'], separator: ' de ' },
+            { name: 'CHANTILLY', suboptions: ['DURAZNO', 'COCKTAIL DE FRUTAS', 'SNICKERS'], separator: ' con ' },
+            { name: 'MANJAR', suboptions: ['SNICKERS', 'NUEZ', 'ALMENDRA', 'COCO'], separator: ' con ' },
+            { name: 'MANJAR CAJETA', suboptions: [] },
+            { name: 'MANJAR CHOCOLATE', suboptions: [] },
+            { name: 'CREMA DE TEQUILA', suboptions: [] },
+            { name: 'CREMA DE MANY', suboptions: [] },
+            { name: 'CREMA DE CAPUCCINO', suboptions: [] }
+        ],
+        secundarios: [
+            'Manjar', 'Crema francesa de yogurt de fresa', 'Crema francesa de rompope', 
+            'Crema francesa de café', 'Crema francesa de chocolate'
+        ]
     };
 
     // --- FUNCIONES DE MANEJO DE VISTAS Y SESIÓN ---
@@ -445,14 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return (relleno && relleno.hasCost && numPersons > 0) ? sum + ((numPersons / 20) * 30) : sum;
             }, 0);
         } else if (folio.folioType === 'Base/Especial') {
-            fillingCost = (folio.tiers || []).reduce((sum, tier) => {
-                if (!tier) return sum; 
-                const tierPersons = parseInt(tier.persons, 10) || 0;
-                const tierFillingCost = (tier.rellenos || []).reduce((tierSum, relleno) => {
-                    return (relleno && relleno.hasCost && tierPersons > 0) ? tierSum + ((tierPersons / 20) * 30) : tierSum;
-                }, 0);
-                return sum + tierFillingCost;
-            }, 0);
+            fillingCost = 0;
         }
 
         const baseCakeCost = parseFloat(folio.total) - parseFloat(folio.deliveryCost) - additionalCost - fillingCost;
@@ -728,23 +760,30 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function openRellenoModal(onSelectCallback, currentRellenos, limit) {
         const showStep1 = () => {
-            modalTitle.textContent = 'Añadir Relleno (Paso 1 de 2)';
+            modalTitle.textContent = 'Añadir Relleno';
             modalStep1.classList.remove('hidden');
             modalStep2.classList.add('hidden');
             modalSearch.value = '';
             modalList.innerHTML = '';
-            [...Object.keys(rellenosData.incluidos).map(name => ({ name, hasCost: false })), ...Object.keys(rellenosData.conCosto).map(name => ({ name, hasCost: true }))].forEach(titular => {
+            
+            const allRellenos = [
+                ...Object.keys(rellenosData.incluidos).map(name => ({ name, hasCost: false, data: rellenosData.incluidos[name] })),
+                ...Object.keys(rellenosData.conCosto).map(name => ({ name, hasCost: true, data: rellenosData.conCosto[name] }))
+            ];
+
+            allRellenos.forEach(titular => {
                 const itemEl = document.createElement('div');
                 itemEl.className = 'modal-list-item';
                 if (titular.hasCost) itemEl.classList.add('cost-extra');
                 itemEl.textContent = titular.name;
+
                 itemEl.addEventListener('click', () => {
-                    const complementos = (rellenosData.incluidos[titular.name] || rellenosData.conCosto[titular.name]);
-                    if (complementos && complementos.length > 0) {
-                        showStep2(titular, complementos);
+                    const suboptions = titular.data.suboptions;
+                    if (suboptions && suboptions.length > 0) {
+                        showStep2(titular, suboptions);
                     } else {
                         if (currentRellenos.length < limit) {
-                            onSelectCallback(titular);
+                            onSelectCallback({ name: titular.name, hasCost: titular.hasCost });
                             selectionModal.classList.add('hidden');
                         } else {
                             alert(`Solo puedes seleccionar un máximo de ${limit} rellenos.`);
@@ -753,20 +792,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 modalList.appendChild(itemEl);
             });
-        }
-        const showStep2 = (titular, complementos) => {
+        };
+
+        const showStep2 = (titular, suboptions) => {
             modalStep1.classList.add('hidden');
             modalStep2.classList.remove('hidden');
-            modalTitle.textContent = `Paso 2: Elige un complemento`;
-            modalStep2Title.innerHTML = `Complemento para "<b>${titular.name}</b>" <button type="button" class="back-to-step1 text-sm text-blue-600 hover:underline">(Volver)</button>`;
+            modalTitle.textContent = `Paso 2: Elige para "${titular.name}"`;
+            modalStep2Title.innerHTML = `Opción para "<b>${titular.name}</b>" <button type="button" class="back-to-step1 text-sm text-blue-600 hover:underline">(Volver)</button>`;
             modalStep2List.innerHTML = '';
-            complementos.forEach(comp => {
+            suboptions.forEach(comp => {
                 const compEl = document.createElement('div');
                 compEl.className = 'modal-list-item';
                 compEl.textContent = comp;
                 compEl.addEventListener('click', () => {
                      if (currentRellenos.length < limit) {
-                        onSelectCallback({ name: `${titular.name} con ${comp}`, hasCost: titular.hasCost });
+                        const separator = titular.data.separator || 'con';
+                        const finalName = `${titular.name} ${separator} ${comp}`;
+                        onSelectCallback({ name: finalName, hasCost: titular.hasCost });
                         selectionModal.classList.add('hidden');
                     } else {
                         alert(`Solo puedes seleccionar un máximo de ${limit} rellenos.`);
@@ -775,9 +817,91 @@ document.addEventListener('DOMContentLoaded', function() {
                 modalStep2List.appendChild(compEl);
             });
             modalStep2Title.querySelector('.back-to-step1').addEventListener('click', showStep1);
-        }
+        };
+        
         showStep1();
         selectionModal.classList.remove('hidden');
+    }
+
+    function openRellenoModalEspecial(onSelectCallback) {
+        let state = {
+            principal: null,       // El objeto principal seleccionado { name, suboptions, separator }
+            finalPrincipal: ''     // El string final del relleno principal
+        };
+
+        const showPrincipales = () => {
+            modalTitle.textContent = 'Paso 1: Elige un Relleno Principal';
+            modalStep1.classList.remove('hidden');
+            modalStep2.classList.add('hidden');
+            modalList.innerHTML = '';
+            
+            rellenosDataEspecial.principales.forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'modal-list-item';
+                itemEl.textContent = item.name + (item.suboptions.length > 0 ? ` (${item.suboptions.join(' / ')})` : '');
+                itemEl.addEventListener('click', () => {
+                    state.principal = item;
+                    if (item.suboptions && item.suboptions.length > 0) {
+                        showPrincipalSuboptions();
+                    } else {
+                        state.finalPrincipal = item.name;
+                        showSecundarios();
+                    }
+                });
+                modalList.appendChild(itemEl);
+            });
+            selectionModal.classList.remove('hidden');
+        };
+
+        const showPrincipalSuboptions = () => {
+            modalStep1.classList.add('hidden');
+            modalStep2.classList.remove('hidden');
+            modalTitle.textContent = `Elige una opción para "${state.principal.name}"`;
+            modalStep2Title.innerHTML = `Opción para "<b>${state.principal.name}</b>" <button type="button" class="back-to-step1 text-sm text-blue-600 hover:underline">(Volver)</button>`;
+            modalStep2List.innerHTML = '';
+
+            state.principal.suboptions.forEach(subItem => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'modal-list-item';
+                itemEl.textContent = subItem;
+                itemEl.addEventListener('click', () => {
+                    const separator = state.principal.separator || 'con';
+                    state.finalPrincipal = `${state.principal.name}${separator}${subItem}`;
+                    showSecundarios();
+                });
+                modalStep2List.appendChild(itemEl);
+            });
+            modalStep2Title.querySelector('.back-to-step1').addEventListener('click', showPrincipales);
+        };
+
+        const showSecundarios = () => {
+            modalStep1.classList.add('hidden');
+            modalStep2.classList.remove('hidden');
+            modalTitle.textContent = 'Paso 2: Elige un Relleno Secundario';
+            modalStep2Title.innerHTML = `Elegiste: "<b>${state.finalPrincipal}</b>" <button type="button" class="back-to-step1 text-sm text-blue-600 hover:underline">(Volver)</button>`;
+            modalStep2List.innerHTML = '';
+
+            rellenosDataEspecial.secundarios.forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'modal-list-item';
+                itemEl.textContent = item;
+                itemEl.addEventListener('click', () => {
+                    onSelectCallback([state.finalPrincipal, item]);
+                    selectionModal.classList.add('hidden');
+                });
+                modalStep2List.appendChild(itemEl);
+            });
+            
+            modalStep2Title.querySelector('.back-to-step1').addEventListener('click', () => {
+                if (state.principal.suboptions && state.principal.suboptions.length > 0) {
+                    showPrincipalSuboptions();
+                } else {
+                    showPrincipales();
+                }
+            });
+        };
+
+        showPrincipales();
     }
 
     modalCloseBtn.addEventListener('click', () => selectionModal.classList.add('hidden'));
@@ -817,15 +941,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const total = parseFloat(totalInput.value) || 0;
         const delivery = parseFloat(deliveryCostInput.value) || 0;
         const additionalFromList = additionalItems.reduce((sum, item) => sum + item.totalPrice, 0);
-        const persons = parseFloat(personsInput.value) || 0;
-        const normalFillingCost = selectedRellenos.reduce((sum, relleno) => (relleno && relleno.hasCost && persons > 0) ? sum + ((persons / 20) * 30) : sum, 0);
-        const tierFillingCost = tiersData.reduce((sum, tier, index) => {
-            if (!tier || !tiersTableBody.children[index]) return sum;
-            const row = tiersTableBody.children[index];
-            const tierPersons = parseFloat(row.querySelector('.tier-persons-input').value) || 0;
-            return sum + (tier.rellenos || []).reduce((tierSum, relleno) => (relleno && relleno.hasCost && tierPersons > 0) ? tierSum + ((tierPersons / 20) * 30) : tierSum, 0);
-        }, 0);
-        return total + delivery + additionalFromList + normalFillingCost + tierFillingCost;
+        
+        let fillingCost = 0;
+        if (folioTypeSelect.value === 'Normal') {
+            const persons = parseFloat(personsInput.value) || 0;
+            fillingCost = selectedRellenos.reduce((sum, relleno) => (relleno && relleno.hasCost && persons > 0) ? sum + ((persons / 20) * 30) : sum, 0);
+        }
+        
+        return total + delivery + additionalFromList + fillingCost;
     }
 
     function calculateBalance() {
@@ -894,7 +1017,7 @@ document.addEventListener('DOMContentLoaded', function() {
             row.querySelector('.tier-persons-input').value = tier.persons || '';
             row.querySelector('.tier-notes-input').value = tier.notas || '';
             renderTags(row.querySelector('.panes-container'), tier.panes || [], (tagIndex) => removeTierPane(index, tagIndex));
-            renderTags(row.querySelector('.fillings-container'), tier.rellenos || [], (tagIndex) => removeTierFilling(index, tagIndex));
+            renderTags(row.querySelector('.fillings-container'), (tier.rellenos || []).map(r => (typeof r === 'object' ? r.name : r)), (tagIndex) => removeTierFilling(index, tagIndex));
         }
         
         tiersTableBody.appendChild(row);
@@ -952,14 +1075,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderTags(row.querySelector('.panes-container'), tiersData[currentTierIndex].panes, (tagIndex) => removeTierPane(currentTierIndex, tagIndex));
             }
         };
-        const addTierFilling = (relleno) => { if (tiersData[currentTierIndex] && tiersData[currentTierIndex].rellenos.length < 2) { tiersData[currentTierIndex].rellenos.push(relleno); renderTags(row.querySelector('.fillings-container'), tiersData[currentTierIndex].rellenos, (tagIndex) => removeTierFilling(currentTierIndex, tagIndex)); updateTotals();
+
+        const addTierFilling = (rellenos) => { 
+            if (tiersData[currentTierIndex]) {
+                tiersData[currentTierIndex].rellenos = rellenos; 
+                renderTags(row.querySelector('.fillings-container'), tiersData[currentTierIndex].rellenos, (tagIndex) => removeTierFilling(currentTierIndex, tagIndex));
+                updateTotals();
             }
         };
 
         if (target.classList.contains('add-tier-pane-btn')) {
             openSelectionModal('Sabor de Pan (Piso)', cakeFlavorsData.tier, tiersData[currentTierIndex].panes, addTierPane, 3);
         } else if (target.classList.contains('add-tier-filling-btn')) {
-            openRellenoModal(addTierFilling, tiersData[currentTierIndex].rellenos, 2);
+            openRellenoModalEspecial(addTierFilling); 
         } else if (target.classList.contains('remove-tier-button')) {
             tiersData.splice(currentTierIndex, 1);
             row.remove();
@@ -1017,15 +1145,19 @@ document.addEventListener('DOMContentLoaded', function() {
     addComplementButton.addEventListener('click', () => addComplementRow());
     
     // --- INICIALIZACIÓN ---
-    // (SE ELIMINÓ EL CÓDIGO DE AUTO-LOGIN PARA SIEMPRE MOSTRAR EL LOGIN AL INICIO)
     const storedToken = localStorage.getItem('authToken');
     if (storedToken) {
-        const tokenPayload = JSON.parse(atob(storedToken.split('.')[1]));
-        const userRole = tokenPayload.role;
-        window.currentUserRole = userRole;
-        showAppView(storedToken, userRole);
+        try {
+            const tokenPayload = JSON.parse(atob(storedToken.split('.')[1]));
+            const userRole = tokenPayload.role;
+            window.currentUserRole = userRole;
+            showAppView(storedToken, userRole);
+        } catch (error) {
+            console.error("Error al decodificar el token:", error);
+            localStorage.removeItem('authToken');
+        }
     }
-    
+
     window.showMainView = showView;
 
     // ==================== LÓGICA DEL VISOR DE PDFS (CORREGIDA) ====================

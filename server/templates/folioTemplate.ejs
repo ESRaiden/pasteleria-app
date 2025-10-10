@@ -23,6 +23,13 @@
             transform: translate(-50%, -50%) rotate(-45deg); 
             font-size: 100px; font-weight: bold; color: rgba(220, 53, 69, 0.15);
         }
+        /* --- ESTILO MODIFICADO --- */
+        .balance-watermark { 
+            position: fixed;
+            z-index: -1; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%) rotate(-45deg); 
+            font-size: 100px; font-weight: bold; color: rgba(108, 117, 125, 0.35);
+        }
 
         /* --- ENCABEZADO Y FOLIO --- */
         .header {
@@ -84,6 +91,7 @@
     <div>
         <% if (folio.isPaid) { %><div class="paid-watermark">PAGADO</div><% } %>
         <% if (folio.status === 'Cancelado') { %><div class="cancel-watermark">CANCELADO</div><% } %>
+        <% if (folio.balance > 0 && folio.status !== 'Cancelado') { %><div class="balance-watermark">RESTA</div><% } %>
 
         <div class="header">
             <div class="header-info">
