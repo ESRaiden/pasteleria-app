@@ -192,6 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // ==================== INICIO DE LA MODIFICACIÓN ====================
     document.getElementById('userListBody').addEventListener('click', async (e) => {
         const target = e.target;
         const authToken = localStorage.getItem('authToken');
@@ -216,9 +217,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
         if (target.classList.contains('edit-user-btn')) {
             const currentRole = target.closest('tr').querySelector('[data-field="role"]').textContent;
-            const newRole = prompt(`Introduce el nuevo rol para el usuario con ID ${userId} (Opciones: Administrador, Usuario, Decorador):`, currentRole);
+            // Se actualiza el mensaje para reflejar los roles disponibles
+            const newRole = prompt(`Introduce el nuevo rol para el usuario con ID ${userId} (Opciones: Administrador, Usuario):`, currentRole);
             
-            const validRoles = ['Administrador', 'Usuario', 'Decorador'];
+            // Se elimina 'Decorador' de los roles válidos
+            const validRoles = ['Administrador', 'Usuario'];
             if (newRole && validRoles.includes(newRole)) {
                 try {
                     const response = await fetch(`http://localhost:3000/api/users/${userId}`, {
@@ -241,6 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     // --- VARIABLES DE ESTADO DEL FORMULARIO ---
     let additionalItems = [];
@@ -318,7 +322,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ==================== INICIO DE LA MODIFICACIÓN ====================
     function showAppView(token, role) {
         loginView.classList.add('hidden');
         appView.classList.remove('hidden');
@@ -328,7 +331,6 @@ document.addEventListener('DOMContentLoaded', function() {
             manageUsersButton.classList.remove('hidden');
             viewStatsButton.classList.remove('hidden');
         } else {
-            // Se asegura de ocultar los botones si el rol no es Administrador
             manageUsersButton.classList.add('hidden');
             viewStatsButton.classList.add('hidden');
         }
@@ -343,7 +345,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 100);
         }
     }
-    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     function handleLogout() {
         localStorage.removeItem('authToken');

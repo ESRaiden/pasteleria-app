@@ -19,11 +19,13 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  // ==================== INICIO DE LA MODIFICACIÓN ====================
   role: {
-    type: DataTypes.ENUM('Administrador', 'Usuario', 'Decorador'),
+    type: DataTypes.ENUM('Administrador', 'Usuario'), // Se elimina 'Decorador'
     allowNull: false,
     defaultValue: 'Usuario'
   }
+  // ===================== FIN DE LA MODIFICACIÓN ======================
 }, {
   tableName: 'users' // Asegura que el nombre de la tabla sea 'users'
 });
