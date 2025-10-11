@@ -3,16 +3,52 @@
 <head>
     <style>
         body { font-family: sans-serif; margin: 20px;
-        font-size: 10pt; }
-        .grid { display: grid; grid-template-columns: 1fr; gap: 15px;
+        font-size: 10.5pt; /* --- Aumentado de 9.5pt a 10.5pt --- */ }
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr;
+            gap: 25px; /* --- Aumentado para más espacio --- */
         }
-        .card { border: 2px dashed #999; padding: 15px; page-break-inside: avoid;
+        .card { 
+            border: 2px dashed #999; 
+            padding: 15px; /* --- Aumentado para más margen interno --- */
+            page-break-inside: avoid;
+            display: flex;
+            flex-direction: column;
         }
-        .card h3 { margin-top: 0;
+        .folio-header {
+            text-align: center;
+            border-bottom: 2px solid #555;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
         }
-        .card p { margin: 4px 0;
+        .folio-header h2 {
+            margin: 0;
+            font-size: 1.9em; /* --- Ligeramente más grande --- */
+            line-height: 1.1;
         }
-        .account-details { border-top: 1px solid #ccc; margin-top: 10px; padding-top: 10px;
+        .folio-header p {
+            margin: 0;
+            font-size: 1em;
+        }
+        .card-section {
+            margin-bottom: 8px;
+        }
+        .card-section p {
+            margin: 3px 0; /* Espacio vertical mejorado */
+        }
+        .account-details {
+            border-top: 1px solid #ccc;
+            margin-top: auto;
+            padding-top: 8px;
+        }
+        .account-details p {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0; /* Espacio vertical mejorado */
+        }
+        .account-details p span:last-child {
+            font-weight: bold;
         }
     </style>
 </head>
@@ -21,22 +57,26 @@
     <div class="grid">
         <% folios.forEach(folio => { %>
             <div class="card">
-                <h3>Cliente: <%= folio.client.name %></h3>
-                <p><strong>Teléfono:</strong> <%= folio.client.phone %></p>
-                <% if (folio.client.phone2) { %>
-                    <p><strong>Tel. Adicional:</strong> <%= folio.client.phone2 %></p>
-                <% } %>
-                <p><strong>Dirección:</strong> <%= folio.deliveryLocation %></p>
+                <div class="folio-header">
+                    <h2><%= folio.folioNumber %></h2>
+                    <p><strong>Entrega:</strong> <%= new Date('1970-01-01T' + folio.deliveryTime).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+                </div>
+
+                <div class="card-section">
+                    <p><strong>Cliente:</strong> <%= folio.client.name %></p>
+                    <p><strong>Tel:</strong> <%= folio.client.phone %><% if (folio.client.phone2) { %> | <strong>Adic:</strong> <%= folio.client.phone2 %><% } %></p>
+                    <p><strong>Dirección:</strong> <%= folio.deliveryLocation %></p>
+                </div>
+
                 <div class="account-details">
-                    <p><strong>Costo Pastel:</strong> $<%= (parseFloat(folio.total) - parseFloat(folio.deliveryCost) - (folio.additional || []).reduce((sum, item) => sum + parseFloat(item.price || 0), 0)).toFixed(2) %></p>
-                    <p><strong>Costo Envío:</strong> $<%= parseFloat(folio.deliveryCost).toFixed(2) %></p>
-                    <p><strong>Total:</strong> $<%= parseFloat(folio.total).toFixed(2) %></p>
-                    <p><strong>Anticipo:</strong> $<%= parseFloat(folio.advancePayment).toFixed(2) %></p>
-                    <p><strong>Resta:</strong> $<%= parseFloat(folio.balance).toFixed(2) %></p>
+                    <p><span>Costo Pastel:</span> <span>$<%= (parseFloat(folio.total) - parseFloat(folio.deliveryCost) - (folio.additional || []).reduce((sum, item) => sum + parseFloat(item.price || 0), 0)).toFixed(2) %></span></p>
+                    <p><span>Costo Envío:</span> <span>$<%= parseFloat(folio.deliveryCost).toFixed(2) %></span></p>
+                    <p><span>Total:</span> <span>$<%= parseFloat(folio.total).toFixed(2) %></span></p>
+                    <p><span>Anticipo:</span> <span>$<%= parseFloat(folio.advancePayment).toFixed(2) %></span></p>
+                    <p style="font-weight: bold; font-size: 1.1em; margin-top: 4px;"><span>RESTA:</span> <span>$<%= parseFloat(folio.balance).toFixed(2) %></span></p>
                 </div>
             </div>
-        <% });
-        %>
+        <% }); %>
     </div>
 </body>
 </html>
