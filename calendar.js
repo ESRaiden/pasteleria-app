@@ -270,6 +270,20 @@ function initializeCalendar(authToken, userRole) {
     const modal = document.getElementById('folioModal');
     const deleteFolioButton = document.getElementById('deleteFolioButton');
     const cancelFolioButton = document.getElementById('cancelFolioButton');
+    // ==================== INICIO DE LA MODIFICACIÓN ====================
+    const printLabelButton = document.getElementById('printLabelButton');
+
+    if (printLabelButton) {
+        printLabelButton.addEventListener('click', () => {
+            const currentFolio = window.currentEditingFolio;
+            if (currentFolio) {
+                const currentToken = localStorage.getItem('authToken');
+                const url = `http://localhost:3000/api/folios/${currentFolio.id}/label-pdf?token=${currentToken}`;
+                window.open(url, '_blank');
+            }
+        });
+    }
+    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     if(cancelFolioButton){
         cancelFolioButton.addEventListener('click', async () => {

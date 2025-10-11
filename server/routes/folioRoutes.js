@@ -38,6 +38,11 @@ router.route('/:id')
 // Ruta especial para generar el PDF de un solo folio
 router.get('/:id/pdf', folioController.generateFolioPdf);
 
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+// Ruta para generar el PDF de la etiqueta de un solo folio
+router.get('/:id/label-pdf', folioController.generateLabelPdf);
+// ===================== FIN DE LA MODIFICACIÓN ======================
+
 // --- RUTA PARA MARCAR UN FOLIO COMO IMPRESO ---
 router.patch('/:id/mark-as-printed', folioController.markAsPrinted);
 

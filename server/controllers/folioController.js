@@ -426,3 +426,68 @@ exports.generateDaySummaryPdf = async (req, res) => {
         res.status(500).json({ message: 'Error al generar el PDF masivo', error: error.message });
     }
 };
+
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+// --- GENERAR PDF DE ETIQUETA INDIVIDUAL ---
+exports.generateLabelPdf = async (req, res) => {
+    try {
+        const folio = await Folio.findByPk(req.params.id, {
+            include: [{ model: Client, as: 'client' }]
+        });
+
+        if (!folio) {
+            return res.status(404).send(`<h1>No se encontró el folio con ID ${req.params.id}.</h1>`);
+        }
+
+        const labelsToPrint = [];
+        const folioJson = folio.toJSON();
+
+        // Si es un pastel 'Normal' o un 'Base/Especial' sin pisos definidos, se añade la etiqueta principal.
+        if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && (!folio.tiers || folio.tiers.length === 0))) {
+            labelsToPrint.push(folioJson);
+        }
+
+        // Si es 'Base/Especial' y tiene pisos, se crea una etiqueta por cada piso.
+        if (folio.folioType === 'Base/Especial' && folio.tiers && folio.tiers.length > 0) {
+            folio.tiers.forEach((tier, index) => {
+                labelsToPrint.push({
+                    ...folioJson,
+                    folioNumber: `${folioJson.folioNumber}-P${index + 1}`,
+                    persons: tier.persons,
+                    shape: tier.notas || folio.shape,
+                    id: `${folio.id}-P${index+1}`
+                });
+            });
+        }
+
+        // Si tiene pasteles complementarios, se añade una etiqueta por cada uno.
+        if (folio.complements && folio.complements.length > 0) {
+            folio.complements.forEach((comp, index) => {
+                labelsToPrint.push({
+                    ...folioJson,
+                    folioNumber: `${folioJson.folioNumber}-C${index + 1}`,
+                    persons: comp.persons,
+                    shape: comp.description || 'Complemento',
+                    id: `${folio.id}-C${index+1}`
+                });
+            });
+        }
+        
+        // Si al final solo hay una etiqueta, le quitamos cualquier sufijo para que salga el folio original.
+        if (labelsToPrint.length === 1) {
+            labelsToPrint[0].folioNumber = folio.folioNumber;
+        }
+
+        // Se reutiliza el servicio que ya crea PDFs de etiquetas.
+        const pdfBuffer = await pdfService.createLabelsPdf(labelsToPrint);
+        
+        const fileName = `Etiqueta_Folio-${folio.folioNumber}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename=${fileName}`);
+        res.send(pdfBuffer);
+
+    } catch (error) {
+        console.error(`Error al generar PDF de etiqueta individual:`, error);
+        res.status(500).json({ message: 'Error al generar el PDF de la etiqueta', error: error.message });
+    }
+};
