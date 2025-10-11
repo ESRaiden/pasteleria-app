@@ -44,6 +44,7 @@
                         <button id="viewCalendarButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Ver Calendario</button>
                         <button id="newFolioButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg ml-4">+ Nuevo Folio</button>
                         <button id="manageUsersButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg ml-4 hidden">Administrar Usuarios</button>
+                        <button id="viewStatsButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg ml-4 hidden">Estadísticas</button>
                         <button id="logoutButton" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg ml-4">Cerrar Sesión</button>
                     </div>
                 </div>
@@ -236,6 +237,39 @@
             </div>
         </main>
         
+        <main id="statsView" class="p-4 md:p-8 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg max-w-6xl mx-auto">
+                <div class="flex justify-between items-center mb-6 border-b pb-4">
+                    <h2 class="text-3xl font-bold text-gray-800">Estadísticas de Sabores y Rellenos</h2>
+                </div>
+        
+                <div id="statsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="space-y-6">
+                        <h3 class="text-2xl font-semibold text-gray-700">Pasteles Normales</h3>
+                        <div>
+                            <h4 class="text-xl font-medium text-gray-600 mb-2">Sabores de Pan Más Pedidos</h4>
+                            <div id="normalFlavorsList" class="space-y-2"></div>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-medium text-gray-600 mb-2">Rellenos Más Pedidos</h4>
+                            <div id="normalFillingsList" class="space-y-2"></div>
+                        </div>
+                    </div>
+        
+                    <div class="space-y-6">
+                        <h3 class="text-2xl font-semibold text-gray-700">Pasteles Especiales (por piso)</h3>
+                        <div>
+                            <h4 class="text-xl font-medium text-gray-600 mb-2">Sabores de Pan Más Usados</h4>
+                            <div id="specialFlavorsList" class="space-y-2"></div>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-medium text-gray-600 mb-2">Rellenos Más Usados</h4>
+                            <div id="specialFillingsList" class="space-y-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
         <div id="folioModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
              <div class="relative top-10 mx-auto p-5 border w-11/12 md:w-2/3 lg:w-1/2 shadow-lg rounded-md bg-white">
                 <div class="flex justify-between items-center border-b pb-3 mb-3">
@@ -250,7 +284,7 @@
                     <button id="cancelFolioButton" class="px-4 py-2 bg-yellow-500 text-white text-base font-medium rounded-md w-auto hover:bg-yellow-600 ml-2">Cancelar Folio</button>
                     <button id="deleteFolioButton" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-auto hover:bg-red-600 ml-2">Eliminar Folio</button>
                 </div>
-                </div>
+            </div>
         </div>
 
         <div id="dailyFoliosModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">

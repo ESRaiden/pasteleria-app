@@ -427,7 +427,6 @@ exports.generateDaySummaryPdf = async (req, res) => {
     }
 };
 
-// ==================== INICIO DE LA MODIFICACIÓN ====================
 // --- GENERAR PDF DE ETIQUETA INDIVIDUAL ---
 exports.generateLabelPdf = async (req, res) => {
     try {
@@ -442,12 +441,10 @@ exports.generateLabelPdf = async (req, res) => {
         const labelsToPrint = [];
         const folioJson = folio.toJSON();
 
-        // Si es un pastel 'Normal' o un 'Base/Especial' sin pisos definidos, se añade la etiqueta principal.
         if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && (!folio.tiers || folio.tiers.length === 0))) {
             labelsToPrint.push(folioJson);
         }
 
-        // Si es 'Base/Especial' y tiene pisos, se crea una etiqueta por cada piso.
         if (folio.folioType === 'Base/Especial' && folio.tiers && folio.tiers.length > 0) {
             folio.tiers.forEach((tier, index) => {
                 labelsToPrint.push({
@@ -460,7 +457,6 @@ exports.generateLabelPdf = async (req, res) => {
             });
         }
 
-        // Si tiene pasteles complementarios, se añade una etiqueta por cada uno.
         if (folio.complements && folio.complements.length > 0) {
             folio.complements.forEach((comp, index) => {
                 labelsToPrint.push({
@@ -473,12 +469,10 @@ exports.generateLabelPdf = async (req, res) => {
             });
         }
         
-        // Si al final solo hay una etiqueta, le quitamos cualquier sufijo para que salga el folio original.
         if (labelsToPrint.length === 1) {
             labelsToPrint[0].folioNumber = folio.folioNumber;
         }
 
-        // Se reutiliza el servicio que ya crea PDFs de etiquetas.
         const pdfBuffer = await pdfService.createLabelsPdf(labelsToPrint);
         
         const fileName = `Etiqueta_Folio-${folio.folioNumber}.pdf`;
@@ -489,5 +483,68 @@ exports.generateLabelPdf = async (req, res) => {
     } catch (error) {
         console.error(`Error al generar PDF de etiqueta individual:`, error);
         res.status(500).json({ message: 'Error al generar el PDF de la etiqueta', error: error.message });
+    }
+};
+
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+// --- OBTENER ESTADÍSTICAS ---
+exports.getStatistics = async (req, res) => {
+    try {
+        const folios = await Folio.findAll({
+            attributes: ['folioType', 'cakeFlavor', 'filling', 'tiers'],
+            where: { status: { [Op.ne]: 'Cancelado' } } // Excluimos folios cancelados
+        });
+
+        const stats = {
+            normal: { flavors: {}, fillings: {} },
+            special: { flavors: {}, fillings: {} }
+        };
+
+        // Función auxiliar para incrementar el contador de un elemento
+        const incrementCount = (obj, key) => {
+            if (!key || key.trim() === '') return;
+            obj[key] = (obj[key] || 0) + 1;
+        };
+
+        for (const folio of folios) {
+            if (folio.folioType === 'Normal') {
+                try {
+                    const flavors = JSON.parse(folio.cakeFlavor || '[]');
+                    const fillings = JSON.parse(folio.filling || '[]');
+                    
+                    flavors.forEach(flavor => incrementCount(stats.normal.flavors, flavor));
+                    fillings.forEach(filling => incrementCount(stats.normal.fillings, filling.name));
+                } catch (e) { console.error(`Error procesando folio Normal:`, e); }
+            } else if (folio.folioType === 'Base/Especial') {
+                try {
+                    const tiers = folio.tiers || [];
+                    tiers.forEach(tier => {
+                        (tier.panes || []).forEach(pane => incrementCount(stats.special.flavors, pane));
+                        // Los rellenos en tiers son un array de strings
+                        (tier.rellenos || []).forEach(relleno => incrementCount(stats.special.fillings, relleno));
+                    });
+                } catch (e) { console.error(`Error procesando folio Especial:`, e); }
+            }
+        }
+
+        // Función auxiliar para convertir el objeto de contadores a un array ordenado
+        const sortData = (dataObj) => Object.entries(dataObj)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+
+        const finalStats = {
+            normal: {
+                flavors: sortData(stats.normal.flavors),
+                fillings: sortData(stats.normal.fillings)
+            },
+            special: {
+                flavors: sortData(stats.special.flavors),
+                fillings: sortData(stats.special.fillings)
+            }
+        };
+
+        res.status(200).json(finalStats);
+    } catch (error) {
+        res.status(500).json({ message: 'Error al generar las estadísticas', error: error.message });
     }
 };

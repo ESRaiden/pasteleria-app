@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const newFolioButton = document.getElementById('newFolioButton');
     const viewCalendarButton = document.getElementById('viewCalendarButton');
     const loadingEl = document.getElementById('loading');
+    // ==================== INICIO DE LA MODIFICACIÓN ====================
+    const statsView = document.getElementById('statsView');
+    const viewStatsButton = document.getElementById('viewStatsButton');
+    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     // --- ELEMENTOS DEL FORMULARIO ---
     const folioForm = document.getElementById('folioForm'),
@@ -302,6 +306,8 @@ document.addEventListener('DOMContentLoaded', function() {
         calendarView.classList.add('hidden');
         formView.classList.add('hidden');
         userManagementView.classList.add('hidden');
+        // ==================== INICIO DE LA MODIFICACIÓN ====================
+        statsView.classList.add('hidden');
 
         if (viewToShow === 'calendar') {
             calendarView.classList.remove('hidden');
@@ -309,24 +315,27 @@ document.addEventListener('DOMContentLoaded', function() {
             formView.classList.remove('hidden');
         } else if (viewToShow === 'userManagement') {
             userManagementView.classList.remove('hidden');
+        } else if (viewToShow === 'stats') {
+            statsView.classList.remove('hidden');
         }
+        // ===================== FIN DE LA MODIFICACIÓN ======================
     }
     
-    // ==================== INICIO DE LA CORRECCIÓN ====================
     function showAppView(token, role) {
         loginView.classList.add('hidden');
         appView.classList.remove('hidden');
         showView('calendar');
 
+        // ==================== INICIO DE LA MODIFICACIÓN ====================
         if (role === 'Administrador') {
             manageUsersButton.classList.remove('hidden');
+            viewStatsButton.classList.remove('hidden');
         }
+        // ===================== FIN DE LA MODIFICACIÓN ======================
 
         if (window.initializeCalendar) {
             window.initializeCalendar(token, role);
 
-            // FIX: Forzamos la recarga de eventos en la carga inicial
-            // para evitar una condición de carrera al abrir el archivo directamente.
             setTimeout(() => {
                 if (window.myAppCalendar) {
                     window.myAppCalendar.refetchEvents();
@@ -334,7 +343,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 100);
         }
     }
-    // ===================== FIN DE LA CORRECCIÓN ======================
 
     function handleLogout() {
         localStorage.removeItem('authToken');
@@ -552,6 +560,67 @@ document.addEventListener('DOMContentLoaded', function() {
             loadUsers();
         });
     }
+
+    // ==================== INICIO DE LA MODIFICACIÓN ====================
+    // --- Lógica para Estadísticas ---
+
+    // Muestra los datos de estadísticas en una lista HTML
+    function renderStatsList(elementId, data, title) {
+        const container = document.getElementById(elementId);
+        container.innerHTML = ''; // Limpiar contenido anterior
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = `<p class="text-gray-500 italic">No hay datos para mostrar.</p>`;
+            return;
+        }
+
+        const ol = document.createElement('ol');
+        ol.className = 'list-decimal list-inside space-y-1';
+        
+        data.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'text-gray-700';
+            li.innerHTML = `${item.name} <span class="font-bold text-gray-900">(${item.count} veces)</span>`;
+            ol.appendChild(li);
+        });
+        
+        container.appendChild(ol);
+    }
+
+    // Carga los datos de estadísticas desde la API
+    async function loadStatistics() {
+        showView('stats');
+        loadingEl.classList.remove('hidden');
+        
+        try {
+            const authToken = localStorage.getItem('authToken');
+            const response = await fetch('http://localhost:3000/api/folios/statistics', {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+
+            if (!response.ok) {
+                throw new Error('No se pudieron cargar las estadísticas.');
+            }
+
+            const stats = await response.json();
+            
+            // Renderizar cada sección de estadísticas
+            renderStatsList('normalFlavorsList', stats.normal.flavors);
+            renderStatsList('normalFillingsList', stats.normal.fillings);
+            renderStatsList('specialFlavorsList', stats.special.flavors);
+            renderStatsList('specialFillingsList', stats.special.fillings);
+
+        } catch (error) {
+            document.getElementById('statsContainer').innerText = `Error: ${error.message}`;
+        } finally {
+            loadingEl.classList.add('hidden');
+        }
+    }
+
+    if (viewStatsButton) {
+        viewStatsButton.addEventListener('click', loadStatistics);
+    }
+    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     // --- LÓGICA DEL FORMULARIO ---
     folioForm.addEventListener('submit', async (e) => {

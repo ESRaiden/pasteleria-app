@@ -20,9 +20,13 @@ const upload = multer({ storage: storage });
 // Aplicamos el middleware de autenticación a todas las rutas de folios
 router.use(authMiddleware);
 
-// --- NUEVA RUTA PARA PDFs MASIVOS (ETIQUETAS Y COMANDAS) ---
-// Se coloca antes de las rutas con /:id para evitar conflictos de enrutamiento
+// --- RUTA PARA PDFs MASIVOS (ETIQUETAS Y COMANDAS) ---
 router.get('/day-summary-pdf', folioController.generateDaySummaryPdf);
+
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+// --- RUTA PARA OBTENER ESTADÍSTICAS (SÓLO ADMIN) ---
+router.get('/statistics', authorize('Administrador'), folioController.getStatistics);
+// ===================== FIN DE LA MODIFICACIÓN ======================
 
 // Rutas para la colección de folios (/api/folios)
 router.route('/')
@@ -38,10 +42,8 @@ router.route('/:id')
 // Ruta especial para generar el PDF de un solo folio
 router.get('/:id/pdf', folioController.generateFolioPdf);
 
-// ==================== INICIO DE LA MODIFICACIÓN ====================
 // Ruta para generar el PDF de la etiqueta de un solo folio
 router.get('/:id/label-pdf', folioController.generateLabelPdf);
-// ===================== FIN DE LA MODIFICACIÓN ======================
 
 // --- RUTA PARA MARCAR UN FOLIO COMO IMPRESO ---
 router.patch('/:id/mark-as-printed', folioController.markAsPrinted);
