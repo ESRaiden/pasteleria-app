@@ -486,7 +486,6 @@ exports.generateLabelPdf = async (req, res) => {
     }
 };
 
-// ==================== INICIO DE LA MODIFICACIÓN ====================
 // --- OBTENER ESTADÍSTICAS ---
 exports.getStatistics = async (req, res) => {
     try {
@@ -500,7 +499,6 @@ exports.getStatistics = async (req, res) => {
             special: { flavors: {}, fillings: {} }
         };
 
-        // Función auxiliar para incrementar el contador de un elemento
         const incrementCount = (obj, key) => {
             if (!key || key.trim() === '') return;
             obj[key] = (obj[key] || 0) + 1;
@@ -520,14 +518,12 @@ exports.getStatistics = async (req, res) => {
                     const tiers = folio.tiers || [];
                     tiers.forEach(tier => {
                         (tier.panes || []).forEach(pane => incrementCount(stats.special.flavors, pane));
-                        // Los rellenos en tiers son un array de strings
                         (tier.rellenos || []).forEach(relleno => incrementCount(stats.special.fillings, relleno));
                     });
                 } catch (e) { console.error(`Error procesando folio Especial:`, e); }
             }
         }
 
-        // Función auxiliar para convertir el objeto de contadores a un array ordenado
         const sortData = (dataObj) => Object.entries(dataObj)
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => b.count - a.count);
@@ -546,5 +542,39 @@ exports.getStatistics = async (req, res) => {
         res.status(200).json(finalStats);
     } catch (error) {
         res.status(500).json({ message: 'Error al generar las estadísticas', error: error.message });
+    }
+};
+
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+// --- OBTENER ESTADÍSTICAS DE PRODUCTIVIDAD POR DÍA ---
+exports.getProductivityStats = async (req, res) => {
+    try {
+        const { date } = req.query;
+        if (!date) {
+            return res.status(400).json({ message: 'Se requiere una fecha.' });
+        }
+
+        const stats = await Folio.findAll({
+            where: {
+                createdAt: {
+                    [Op.gte]: `${date} 00:00:00`,
+                    [Op.lte]: `${date} 23:59:59`
+                }
+            },
+            attributes: [
+                'responsibleUserId',
+                [sequelize.fn('COUNT', sequelize.col('Folio.id')), 'folioCount']
+            ],
+            include: [{
+                model: User,
+                as: 'responsibleUser',
+                attributes: ['username']
+            }],
+            group: ['responsibleUserId']
+        });
+
+        res.status(200).json(stats);
+    } catch (error) {
+        res.status(500).json({ message: 'Error al obtener estadísticas de productividad', error: error.message });
     }
 };

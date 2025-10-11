@@ -23,9 +23,12 @@ router.use(authMiddleware);
 // --- RUTA PARA PDFs MASIVOS (ETIQUETAS Y COMANDAS) ---
 router.get('/day-summary-pdf', folioController.generateDaySummaryPdf);
 
-// ==================== INICIO DE LA MODIFICACIÓN ====================
 // --- RUTA PARA OBTENER ESTADÍSTICAS (SÓLO ADMIN) ---
 router.get('/statistics', authorize('Administrador'), folioController.getStatistics);
+
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+// --- RUTA PARA ESTADÍSTICAS DE PRODUCTIVIDAD (SÓLO ADMIN) ---
+router.get('/productivity', authorize('Administrador'), folioController.getProductivityStats);
 // ===================== FIN DE LA MODIFICACIÓN ======================
 
 // Rutas para la colección de folios (/api/folios)
