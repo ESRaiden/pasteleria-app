@@ -12,7 +12,7 @@ exports.createPdf = async (folioData) => {
     const footerText = `Pedido capturado por: ${folioData.responsibleUser.username} el ${new Date(folioData.createdAt).toLocaleString('es-MX')}`;
 
     // 2. Modificamos las opciones del PDF
-    const options = { 
+    const options = {
         format: 'Letter',
         printBackground: true,
         displayHeaderFooter: true, // <-- Habilita el pie de página
@@ -41,20 +41,18 @@ exports.createPdf = async (folioData) => {
   }
 };
 
-// --- INICIO DEL CÓDIGO AÑADIDO ---
-
 /**
  * Función genérica para crear PDFs masivos (etiquetas y comandas).
  * @param {string} templateName - El nombre del archivo de plantilla EJS (sin la extensión).
- * @param {Array} folios - Un array de objetos de folio.
- * @returns {Promise<Buffer>} - El buffer del PDF generado.
+ * @param {Array} data - Un array de objetos (folios, comisiones, etc.).
+ * @param {string} date - La fecha para el título del reporte (opcional).
  */
-async function generateBulkPdf(templateName, folios) {
+async function generateBulkPdf(templateName, data, date = null) {
     try {
         const templatePath = path.join(__dirname, `../templates/${templateName}.ejs`);
-        const html = await ejs.renderFile(templatePath, { folios });
+        const html = await ejs.renderFile(templatePath, { folios: data, date: date, commissions: data }); // Pasamos los datos con diferentes nombres por si acaso
 
-        const options = { 
+        const options = {
             format: 'Letter',
             printBackground: true,
             margin: {
@@ -91,4 +89,32 @@ exports.createLabelsPdf = async (folios) => {
 exports.createOrdersPdf = async (folios) => {
     return generateBulkPdf('ordersTemplate', folios);
 };
-// --- FIN DEL CÓDIGO AÑADIDO ---
+
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+/**
+ * Crea un PDF con el reporte de comisiones para una fecha específica.
+ * @param {Array} commissions - Un array de objetos de comisión con su folio asociado.
+ * @param {string} date - La fecha del reporte en formato YYYY-MM-DD.
+ */
+exports.createCommissionReportPdf = async (commissions, date) => {
+    try {
+        const templatePath = path.join(__dirname, '../templates/commissionReportTemplate.ejs');
+        const html = await ejs.renderFile(templatePath, { commissions, date });
+
+        const options = {
+            format: 'Letter',
+            printBackground: true,
+            margin: { top: '25px', right: '25px', bottom: '25px', left: '25px' }
+        };
+
+        const file = { content: html };
+        const pdfBuffer = await pdf.generatePdf(file, options);
+        console.log(`✅ PDF de reporte de comisiones generado para la fecha ${date}.`);
+        return pdfBuffer;
+
+    } catch (error) {
+        console.error(`❌ Error durante la creación del PDF de comisiones:`, error);
+        throw error;
+    }
+};
+// ===================== FIN DE LA MODIFICACIÓN ====================== 

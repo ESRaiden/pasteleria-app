@@ -131,8 +131,13 @@
 
             <div class="section">
                 <div class="section-title">Cuenta</div>
-                <% let additionalCost = (folio.additional && Array.isArray(folio.additional)) ? folio.additional.reduce((sum, item) => sum + parseFloat(item.price || 0), 0) : 0; %>
-                <% let mainCakeCost = parseFloat(folio.total) - parseFloat(folio.deliveryCost) - additionalCost; %>
+                <% 
+                let additionalCost = (folio.additional && Array.isArray(folio.additional)) ? folio.additional.reduce((sum, item) => sum + parseFloat(item.price || 0), 0) : 0;
+                
+                // El 'total' del folio ya incluye la comisión si fue aplicada.
+                // Simplemente restamos los otros costos para obtener el costo base del pastel (con comisión incluida si aplica).
+                let mainCakeCost = parseFloat(folio.total) - parseFloat(folio.deliveryCost) - additionalCost;
+                %>
                 <div class="account-item"><span class="data-label">Pastel(es):</span> <span>$<%= mainCakeCost.toFixed(2) %></span></div>
                 <% if (additionalCost > 0) { %><div class="account-item"><span class="data-label">Adicionales:</span> <span>$<%= additionalCost.toFixed(2) %></span></div><% } %>
                 <div class="account-item"><span class="data-label">Envío:</span> <span>$<%= parseFloat(folio.deliveryCost).toFixed(2) %></span></div>

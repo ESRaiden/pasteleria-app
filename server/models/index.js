@@ -2,23 +2,26 @@ const { sequelize } = require('../config/database');
 const User = require('./User');
 const Client = require('./Client');
 const Folio = require('./Folio');
-const FolioEditHistory = require('./FolioEditHistory'); // 1. Importamos el nuevo modelo
+const FolioEditHistory = require('./FolioEditHistory');
+const Commission = require('./Commission'); // 1. IMPORTAMOS EL NUEVO MODELO
 
 // --- Relaciones Principales ---
-// Un Usuario (responsable) puede tener muchos Folios
 User.hasMany(Folio, { foreignKey: 'responsibleUserId' });
 Folio.belongsTo(User, { as: 'responsibleUser', foreignKey: 'responsibleUserId' });
 
-// Un Cliente puede tener muchos Folios
 Client.hasMany(Folio, { foreignKey: 'clientId' });
 Folio.belongsTo(Client, { as: 'client', foreignKey: 'clientId' });
 
+// --- Relación para Comisiones (NUEVO) ---
+// Un Folio tiene una Comisión asociada
+Folio.hasOne(Commission, { foreignKey: 'folioId', as: 'commission' });
+Commission.belongsTo(Folio, { foreignKey: 'folioId' });
+// --- FIN DE LO NUEVO ---
+
 // --- Relaciones para el Historial de Edición ---
-// Un Folio tiene muchos registros de historial
 Folio.hasMany(FolioEditHistory, { as: 'editHistory', foreignKey: 'folioId' });
 FolioEditHistory.belongsTo(Folio, { foreignKey: 'folioId' });
 
-// Un Usuario (editor) puede aparecer en muchos registros de historial
 User.hasMany(FolioEditHistory, { foreignKey: 'editorUserId' });
 FolioEditHistory.belongsTo(User, { as: 'editor', foreignKey: 'editorUserId' });
 
@@ -28,5 +31,6 @@ module.exports = {
   User,
   Client,
   Folio,
-  FolioEditHistory
+  FolioEditHistory,
+  Commission // 2. EXPORTAMOS EL NUEVO MODELO
 };

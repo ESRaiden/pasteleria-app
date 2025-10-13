@@ -2,7 +2,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { format, parseISO, startOfWeek, endOfWeek, getDate, getMonth, lastDayOfMonth } = require('date-fns');
 const { es } = require('date-fns/locale');
-const { Folio, Client, User, FolioEditHistory, sequelize } = require('../models');
+const { Folio, Client, User, FolioEditHistory, Commission, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const pdfService = require('../services/pdfService');
 
@@ -26,22 +26,26 @@ const calculateFillingCost = (folioType, persons, fillings, tiers) => {
     return cost;
 };
 
-// --- CREAR un nuevo folio ---
+// --- CREAR un nuevo folio (MODIFICADO) ---
 exports.createFolio = async (req, res) => {
+  // Usaremos una transacción para asegurar que todo se guarde correctamente
+  const t = await sequelize.transaction();
   try {
-    const { 
-        clientName, clientPhone, clientPhone2, total, advancePayment, deliveryDate, 
-        tiers, accessories, additional, isPaid, hasExtraHeight, imageComments, 
-        cakeFlavor, filling, complements, ...folioData 
+    const {
+        clientName, clientPhone, clientPhone2, total, advancePayment, deliveryDate,
+        tiers, accessories, additional, isPaid, hasExtraHeight, imageComments,
+        cakeFlavor, filling, complements, addCommissionToCustomer, // <--- Nueva variable
+        ...folioData
     } = req.body;
 
     const [client, created] = await Client.findOrCreate({
       where: { phone: clientPhone },
-      defaults: { name: clientName, phone2: clientPhone2 }
+      defaults: { name: clientName, phone2: clientPhone2 },
+      transaction: t
     });
 
     if (!created && client.phone2 !== clientPhone2) {
-        await client.update({ phone2: clientPhone2 });
+        await client.update({ phone2: clientPhone2 }, { transaction: t });
     }
 
     const lastFourDigits = client.phone.slice(-4);
@@ -68,9 +72,21 @@ exports.createFolio = async (req, res) => {
 
     const fillingCost = calculateFillingCost(folioData.folioType, folioData.persons, fillingData, tiersData);
 
-    const finalTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost + fillingCost;
-    const balance = finalTotal - parseFloat(advancePayment);
+    // ==================== LÓGICA DE COMISIÓN (CREAR) ====================
+    const applyCommission = addCommissionToCustomer === 'true';
+    const baseTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost + fillingCost;
+    
+    const commissionAmount = baseTotal * 0.05;
+    let roundedCommissionAmount = 0;
+    let finalTotal = baseTotal;
 
+    if (applyCommission) {
+        roundedCommissionAmount = Math.ceil(commissionAmount / 10) * 10;
+        finalTotal += roundedCommissionAmount;
+    }
+    // =================================================================
+
+    const balance = finalTotal - parseFloat(advancePayment);
     const imageUrls = req.files ? req.files.map(file => file.path) : [];
     const comments = imageComments ? JSON.parse(imageComments) : [];
 
@@ -78,7 +94,7 @@ exports.createFolio = async (req, res) => {
       ...folioData,
       deliveryDate,
       folioNumber: finalFolioNumber,
-      total: finalTotal,
+      total: finalTotal, // <--- Total final con o sin comisión
       advancePayment,
       balance,
       clientId: client.id,
@@ -93,15 +109,29 @@ exports.createFolio = async (req, res) => {
       complements: complementsData,
       isPaid: isPaid === 'true',
       hasExtraHeight: hasExtraHeight === 'true'
-    });
+    }, { transaction: t });
+
+    // Guardar la comisión en su propia tabla
+    await Commission.create({
+        folioId: newFolio.id,
+        amount: commissionAmount,
+        appliedToCustomer: applyCommission,
+        roundedAmount: applyCommission ? roundedCommissionAmount : null
+    }, { transaction: t });
+    
+    // Si todo salió bien, confirmamos los cambios en la base de datos
+    await t.commit();
     res.status(201).json(newFolio);
+
   } catch (error) {
+    // Si algo falla, revertimos todos los cambios
+    await t.rollback();
     console.error('ERROR DETALLADO AL CREAR FOLIO:', error);
     res.status(400).json({ message: 'Error al crear el folio', error: error.message });
   }
 };
 
-// --- OBTENER TODOS los folios (con búsqueda) ---
+// --- OBTENER TODOS los folios (sin cambios) ---
 exports.getAllFolios = async (req, res) => {
   try {
     const { q } = req.query;
@@ -132,13 +162,14 @@ exports.getAllFolios = async (req, res) => {
   }
 };
 
-// --- OBTENER UN SOLO folio por su ID ---
+// --- OBTENER UN SOLO folio por su ID (MODIFICADO para incluir comisión) ---
 exports.getFolioById = async (req, res) => {
     try {
         const folio = await Folio.findByPk(req.params.id, {
             include: [
                 { model: Client, as: 'client', attributes: ['name', 'phone', 'phone2'] },
                 { model: User, as: 'responsibleUser', attributes: ['username'] },
+                { model: Commission, as: 'commission' }, // <-- Incluimos la comisión
                 {
                     model: FolioEditHistory,
                     as: 'editHistory',
@@ -155,12 +186,14 @@ exports.getFolioById = async (req, res) => {
     }
 };
 
-// --- ACTUALIZAR un folio existente (Versión completa) ---
+// --- ACTUALIZAR un folio existente (MODIFICADO) ---
 exports.updateFolio = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const folioId = req.params.id;
-        const folio = await Folio.findByPk(folioId);
+        const folio = await Folio.findByPk(folioId, { transaction: t });
         if (!folio) { 
+            await t.rollback();
             return res.status(404).json({ message: 'Folio no encontrado' }); 
         }
 
@@ -168,12 +201,13 @@ exports.updateFolio = async (req, res) => {
             clientName, clientPhone, clientPhone2, total, advancePayment, deliveryDate, 
             tiers, accessories, additional, isPaid, hasExtraHeight, imageComments,
             existingImageUrls, existingImageComments, cakeFlavor, filling,
-            complements, ...folioData 
+            complements, addCommissionToCustomer, // <--- Nueva variable
+            ...folioData 
         } = req.body;
         
-        const client = await Client.findByPk(folio.clientId);
+        const client = await Client.findByPk(folio.clientId, { transaction: t });
         if (client) {
-            await client.update({ name: clientName, phone: clientPhone, phone2: clientPhone2 });
+            await client.update({ name: clientName, phone: clientPhone, phone2: clientPhone2 }, { transaction: t });
         }
         
         const additionalData = JSON.parse(additional || '[]');
@@ -185,7 +219,20 @@ exports.updateFolio = async (req, res) => {
 
         const fillingCost = calculateFillingCost(folioData.folioType, folioData.persons, fillingData, tiersData);
 
-        const finalTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost + fillingCost;
+        // ==================== LÓGICA DE COMISIÓN (ACTUALIZAR) ====================
+        const applyCommission = addCommissionToCustomer === 'true';
+        const baseTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost + fillingCost;
+        
+        const commissionAmount = baseTotal * 0.05;
+        let roundedCommissionAmount = 0;
+        let finalTotal = baseTotal;
+
+        if (applyCommission) {
+            roundedCommissionAmount = Math.ceil(commissionAmount / 10) * 10;
+            finalTotal += roundedCommissionAmount;
+        }
+        // =====================================================================
+
         const balance = finalTotal - parseFloat(advancePayment);
 
         const newImageUrls = req.files ? req.files.map(file => file.path) : [];
@@ -210,13 +257,23 @@ exports.updateFolio = async (req, res) => {
             complements: complementsData,
             isPaid: isPaid === 'true',
             hasExtraHeight: hasExtraHeight === 'true'
-        });
+        }, { transaction: t });
 
-        await FolioEditHistory.create({ folioId: folioId, editorUserId: req.user.id });
+        // Actualizar o crear la comisión
+        await Commission.upsert({
+            folioId: folio.id,
+            amount: commissionAmount,
+            appliedToCustomer: applyCommission,
+            roundedAmount: applyCommission ? roundedCommissionAmount : null
+        }, { transaction: t });
 
+        await FolioEditHistory.create({ folioId: folioId, editorUserId: req.user.id }, { transaction: t });
+
+        await t.commit();
         res.status(200).json(folio);
 
     } catch (error) {
+        await t.rollback();
         console.error("ERROR AL ACTUALIZAR FOLIO:", error);
         res.status(400).json({ message: 'Error al actualizar el folio', error: error.message });
     }
@@ -545,7 +602,6 @@ exports.getStatistics = async (req, res) => {
     }
 };
 
-// ==================== INICIO DE LA MODIFICACIÓN ====================
 // --- OBTENER ESTADÍSTICAS DE PRODUCTIVIDAD POR DÍA ---
 exports.getProductivityStats = async (req, res) => {
     try {
@@ -578,3 +634,41 @@ exports.getProductivityStats = async (req, res) => {
         res.status(500).json({ message: 'Error al obtener estadísticas de productividad', error: error.message });
     }
 };
+
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+// --- GENERAR PDF DE REPORTE DE COMISIONES ---
+exports.generateCommissionReport = async (req, res) => {
+    try {
+        const { date } = req.query;
+        if (!date) {
+            return res.status(400).json({ message: 'Se requiere una fecha.' });
+        }
+
+        const commissions = await Commission.findAll({
+            include: [{
+                model: Folio,
+                as: 'folio',
+                attributes: ['folioNumber']
+            }],
+            where: {
+                createdAt: {
+                    [Op.gte]: `${date} 00:00:00`,
+                    [Op.lte]: `${date} 23:59:59`
+                }
+            },
+            order: [['createdAt', 'ASC']]
+        });
+
+        const pdfBuffer = await pdfService.createCommissionReportPdf(commissions, date);
+
+        const fileName = `Reporte_Comisiones_${date}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename=${fileName}`);
+        res.send(pdfBuffer);
+
+    } catch (error) {
+        console.error('Error al generar el reporte de comisiones:', error);
+        res.status(500).json({ message: 'Error al generar el reporte', error: error.message });
+    }
+};
+// ===================== FIN DE LA MODIFICACIÓN ======================

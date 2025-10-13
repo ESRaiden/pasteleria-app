@@ -9,6 +9,11 @@ const folioRoutes = require('./server/routes/folioRoutes');
 const userRoutes = require('./server/routes/userRoutes');
 const clientRoutes = require('./server/routes/clientRoutes');
 
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+// Esta línea importa e inicia las tareas programadas (como el envío de correos)
+require('./server/cronJobs');
+// ===================== FIN DE LA MODIFICACIÓN ======================
+
 const app = express();
 const PORT = 3000;
 

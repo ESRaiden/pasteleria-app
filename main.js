@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const statsView = document.getElementById('statsView');
     const viewStatsButton = document.getElementById('viewStatsButton');
     const productivityDateInput = document.getElementById('productivityDate');
+    // ==================== INICIO DE LA MODIFICACIÓN (NUEVO BOTÓN) ====================
+    const commissionReportButton = document.getElementById('commissionReportButton');
+    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     // --- ELEMENTOS DEL FORMULARIO ---
     const folioForm = document.getElementById('folioForm'),
@@ -34,6 +37,9 @@ document.addEventListener('DOMContentLoaded', function() {
         advanceInput = document.getElementById('advancePayment'),
         balanceInput = document.getElementById('balance'),
         isPaidCheckbox = document.getElementById('isPaid'),
+        // ==================== INICIO DE LA MODIFICACIÓN (NUEVO CHECKBOX) ====================
+        addCommissionCheckbox = document.getElementById('addCommission'),
+        // ===================== FIN DE LA MODIFICACIÓN ======================
         hasExtraHeightCheckbox = document.getElementById('hasExtraHeight'),
         complementsContainer = document.getElementById('complementsContainer'),
         addComplementButton = document.getElementById('addComplementButton'),
@@ -192,7 +198,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ==================== INICIO DE LA MODIFICACIÓN ====================
     document.getElementById('userListBody').addEventListener('click', async (e) => {
         const target = e.target;
         const authToken = localStorage.getItem('authToken');
@@ -217,10 +222,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
         if (target.classList.contains('edit-user-btn')) {
             const currentRole = target.closest('tr').querySelector('[data-field="role"]').textContent;
-            // Se actualiza el mensaje para reflejar los roles disponibles
             const newRole = prompt(`Introduce el nuevo rol para el usuario con ID ${userId} (Opciones: Administrador, Usuario):`, currentRole);
             
-            // Se elimina 'Decorador' de los roles válidos
             const validRoles = ['Administrador', 'Usuario'];
             if (newRole && validRoles.includes(newRole)) {
                 try {
@@ -244,7 +247,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
-    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     // --- VARIABLES DE ESTADO DEL FORMULARIO ---
     let additionalItems = [];
@@ -330,9 +332,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (role === 'Administrador') {
             manageUsersButton.classList.remove('hidden');
             viewStatsButton.classList.remove('hidden');
+            // ==================== INICIO DE LA MODIFICACIÓN (MOSTRAR BOTÓN) ====================
+            commissionReportButton.classList.remove('hidden');
+            // ===================== FIN DE LA MODIFICACIÓN ======================
         } else {
             manageUsersButton.classList.add('hidden');
             viewStatsButton.classList.add('hidden');
+            // ==================== INICIO DE LA MODIFICACIÓN (OCULTAR BOTÓN) ===================
+            commissionReportButton.classList.add('hidden');
+            // ===================== FIN DE LA MODIFICACIÓN ======================
         }
 
         if (window.initializeCalendar) {
@@ -708,6 +716,10 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('isPaid', isPaidCheckbox.checked);
         formData.append('hasExtraHeight', hasExtraHeightCheckbox.checked);
 
+        // ==================== INICIO DE LA MODIFICACIÓN (ENVIAR DATOS) ====================
+        formData.append('addCommissionToCustomer', addCommissionCheckbox.checked);
+        // ===================== FIN DE LA MODIFICACIÓN ======================
+
         const complementsData = [];
         document.querySelectorAll('.complement-form').forEach(form => {
             complementsData.push({
@@ -1051,6 +1063,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateTotals(); 
     });
 
+    // ==================== INICIO DE LA MODIFICACIÓN (CÁLCULO DE TOTALES) ====================
     function getGrandTotal() {
         const total = parseFloat(totalInput.value) || 0;
         const delivery = parseFloat(deliveryCostInput.value) || 0;
@@ -1061,9 +1074,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const persons = parseFloat(personsInput.value) || 0;
             fillingCost = selectedRellenos.reduce((sum, relleno) => (relleno && relleno.hasCost && persons > 0) ? sum + ((persons / 20) * 30) : sum, 0);
         }
+
+        let commissionCost = 0;
+        const subtotalForCommission = total + delivery + additionalFromList + fillingCost;
+        if (addCommissionCheckbox.checked) {
+            const commission = subtotalForCommission * 0.05;
+            commissionCost = Math.ceil(commission / 10) * 10; // Redondeo a la decena superior
+        }
         
-        return total + delivery + additionalFromList + fillingCost;
+        return subtotalForCommission + commissionCost;
     }
+    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     function calculateBalance() {
         balanceInput.value = (getGrandTotal() - (parseFloat(advanceInput.value) || 0)).toFixed(2);
@@ -1082,6 +1103,9 @@ document.addEventListener('DOMContentLoaded', function() {
         advanceInput.readOnly = this.checked;
         updateTotals();
     });
+    // ==================== INICIO DE LA MODIFICACIÓN (EVENT LISTENER) ====================
+    addCommissionCheckbox.addEventListener('change', updateTotals);
+    // ===================== FIN DE LA MODIFICACIÓN ======================
     tiersTableBody.addEventListener('input', (e) => {
         if (e.target.classList.contains('tier-persons-input')) updateTotals();
     });
@@ -1341,4 +1365,19 @@ document.addEventListener('DOMContentLoaded', function() {
             window.focus();
         }
     });
+
+    // ==================== INICIO DE LA MODIFICACIÓN (LÓGICA DEL BOTÓN DE REPORTE) ====================
+    if (commissionReportButton) {
+        commissionReportButton.addEventListener('click', () => {
+            const today = new Date();
+            today.setDate(today.getDate() - 1); // Restamos un día para obtener la fecha de ayer
+            const yesterday = today.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+
+            const authToken = localStorage.getItem('authToken');
+            const url = `http://localhost:3000/api/folios/commission-report?date=${yesterday}&token=${authToken}`;
+            
+            window.open(url, '_blank');
+        });
+    }
+    // ===================== FIN DE LA MODIFICACIÓN ======================
 });

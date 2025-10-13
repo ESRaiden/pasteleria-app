@@ -39,13 +39,14 @@
         <nav class="bg-white shadow-md">
              <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between h-16">
-                    <h1 class="text-2xl font-bold text-red-500">Pastelería "La fiesta"</h1>
-                    <div>
-                        <button id="viewCalendarButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Ver Calendario</button>
-                        <button id="newFolioButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg ml-4">+ Nuevo Folio</button>
-                        <button id="manageUsersButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg ml-4 hidden">Administrar Usuarios</button>
-                        <button id="viewStatsButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg ml-4 hidden">Estadísticas</button>
-                        <button id="logoutButton" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg ml-4">Cerrar Sesión</button>
+                    <h1 class="text-2xl font-bold text-red-500 flex-shrink-0 mr-4">Pastelería "La fiesta"</h1>
+                    <div class="flex items-center justify-end gap-x-4">
+                <button id="viewCalendarButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Ver Calendario</button>
+                        <button id="newFolioButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">+ Nuevo Folio</button>
+                        <button id="manageUsersButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hidden">Administrar Usuarios</button>
+                        <button id="viewStatsButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg hidden">Estadísticas</button>
+                        <button id="commissionReportButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg hidden">Reporte de Comisiones</button>
+                        <button id="logoutButton" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cerrar Sesión</button>
                     </div>
                 </div>
             </div>
@@ -179,7 +180,7 @@
                             <div class="grid md:grid-cols-1 gap-6 mb-4">
                                 <div><label for="neighborhood" class="block mb-2 text-sm font-medium">Colonia</label><input type="text" id="neighborhood" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
                             </div>
-                            <div class="mb-4"><label for="street" class="block mb-2 text-sm font-medium">Calle</label><input type="text" id="street" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
+                            <div class="mb-4"><label for="street" class="block mb-2 text-sm font-medium">Calle (entre que calles)/Referencias</label><input type="text" id="street" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
                             <div class="grid md:grid-cols-2 gap-6 mb-4">
                                 <div><label for="extNumber" class="block mb-2 text-sm font-medium">Número Exterior</label><input type="text" id="extNumber" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
                                 <div><label for="intNumber" class="block mb-2 text-sm font-medium">Número Interior (Opcional)</label><input type="text" id="intNumber" class="bg-gray-50 border border-gray-300 text-sm rounded-lg block w-full p-2.5"></div>
@@ -195,6 +196,11 @@
                     </div>
                     <div class="flex items-center mb-6"><input id="isPaid" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded"><label for="isPaid" class="ml-2 text-sm font-medium text-gray-900">Pedido Pagado en su Totalidad</label></div>
                     
+                    <div class="flex items-center mb-6">
+                        <input id="addCommission" type="checkbox" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded">
+                        <label for="addCommission" class="ml-2 text-sm font-medium text-gray-900">Agregar porcentaje al cliente</label>
+                    </div>
+
                     <div class="flex items-center space-x-4"><button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5">Guardar Folio</button><button type="button" id="cancelFormButton" class="text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-5 py-2.5">Cancelar</button></div>
                 </form>
             </div>

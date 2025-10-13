@@ -26,9 +26,12 @@ router.get('/day-summary-pdf', folioController.generateDaySummaryPdf);
 // --- RUTA PARA OBTENER ESTADÍSTICAS (SÓLO ADMIN) ---
 router.get('/statistics', authorize('Administrador'), folioController.getStatistics);
 
-// ==================== INICIO DE LA MODIFICACIÓN ====================
 // --- RUTA PARA ESTADÍSTICAS DE PRODUCTIVIDAD (SÓLO ADMIN) ---
 router.get('/productivity', authorize('Administrador'), folioController.getProductivityStats);
+
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+// --- RUTA PARA REPORTE DE COMISIONES (SÓLO ADMIN) ---
+router.get('/commission-report', authorize('Administrador'), folioController.generateCommissionReport);
 // ===================== FIN DE LA MODIFICACIÓN ======================
 
 // Rutas para la colección de folios (/api/folios)
