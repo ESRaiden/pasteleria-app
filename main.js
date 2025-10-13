@@ -14,9 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const statsView = document.getElementById('statsView');
     const viewStatsButton = document.getElementById('viewStatsButton');
     const productivityDateInput = document.getElementById('productivityDate');
-    // ==================== INICIO DE LA MODIFICACIÓN (NUEVO BOTÓN) ====================
     const commissionReportButton = document.getElementById('commissionReportButton');
-    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     // --- ELEMENTOS DEL FORMULARIO ---
     const folioForm = document.getElementById('folioForm'),
@@ -37,9 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
         advanceInput = document.getElementById('advancePayment'),
         balanceInput = document.getElementById('balance'),
         isPaidCheckbox = document.getElementById('isPaid'),
-        // ==================== INICIO DE LA MODIFICACIÓN (NUEVO CHECKBOX) ====================
         addCommissionCheckbox = document.getElementById('addCommission'),
-        // ===================== FIN DE LA MODIFICACIÓN ======================
         hasExtraHeightCheckbox = document.getElementById('hasExtraHeight'),
         complementsContainer = document.getElementById('complementsContainer'),
         addComplementButton = document.getElementById('addComplementButton'),
@@ -332,15 +328,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (role === 'Administrador') {
             manageUsersButton.classList.remove('hidden');
             viewStatsButton.classList.remove('hidden');
-            // ==================== INICIO DE LA MODIFICACIÓN (MOSTRAR BOTÓN) ====================
             commissionReportButton.classList.remove('hidden');
-            // ===================== FIN DE LA MODIFICACIÓN ======================
         } else {
             manageUsersButton.classList.add('hidden');
             viewStatsButton.classList.add('hidden');
-            // ==================== INICIO DE LA MODIFICACIÓN (OCULTAR BOTÓN) ===================
             commissionReportButton.classList.add('hidden');
-            // ===================== FIN DE LA MODIFICACIÓN ======================
         }
 
         if (window.initializeCalendar) {
@@ -715,15 +707,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         formData.append('isPaid', isPaidCheckbox.checked);
         formData.append('hasExtraHeight', hasExtraHeightCheckbox.checked);
-
-        // ==================== INICIO DE LA MODIFICACIÓN (ENVIAR DATOS) ====================
         formData.append('addCommissionToCustomer', addCommissionCheckbox.checked);
-        // ===================== FIN DE LA MODIFICACIÓN ======================
 
         const complementsData = [];
         document.querySelectorAll('.complement-form').forEach(form => {
             complementsData.push({
                 persons: form.querySelector('.complement-persons').value,
+                shape: form.querySelector('.complement-shape').value,
                 flavor: form.querySelector('.complement-flavor').value,
                 filling: form.querySelector('.complement-filling').value,
                 description: form.querySelector('.complement-description').value,
@@ -885,19 +875,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function openRellenoModal(onSelectCallback, currentRellenos, limit) {
-        const showStep1 = () => {
-            modalTitle.textContent = 'Añadir Relleno';
-            modalStep1.classList.remove('hidden');
-            modalStep2.classList.add('hidden');
-            modalSearch.value = '';
-            modalList.innerHTML = '';
-            
-            const allRellenos = [
-                ...Object.keys(rellenosData.incluidos).map(name => ({ name, hasCost: false, data: rellenosData.incluidos[name] })),
-                ...Object.keys(rellenosData.conCosto).map(name => ({ name, hasCost: true, data: rellenosData.conCosto[name] }))
-            ];
+        modalTitle.textContent = 'Añadir Relleno';
+        modalStep1.classList.remove('hidden');
+        modalStep2.classList.add('hidden');
+        modalSearch.value = '';
+        modalList.innerHTML = '';
+        
+        const allRellenos = [
+            ...Object.keys(rellenosData.incluidos).map(name => ({ name, hasCost: false, data: rellenosData.incluidos[name] })),
+            ...Object.keys(rellenosData.conCosto).map(name => ({ name, hasCost: true, data: rellenosData.conCosto[name] }))
+        ];
 
-            allRellenos.forEach(titular => {
+        function populateList(filter = '') {
+            modalList.innerHTML = '';
+            const filteredRellenos = allRellenos.filter(r => r.name.toLowerCase().includes(filter.toLowerCase()));
+
+            filteredRellenos.forEach(titular => {
                 const itemEl = document.createElement('div');
                 itemEl.className = 'modal-list-item';
                 if (titular.hasCost) itemEl.classList.add('cost-extra');
@@ -918,7 +911,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 modalList.appendChild(itemEl);
             });
-        };
+        }
 
         const showStep2 = (titular, suboptions) => {
             modalStep1.classList.add('hidden');
@@ -942,29 +935,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 modalStep2List.appendChild(compEl);
             });
-            modalStep2Title.querySelector('.back-to-step1').addEventListener('click', showStep1);
+            modalStep2Title.querySelector('.back-to-step1').addEventListener('click', () => populateList(modalSearch.value));
         };
         
-        showStep1();
+        populateList();
+        modalSearch.onkeyup = () => populateList(modalSearch.value);
         selectionModal.classList.remove('hidden');
     }
 
     function openRellenoModalEspecial(onSelectCallback) {
-        let state = {
-            principal: null,       // El objeto principal seleccionado { name, suboptions, separator }
-            finalPrincipal: ''     // El string final del relleno principal
-        };
+        let state = { principal: null, finalPrincipal: '' };
+        modalSearch.value = '';
 
-        const showPrincipales = () => {
+        const showPrincipales = (filter = '') => {
             modalTitle.textContent = 'Paso 1: Elige un Relleno Principal';
             modalStep1.classList.remove('hidden');
             modalStep2.classList.add('hidden');
             modalList.innerHTML = '';
             
-            rellenosDataEspecial.principales.forEach(item => {
+            const filteredPrincipales = rellenosDataEspecial.principales.filter(item => item.name.toLowerCase().includes(filter.toLowerCase()));
+
+            filteredPrincipales.forEach(item => {
                 const itemEl = document.createElement('div');
                 itemEl.className = 'modal-list-item';
-                itemEl.textContent = item.name + (item.suboptions.length > 0 ? ` (${item.suboptions.join(' / ')})` : '');
+                itemEl.textContent = item.name + (item.suboptions.length > 0 ? ` (...)` : '');
                 itemEl.addEventListener('click', () => {
                     state.principal = item;
                     if (item.suboptions && item.suboptions.length > 0) {
@@ -997,7 +991,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 modalStep2List.appendChild(itemEl);
             });
-            modalStep2Title.querySelector('.back-to-step1').addEventListener('click', showPrincipales);
+            modalStep2Title.querySelector('.back-to-step1').addEventListener('click', () => showPrincipales(modalSearch.value));
         };
 
         const showSecundarios = () => {
@@ -1022,12 +1016,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (state.principal.suboptions && state.principal.suboptions.length > 0) {
                     showPrincipalSuboptions();
                 } else {
-                    showPrincipales();
+                    showPrincipales(modalSearch.value);
                 }
             });
         };
-
+        
         showPrincipales();
+        modalSearch.onkeyup = () => showPrincipales(modalSearch.value);
     }
 
     modalCloseBtn.addEventListener('click', () => selectionModal.classList.add('hidden'));
@@ -1063,7 +1058,6 @@ document.addEventListener('DOMContentLoaded', function() {
         updateTotals(); 
     });
 
-    // ==================== INICIO DE LA MODIFICACIÓN (CÁLCULO DE TOTALES) ====================
     function getGrandTotal() {
         const total = parseFloat(totalInput.value) || 0;
         const delivery = parseFloat(deliveryCostInput.value) || 0;
@@ -1079,12 +1073,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const subtotalForCommission = total + delivery + additionalFromList + fillingCost;
         if (addCommissionCheckbox.checked) {
             const commission = subtotalForCommission * 0.05;
-            commissionCost = Math.ceil(commission / 10) * 10; // Redondeo a la decena superior
+            commissionCost = Math.ceil(commission / 10) * 10;
         }
         
         return subtotalForCommission + commissionCost;
     }
-    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     function calculateBalance() {
         balanceInput.value = (getGrandTotal() - (parseFloat(advanceInput.value) || 0)).toFixed(2);
@@ -1103,9 +1096,7 @@ document.addEventListener('DOMContentLoaded', function() {
         advanceInput.readOnly = this.checked;
         updateTotals();
     });
-    // ==================== INICIO DE LA MODIFICACIÓN (EVENT LISTENER) ====================
     addCommissionCheckbox.addEventListener('change', updateTotals);
-    // ===================== FIN DE LA MODIFICACIÓN ======================
     tiersTableBody.addEventListener('input', (e) => {
         if (e.target.classList.contains('tier-persons-input')) updateTotals();
     });
@@ -1155,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', function() {
             row.querySelector('.tier-persons-input').value = tier.persons || '';
             row.querySelector('.tier-notes-input').value = tier.notas || '';
             renderTags(row.querySelector('.panes-container'), tier.panes || [], (tagIndex) => removeTierPane(index, tagIndex));
-            renderTags(row.querySelector('.fillings-container'), (tier.rellenos || []).map(r => (typeof r === 'object' ? r.name : r)), (tagIndex) => removeTierFilling(index, tagIndex));
+            renderTags(row.querySelector('.fillings-container'), (tier.rellenos || []), (tagIndex) => removeTierFilling(index, tagIndex));
         }
         
         tiersTableBody.appendChild(row);
@@ -1181,7 +1172,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     addTierButton.addEventListener('click', () => addTierRow());
     
-    // --- Lógica para manejar la tabla de pisos (Tiers) ---
     const removeTierPane = (tierIndex, tagIndex) => {
         if (!tiersData[tierIndex]) return;
         tiersData[tierIndex].panes.splice(tagIndex, 1);
@@ -1251,10 +1241,14 @@ document.addEventListener('DOMContentLoaded', function() {
         formWrapper.innerHTML = `
             <button type="button" class="absolute top-2 right-2 remove-complement-btn text-red-500 font-bold text-lg">X</button>
             <h4 class="text-md font-semibold text-gray-600">Complemento ${complementIndex + 1}</h4>
-            <div class="grid md:grid-cols-3 gap-4">
+            <div class="grid md:grid-cols-4 gap-4">
                 <div>
                     <label class="block mb-2 text-sm font-medium">Personas</label>
                     <input type="number" step="5" class="complement-persons bg-white border border-gray-300 text-sm rounded-lg block w-full p-2.5" value="${complement?.persons || ''}">
+                </div>
+                <div>
+                    <label class="block mb-2 text-sm font-medium">Forma</label>
+                    <input type="text" class="complement-shape bg-white border border-gray-300 text-sm rounded-lg block w-full p-2.5" value="${complement?.shape || ''}">
                 </div>
                 <div>
                     <label class="block mb-2 text-sm font-medium">Sabor del Pan</label>
@@ -1298,7 +1292,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.showMainView = showView;
 
-    // ==================== LÓGICA DEL VISOR DE PDFS (CORREGIDA) ====================
+    // --- LÓGICA DEL VISOR DE PDFS ---
     const pdfViewerModal = document.getElementById('pdfViewerModal');
     const closePdfViewerBtn = document.getElementById('closePdfViewer');
     const pdfViewerTitle = document.getElementById('pdfViewerTitle');
@@ -1366,12 +1360,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // ==================== INICIO DE LA MODIFICACIÓN (LÓGICA DEL BOTÓN DE REPORTE) ====================
+    // --- LÓGICA DEL BOTÓN DE REPORTE ---
     if (commissionReportButton) {
         commissionReportButton.addEventListener('click', () => {
             const today = new Date();
-            today.setDate(today.getDate() - 1); // Restamos un día para obtener la fecha de ayer
-            const yesterday = today.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+            today.setDate(today.getDate() - 1);
+            const yesterday = today.toISOString().split('T')[0];
 
             const authToken = localStorage.getItem('authToken');
             const url = `http://localhost:3000/api/folios/commission-report?date=${yesterday}&token=${authToken}`;
@@ -1379,5 +1373,4 @@ document.addEventListener('DOMContentLoaded', function() {
             window.open(url, '_blank');
         });
     }
-    // ===================== FIN DE LA MODIFICACIÓN ======================
 });
