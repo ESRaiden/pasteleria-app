@@ -2,6 +2,13 @@ const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
 const Commission = sequelize.define('Commission', {
+  // ==================== INICIO DE LA MODIFICACIÓN ====================
+  folioNumber: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    comment: 'Copia del número de folio para persistencia histórica.'
+  },
+  // ===================== FIN DE LA MODIFICACIÓN ======================
   amount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
@@ -20,8 +27,8 @@ const Commission = sequelize.define('Commission', {
   }
 }, {
   tableName: 'commissions',
-  timestamps: true, // Guardará la fecha de creación automáticamente
-  updatedAt: false // No necesitamos la fecha de actualización
+  timestamps: true,
+  updatedAt: false
 });
 
 module.exports = Commission;

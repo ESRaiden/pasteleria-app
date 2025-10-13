@@ -26,7 +26,7 @@
         <tbody>
             <% commissions.forEach(commission => { %>
                 <tr>
-                    <td><%= commission.folio.folioNumber %></td>
+                    <td><%= commission.folioNumber %></td>
                     <td>$<%= parseFloat(commission.amount).toFixed(2) %></td>
                 </tr>
             <% }); %>

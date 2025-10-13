@@ -26,15 +26,14 @@ const calculateFillingCost = (folioType, persons, fillings, tiers) => {
     return cost;
 };
 
-// --- CREAR un nuevo folio (MODIFICADO) ---
+// --- CREAR un nuevo folio ---
 exports.createFolio = async (req, res) => {
-  // Usaremos una transacción para asegurar que todo se guarde correctamente
   const t = await sequelize.transaction();
   try {
     const {
         clientName, clientPhone, clientPhone2, total, advancePayment, deliveryDate,
         tiers, accessories, additional, isPaid, hasExtraHeight, imageComments,
-        cakeFlavor, filling, complements, addCommissionToCustomer, // <--- Nueva variable
+        cakeFlavor, filling, complements, addCommissionToCustomer,
         ...folioData
     } = req.body;
 
@@ -58,9 +57,11 @@ exports.createFolio = async (req, res) => {
     let finalFolioNumber = baseFolioNumber;
     let counter = 1;
 
-    while (await Folio.findOne({ where: { folioNumber: finalFolioNumber } })) {
+    let existingFolio = await Folio.findOne({ where: { folioNumber: finalFolioNumber } });
+    while (existingFolio) {
         finalFolioNumber = `${baseFolioNumber}-${counter}`;
         counter++;
+        existingFolio = await Folio.findOne({ where: { folioNumber: finalFolioNumber } });
     }
     
     const additionalData = JSON.parse(additional || '[]');
@@ -72,7 +73,6 @@ exports.createFolio = async (req, res) => {
 
     const fillingCost = calculateFillingCost(folioData.folioType, folioData.persons, fillingData, tiersData);
 
-    // ==================== LÓGICA DE COMISIÓN (CREAR) ====================
     const applyCommission = addCommissionToCustomer === 'true';
     const baseTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost + fillingCost;
     
@@ -84,7 +84,6 @@ exports.createFolio = async (req, res) => {
         roundedCommissionAmount = Math.ceil(commissionAmount / 10) * 10;
         finalTotal += roundedCommissionAmount;
     }
-    // =================================================================
 
     const balance = finalTotal - parseFloat(advancePayment);
     const imageUrls = req.files ? req.files.map(file => file.path) : [];
@@ -94,7 +93,7 @@ exports.createFolio = async (req, res) => {
       ...folioData,
       deliveryDate,
       folioNumber: finalFolioNumber,
-      total: finalTotal, // <--- Total final con o sin comisión
+      total: finalTotal,
       advancePayment,
       balance,
       clientId: client.id,
@@ -111,27 +110,25 @@ exports.createFolio = async (req, res) => {
       hasExtraHeight: hasExtraHeight === 'true'
     }, { transaction: t });
 
-    // Guardar la comisión en su propia tabla
     await Commission.create({
         folioId: newFolio.id,
+        folioNumber: newFolio.folioNumber, // Guardamos la copia del número de folio
         amount: commissionAmount,
         appliedToCustomer: applyCommission,
         roundedAmount: applyCommission ? roundedCommissionAmount : null
     }, { transaction: t });
     
-    // Si todo salió bien, confirmamos los cambios en la base de datos
     await t.commit();
     res.status(201).json(newFolio);
 
   } catch (error) {
-    // Si algo falla, revertimos todos los cambios
     await t.rollback();
     console.error('ERROR DETALLADO AL CREAR FOLIO:', error);
     res.status(400).json({ message: 'Error al crear el folio', error: error.message });
   }
 };
 
-// --- OBTENER TODOS los folios (sin cambios) ---
+// --- OBTENER TODOS los folios ---
 exports.getAllFolios = async (req, res) => {
   try {
     const { q } = req.query;
@@ -162,14 +159,14 @@ exports.getAllFolios = async (req, res) => {
   }
 };
 
-// --- OBTENER UN SOLO folio por su ID (MODIFICADO para incluir comisión) ---
+// --- OBTENER UN SOLO folio por su ID ---
 exports.getFolioById = async (req, res) => {
     try {
         const folio = await Folio.findByPk(req.params.id, {
             include: [
                 { model: Client, as: 'client', attributes: ['name', 'phone', 'phone2'] },
                 { model: User, as: 'responsibleUser', attributes: ['username'] },
-                { model: Commission, as: 'commission' }, // <-- Incluimos la comisión
+                { model: Commission, as: 'commission' },
                 {
                     model: FolioEditHistory,
                     as: 'editHistory',
@@ -186,7 +183,7 @@ exports.getFolioById = async (req, res) => {
     }
 };
 
-// --- ACTUALIZAR un folio existente (MODIFICADO) ---
+// --- ACTUALIZAR un folio existente ---
 exports.updateFolio = async (req, res) => {
     const t = await sequelize.transaction();
     try {
@@ -201,7 +198,7 @@ exports.updateFolio = async (req, res) => {
             clientName, clientPhone, clientPhone2, total, advancePayment, deliveryDate, 
             tiers, accessories, additional, isPaid, hasExtraHeight, imageComments,
             existingImageUrls, existingImageComments, cakeFlavor, filling,
-            complements, addCommissionToCustomer, // <--- Nueva variable
+            complements, addCommissionToCustomer,
             ...folioData 
         } = req.body;
         
@@ -219,7 +216,6 @@ exports.updateFolio = async (req, res) => {
 
         const fillingCost = calculateFillingCost(folioData.folioType, folioData.persons, fillingData, tiersData);
 
-        // ==================== LÓGICA DE COMISIÓN (ACTUALIZAR) ====================
         const applyCommission = addCommissionToCustomer === 'true';
         const baseTotal = parseFloat(total) + parseFloat(folioData.deliveryCost || 0) + additionalCost + fillingCost;
         
@@ -231,7 +227,6 @@ exports.updateFolio = async (req, res) => {
             roundedCommissionAmount = Math.ceil(commissionAmount / 10) * 10;
             finalTotal += roundedCommissionAmount;
         }
-        // =====================================================================
 
         const balance = finalTotal - parseFloat(advancePayment);
 
@@ -259,13 +254,27 @@ exports.updateFolio = async (req, res) => {
             hasExtraHeight: hasExtraHeight === 'true'
         }, { transaction: t });
 
-        // Actualizar o crear la comisión
-        await Commission.upsert({
-            folioId: folio.id,
-            amount: commissionAmount,
-            appliedToCustomer: applyCommission,
-            roundedAmount: applyCommission ? roundedCommissionAmount : null
-        }, { transaction: t });
+        // Busca si ya existe una comisión para este folio
+        let commission = await Commission.findOne({ where: { folioId: folio.id }, transaction: t });
+
+        if (commission) {
+            // Si existe, la actualiza
+            await commission.update({
+                folioNumber: folio.folioNumber, // Actualizamos la copia
+                amount: commissionAmount,
+                appliedToCustomer: applyCommission,
+                roundedAmount: applyCommission ? roundedCommissionAmount : null
+            }, { transaction: t });
+        } else {
+            // Si no existe, la crea
+            await Commission.create({
+                folioId: folio.id,
+                folioNumber: folio.folioNumber, // Guardamos la copia
+                amount: commissionAmount,
+                appliedToCustomer: applyCommission,
+                roundedAmount: applyCommission ? roundedCommissionAmount : null
+            }, { transaction: t });
+        }
 
         await FolioEditHistory.create({ folioId: folioId, editorUserId: req.user.id }, { transaction: t });
 
@@ -548,7 +557,7 @@ exports.getStatistics = async (req, res) => {
     try {
         const folios = await Folio.findAll({
             attributes: ['folioType', 'cakeFlavor', 'filling', 'tiers'],
-            where: { status: { [Op.ne]: 'Cancelado' } } // Excluimos folios cancelados
+            where: { status: { [Op.ne]: 'Cancelado' } }
         });
 
         const stats = {
@@ -635,7 +644,6 @@ exports.getProductivityStats = async (req, res) => {
     }
 };
 
-// ==================== INICIO DE LA MODIFICACIÓN ====================
 // --- GENERAR PDF DE REPORTE DE COMISIONES ---
 exports.generateCommissionReport = async (req, res) => {
     try {
@@ -645,11 +653,6 @@ exports.generateCommissionReport = async (req, res) => {
         }
 
         const commissions = await Commission.findAll({
-            include: [{
-                model: Folio,
-                as: 'folio',
-                attributes: ['folioNumber']
-            }],
             where: {
                 createdAt: {
                     [Op.gte]: `${date} 00:00:00`,
@@ -671,4 +674,3 @@ exports.generateCommissionReport = async (req, res) => {
         res.status(500).json({ message: 'Error al generar el reporte', error: error.message });
     }
 };
-// ===================== FIN DE LA MODIFICACIÓN ======================

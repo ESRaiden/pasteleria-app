@@ -1,0 +1,7 @@
+{
+  "ignore": [
+    "FOLIOS_GENERADOS/*",
+    "uploads/*",
+    "RESPALDOS_BD/*"
+  ]
+}
