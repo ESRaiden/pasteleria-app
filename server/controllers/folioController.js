@@ -454,7 +454,7 @@ exports.generateDaySummaryPdf = async (req, res) => {
                         pastelesDelFolio.push({
                             ...folio.toJSON(),
                             persons: comp.persons,
-                            shape: comp.description || 'Complemento'
+                            shape: comp.shape || 'Complemento'
                         });
                     });
                 }
@@ -527,7 +527,7 @@ exports.generateLabelPdf = async (req, res) => {
                     ...folioJson,
                     folioNumber: `${folioJson.folioNumber}-C${index + 1}`,
                     persons: comp.persons,
-                    shape: comp.description || 'Complemento',
+                    shape: comp.shape || 'Complemento',
                     id: `${folio.id}-C${index+1}`
                 });
             });
