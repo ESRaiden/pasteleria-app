@@ -140,24 +140,35 @@ function initializeCalendar(authToken, userRole) {
 
                 foliosForDay.forEach(folio => {
                     const listItem = document.createElement('div');
-                    listItem.className = 'folio-list-item p-3 bg-gray-100 rounded-md cursor-pointer hover:bg-gray-200 flex justify-between items-center';
+                    listItem.className = 'folio-list-item p-3 bg-gray-100 rounded-md flex justify-between items-center';
                     listItem.dataset.phone = folio.client?.phone || '';
 
                     const time = folio.deliveryTime.substring(0, 5);
                     
-                    let statusTag = '';
+                    let tagsHTML = '';
                     if (folio.status === 'Cancelado') {
-                        statusTag = `<span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded-full">CANCELADO</span>`;
-                    } else if (folio.isPrinted) {
-                        statusTag = `<span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">IMPRESO</span>`;
+                        tagsHTML += `<span class="status-tag bg-red-100 text-red-600">CANCELADO</span>`;
+                    } else {
+                        if (folio.isPrinted) tagsHTML += `<span class="status-tag bg-green-100 text-green-600">IMPRESO</span>`;
+                        if (folio.fondantChecked) tagsHTML += `<span class="status-tag bg-blue-100 text-blue-600">FONDANT OK</span>`;
+                        if (folio.dataChecked) tagsHTML += `<span class="status-tag bg-purple-100 text-purple-600">DATOS OK</span>`;
                     }
-                    
+
                     listItem.innerHTML = `
-                        <span>${time} - Folio ${folio.folioNumber} - ${folio.client ? folio.client.name : 'N/A'}</span>
-                        ${statusTag}
+                        <div class="flex-grow cursor-pointer folio-info">
+                            <span>${time} - Folio ${folio.folioNumber} - ${folio.client ? folio.client.name : 'N/A'}</span>
+                            <div class="mt-1 flex flex-wrap gap-2">${tagsHTML}</div>
+                        </div>
+                        <div class="flex-shrink-0 ml-4 p-2 border-l" data-folio-id="${folio.id}">
+                            <div class="flex items-center space-x-3 text-xs">
+                                <label class="flex items-center"><input type="checkbox" class="folio-status-check" data-status="isPrinted" ${folio.isPrinted ? 'checked' : ''}> Impreso</label>
+                                <label class="flex items-center"><input type="checkbox" class="folio-status-check" data-status="fondantChecked" ${folio.fondantChecked ? 'checked' : ''}> Revisado Fondant</label>
+                                <label class="flex items-center"><input type="checkbox" class="folio-status-check" data-status="dataChecked" ${folio.dataChecked ? 'checked' : ''}> Datos Revisados</label>
+                            </div>
+                        </div>
                     `;
 
-                    listItem.addEventListener('click', () => {
+                    listItem.querySelector('.folio-info').addEventListener('click', () => {
                         dailyFoliosModal.classList.add('hidden');
                         showFolioModalWithRoleCheck(folio);
                     });
@@ -181,6 +192,43 @@ function initializeCalendar(authToken, userRole) {
     });
     calendar.render();
     
+    // Event listener para todos los checkboxes
+    document.getElementById('dailyFoliosList').addEventListener('change', async (e) => {
+        if (e.target.classList.contains('folio-status-check')) {
+            const checkboxContainer = e.target.closest('[data-folio-id]');
+            const folioId = checkboxContainer.dataset.folioId;
+
+            const isPrinted = checkboxContainer.querySelector('[data-status="isPrinted"]').checked;
+            const fondantChecked = checkboxContainer.querySelector('[data-status="fondantChecked"]').checked;
+            const dataChecked = checkboxContainer.querySelector('[data-status="dataChecked"]').checked;
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/folios/${folioId}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ isPrinted, fondantChecked, dataChecked })
+                });
+                if (!response.ok) throw new Error('Error al actualizar el estado');
+                
+                // Actualizar el folio en el caché local para que los cambios se reflejen si se reabre el modal
+                const folioInCache = allFoliosData.find(f => f.id == folioId);
+                if (folioInCache) {
+                    folioInCache.isPrinted = isPrinted;
+                    folioInCache.fondantChecked = fondantChecked;
+                    folioInCache.dataChecked = dataChecked;
+                }
+                calendar.refetchEvents(); // Refrescar los eventos del calendario
+            } catch (error) {
+                alert('No se pudo guardar el estado. Inténtalo de nuevo.');
+                // Revertir el checkbox si falla la llamada
+                e.target.checked = !e.target.checked;
+            }
+        }
+    });
+
     window.myAppCalendar = calendar;
 
     // --- LÓGICA DE BÚSQUEDA GENERAL ---
@@ -270,7 +318,6 @@ function initializeCalendar(authToken, userRole) {
     const modal = document.getElementById('folioModal');
     const deleteFolioButton = document.getElementById('deleteFolioButton');
     const cancelFolioButton = document.getElementById('cancelFolioButton');
-    // ==================== INICIO DE LA MODIFICACIÓN ====================
     const printLabelButton = document.getElementById('printLabelButton');
 
     if (printLabelButton) {
@@ -283,7 +330,6 @@ function initializeCalendar(authToken, userRole) {
             }
         });
     }
-    // ===================== FIN DE LA MODIFICACIÓN ======================
 
     if(cancelFolioButton){
         cancelFolioButton.addEventListener('click', async () => {
@@ -308,7 +354,6 @@ function initializeCalendar(authToken, userRole) {
             }
         });
     }
-
 
     if (closeModalBtn) { closeModalBtn.addEventListener('click', () => modal.classList.add('hidden')); }
     

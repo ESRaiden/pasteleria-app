@@ -89,13 +89,10 @@ const Folio = sequelize.define('Folio', {
     type: DataTypes.JSON,
     allowNull: true
   },
-  // ==================== INICIO DE LA CORRECCIÓN ====================
-  // Se eliminan los campos individuales de complemento y se reemplazan por un campo JSON.
   complements: {
       type: DataTypes.JSON,
       allowNull: true
   },
-  // ===================== FIN DE LA CORRECCIÓN ======================
   isPaid: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
@@ -110,7 +107,19 @@ const Folio = sequelize.define('Folio', {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false
+  },
+  // ==================== INICIO DE LA MODIFICACIÓN ====================
+  fondantChecked: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+  },
+  dataChecked: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
   }
+  // ===================== FIN DE LA MODIFICACIÓN ======================
 }, { tableName: 'folios' });
 
 module.exports = Folio;

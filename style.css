@@ -97,3 +97,13 @@ input:read-only, input:disabled, textarea:disabled { background-color: #e9ecef; 
     opacity: 0.2;
     cursor: not-allowed;
 }
+
+/* ==================== INICIO DE LA MODIFICACIÓN ==================== */
+/* --- ESTILOS PARA LAS ETIQUETAS DE ESTADO --- */
+.status-tag {
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 9999px;
+}
+/* ===================== FIN DE LA MODIFICACIÓN ====================== */

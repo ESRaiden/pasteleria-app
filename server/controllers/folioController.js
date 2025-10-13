@@ -374,9 +374,7 @@ exports.generateFolioPdf = async (req, res) => {
     await fs.writeFile(filePath, pdfBuffer);
     console.log(`✅ PDF guardado en: ${filePath}`);
 
-    if (!folio.isPrinted) {
-        await folio.update({ isPrinted: true });
-    }
+    // await folio.update({ isPrinted: true }); // <--- Línea eliminada/comentada
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=${fileName}`);
@@ -672,5 +670,27 @@ exports.generateCommissionReport = async (req, res) => {
     } catch (error) {
         console.error('Error al generar el reporte de comisiones:', error);
         res.status(500).json({ message: 'Error al generar el reporte', error: error.message });
+    }
+};
+
+// --- ACTUALIZAR ESTADOS DE UN FOLIO ---
+exports.updateFolioStatus = async (req, res) => {
+    try {
+        const folio = await Folio.findByPk(req.params.id);
+        if (!folio) {
+            return res.status(404).json({ message: 'Folio no encontrado' });
+        }
+
+        const { isPrinted, fondantChecked, dataChecked } = req.body;
+
+        await folio.update({
+            isPrinted,
+            fondantChecked,
+            dataChecked
+        });
+
+        res.status(200).json({ message: 'Estado del folio actualizado.' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al actualizar el estado del folio', error: error.message });
     }
 };

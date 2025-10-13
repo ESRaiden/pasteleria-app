@@ -29,10 +29,8 @@ router.get('/statistics', authorize('Administrador'), folioController.getStatist
 // --- RUTA PARA ESTADÍSTICAS DE PRODUCTIVIDAD (SÓLO ADMIN) ---
 router.get('/productivity', authorize('Administrador'), folioController.getProductivityStats);
 
-// ==================== INICIO DE LA MODIFICACIÓN ====================
 // --- RUTA PARA REPORTE DE COMISIONES (SÓLO ADMIN) ---
 router.get('/commission-report', authorize('Administrador'), folioController.generateCommissionReport);
-// ===================== FIN DE LA MODIFICACIÓN ======================
 
 // Rutas para la colección de folios (/api/folios)
 router.route('/')
@@ -51,10 +49,15 @@ router.get('/:id/pdf', folioController.generateFolioPdf);
 // Ruta para generar el PDF de la etiqueta de un solo folio
 router.get('/:id/label-pdf', folioController.generateLabelPdf);
 
-// --- RUTA PARA MARCAR UN FOLIO COMO IMPRESO ---
+// --- RUTA PARA MARCAR UN FOLIO COMO IMPRESO (OBSOLETA, PERO SE MANTIENE POR SI ACASO) ---
 router.patch('/:id/mark-as-printed', folioController.markAsPrinted);
 
-// --- NUEVA RUTA PARA CANCELAR UN FOLIO ---
+// --- RUTA PARA CANCELAR UN FOLIO ---
 router.patch('/:id/cancel', folioController.cancelFolio);
+
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+// --- NUEVA RUTA PARA ACTUALIZAR ESTADOS DEL FOLIO ---
+router.patch('/:id/status', folioController.updateFolioStatus);
+// ===================== FIN DE LA MODIFICACIÓN ======================
 
 module.exports = router;
