@@ -70,6 +70,7 @@ exports.createFolio = async (req, res) => {
     const tiersData = JSON.parse(tiers || '[]');
     const fillingData = JSON.parse(filling || '[]');
     const complementsData = JSON.parse(complements || '[]');
+    const cakeFlavorData = JSON.parse(cakeFlavor || '[]');
 
     const fillingCost = calculateFillingCost(folioData.folioType, folioData.persons, fillingData, tiersData);
 
@@ -103,8 +104,8 @@ exports.createFolio = async (req, res) => {
       tiers: tiersData,
       accessories: accessories,
       additional: additionalData,
-      cakeFlavor: cakeFlavor,
-      filling: filling,
+      cakeFlavor: cakeFlavorData,
+      filling: fillingData,
       complements: complementsData,
       isPaid: isPaid === 'true',
       hasExtraHeight: hasExtraHeight === 'true'
@@ -128,10 +129,10 @@ exports.createFolio = async (req, res) => {
   }
 };
 
-// --- OBTENER TODOS los folios ---
+// --- OBTENER TODOS los folios (VERSIÓN CORREGIDA) ---
 exports.getAllFolios = async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, status } = req.query;
     let whereClause = {};
 
     if (q) {
@@ -145,16 +146,21 @@ exports.getAllFolios = async (req, res) => {
       };
     }
 
+    if (status) {
+      whereClause.status = status;
+    }
+
     const folios = await Folio.findAll({
       where: whereClause,
       include: [
         { model: Client, as: 'client', attributes: ['name', 'phone', 'phone2'] },
         { model: User, as: 'responsibleUser', attributes: ['username'] }
       ],
-      order: [['deliveryDate', 'ASC'], ['deliveryTime', 'ASC']]
+      order: status === 'Pendiente' ? [['createdAt', 'DESC']] : [['deliveryDate', 'ASC'], ['deliveryTime', 'ASC']]
     });
     res.status(200).json(folios);
   } catch (error) {
+    console.error("Error en getAllFolios:", error);
     res.status(500).json({ message: 'Error al obtener los folios', error: error.message });
   }
 };
@@ -213,6 +219,7 @@ exports.updateFolio = async (req, res) => {
         const tiersData = JSON.parse(tiers || '[]');
         const fillingData = JSON.parse(filling || '[]');
         const complementsData = JSON.parse(complements || '[]');
+        const cakeFlavorData = JSON.parse(cakeFlavor || '[]');
 
         const fillingCost = calculateFillingCost(folioData.folioType, folioData.persons, fillingData, tiersData);
 
@@ -247,29 +254,26 @@ exports.updateFolio = async (req, res) => {
             tiers: tiersData,
             accessories: accessories,
             additional: additionalData,
-            cakeFlavor: cakeFlavor,
-            filling: filling,
+            cakeFlavor: cakeFlavorData,
+            filling: fillingData,
             complements: complementsData,
             isPaid: isPaid === 'true',
             hasExtraHeight: hasExtraHeight === 'true'
         }, { transaction: t });
 
-        // Busca si ya existe una comisión para este folio
         let commission = await Commission.findOne({ where: { folioId: folio.id }, transaction: t });
 
         if (commission) {
-            // Si existe, la actualiza
             await commission.update({
-                folioNumber: folio.folioNumber, // Actualizamos la copia
+                folioNumber: folio.folioNumber,
                 amount: commissionAmount,
                 appliedToCustomer: applyCommission,
                 roundedAmount: applyCommission ? roundedCommissionAmount : null
             }, { transaction: t });
         } else {
-            // Si no existe, la crea
             await Commission.create({
                 folioId: folio.id,
-                folioNumber: folio.folioNumber, // Guardamos la copia
+                folioNumber: folio.folioNumber,
                 amount: commissionAmount,
                 appliedToCustomer: applyCommission,
                 roundedAmount: applyCommission ? roundedCommissionAmount : null
@@ -311,7 +315,7 @@ exports.deleteFolio = async (req, res) => {
     }
 };
 
-// --- GENERAR PDF INDIVIDUAL Y MARCAR COMO IMPRESO ---
+// --- GENERAR PDF INDIVIDUAL ---
 exports.generateFolioPdf = async (req, res) => {
   try {
     const folio = await Folio.findByPk(req.params.id, {
@@ -337,14 +341,19 @@ exports.generateFolioPdf = async (req, res) => {
     
     const folioDataForPdf = folio.toJSON();
     
-    if (folioDataForPdf.tiers && typeof folioDataForPdf.tiers === 'string') {
-        folioDataForPdf.tiers = JSON.parse(folioDataForPdf.tiers);
+    try {
+        if (folioDataForPdf.tiers && typeof folioDataForPdf.tiers === 'string') folioDataForPdf.tiers = JSON.parse(folioDataForPdf.tiers);
+        if (folioDataForPdf.cakeFlavor && typeof folioDataForPdf.cakeFlavor === 'string') folioDataForPdf.cakeFlavor = JSON.parse(folioDataForPdf.cakeFlavor);
+        if (folioDataForPdf.filling && typeof folioDataForPdf.filling === 'string') folioDataForPdf.filling = JSON.parse(folioDataForPdf.filling);
+    } catch (e) {
+        console.error("Error al parsear JSON para el PDF:", e);
     }
-    if (folioDataForPdf.cakeFlavor && typeof folioDataForPdf.cakeFlavor === 'string') {
-        folioDataForPdf.cakeFlavor = JSON.parse(folioDataForPdf.cakeFlavor).join(', ');
+    
+    if (Array.isArray(folioDataForPdf.cakeFlavor)) {
+        folioDataForPdf.cakeFlavor = folioDataForPdf.cakeFlavor.join(', ');
     }
-    if (folioDataForPdf.filling && typeof folioDataForPdf.filling === 'string') {
-        folioDataForPdf.filling = JSON.parse(folioDataForPdf.filling).map(f => f.name).join('; ');
+    if (Array.isArray(folioDataForPdf.filling)) {
+        folioDataForPdf.filling = folioDataForPdf.filling.map(f => f.name || f).join('; ');
     }
 
     const dayOfWeek = format(deliveryDate, 'EEEE', { locale: es });
@@ -373,8 +382,6 @@ exports.generateFolioPdf = async (req, res) => {
     const filePath = path.join(directoryPath, fileName);
     await fs.writeFile(filePath, pdfBuffer);
     console.log(`✅ PDF guardado en: ${filePath}`);
-
-    // await folio.update({ isPrinted: true }); // <--- Línea eliminada/comentada
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=${fileName}`);
@@ -571,11 +578,11 @@ exports.getStatistics = async (req, res) => {
         for (const folio of folios) {
             if (folio.folioType === 'Normal') {
                 try {
-                    const flavors = JSON.parse(folio.cakeFlavor || '[]');
-                    const fillings = JSON.parse(folio.filling || '[]');
+                    const flavors = Array.isArray(folio.cakeFlavor) ? folio.cakeFlavor : JSON.parse(folio.cakeFlavor || '[]');
+                    const fillings = Array.isArray(folio.filling) ? folio.filling : JSON.parse(folio.filling || '[]');
                     
                     flavors.forEach(flavor => incrementCount(stats.normal.flavors, flavor));
-                    fillings.forEach(filling => incrementCount(stats.normal.fillings, filling.name));
+                    fillings.forEach(filling => incrementCount(stats.normal.fillings, filling.name || filling));
                 } catch (e) { console.error(`Error procesando folio Normal:`, e); }
             } else if (folio.folioType === 'Base/Especial') {
                 try {

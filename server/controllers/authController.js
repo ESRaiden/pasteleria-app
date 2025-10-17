@@ -8,7 +8,7 @@ exports.register = async (req, res) => {
     const { username, email, password, role } = req.body;
 
     // Encriptamos la contraseña antes de guardarla
-    const hashedPassword = await bcrypt.hash(password, 10); // 10 es el "costo" de encriptación
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await User.create({
       username,
@@ -54,7 +54,10 @@ exports.login = async (req, res) => {
             role: user.role
         };
 
-        const token = jwt.sign(payload, 'tu_secreto_super_secreto', { expiresIn: '8h' });
+        // --- CORRECCIÓN APLICADA ---
+        // Se utiliza la variable de entorno JWT_SECRET para firmar el token,
+        // en lugar de tener la clave secreta directamente en el código.
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
 
         res.status(200).json({
             message: "Inicio de sesión exitoso",

@@ -20,7 +20,7 @@ module.exports = function(req, res, next) {
 
   try {
     // 4. Verificamos que el token sea válido usando la clave secreta.
-    const decoded = jwt.verify(token, 'tu_secreto_super_secreto');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // 5. Si es válido, guardamos los datos del usuario en el objeto de la petición para uso posterior.
     req.user = decoded;

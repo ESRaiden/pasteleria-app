@@ -65,16 +65,19 @@ const Folio = sequelize.define('Folio', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
   },
+  // --- MODIFICACIÓN APLICADA ---
+  // Se añade el nuevo estado 'Pendiente' para los folios generados por la IA
+  // que están esperando confirmación humana.
   status: {
-    type: DataTypes.ENUM('Nuevo', 'En Producción', 'Listo para Entrega', 'Entregado', 'Cancelado'),
+    type: DataTypes.ENUM('Pendiente', 'Nuevo', 'En Producción', 'Listo para Entrega', 'Entregado', 'Cancelado'),
     defaultValue: 'Nuevo'
   },
   imageUrls: {
-    type: DataTypes.JSON, // Guardará las rutas de las imágenes
+    type: DataTypes.JSON,
     allowNull: true
   },
   imageComments: {
-    type: DataTypes.JSON, // Guardará los comentarios de las imágenes
+    type: DataTypes.JSON,
     allowNull: true
   },
   tiers: {
@@ -108,7 +111,6 @@ const Folio = sequelize.define('Folio', {
       allowNull: false,
       defaultValue: false
   },
-  // ==================== INICIO DE LA MODIFICACIÓN ====================
   fondantChecked: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -119,7 +121,6 @@ const Folio = sequelize.define('Folio', {
       allowNull: false,
       defaultValue: false
   }
-  // ===================== FIN DE LA MODIFICACIÓN ======================
 }, { tableName: 'folios' });
 
 module.exports = Folio;
