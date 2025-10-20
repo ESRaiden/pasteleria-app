@@ -27,8 +27,8 @@ const calculateFillingCost = (folioType, persons, fillings, tiers) => {
 };
 
 // --- CREAR un nuevo folio ---
-exports.createFolio = async (req, res) => {
-  const t = await sequelize.transaction();
+exports.createFolio = async (req, res, transaction) => {
+  const t = transaction || (await sequelize.transaction());
   try {
     const {
         clientName, clientPhone, clientPhone2, total, advancePayment, deliveryDate,

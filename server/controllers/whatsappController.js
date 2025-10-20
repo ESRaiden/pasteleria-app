@@ -1,5 +1,5 @@
 const { Client, AISession } = require('../models'); // <-- CAMBIO: Importamos AISession en lugar de Folio
-const { extractFolioData } = require('../services/aiExtractorService');
+const { getInitialExtraction } = require('../services/aiExtractorService');
 
 // El comando que el empleado usará en WhatsApp para activar la IA
 const TRIGGER_COMMAND = '/crearfolio';
@@ -22,7 +22,7 @@ exports.handleWebhook = async (req, res) => {
     const conversationText = messageData.conversation;
 
     // 2. Enviamos la conversación a nuestro servicio de IA para que la analice.
-    const extractedData = await extractFolioData(conversationText);
+    const extractedData = await getInitialExtraction(conversationText);
     console.log("🤖 Datos extraídos por la IA:", JSON.stringify(extractedData, null, 2));
 
     // 3. Validamos los datos mínimos (la IA debería proporcionarlos).

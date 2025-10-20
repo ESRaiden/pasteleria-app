@@ -8,7 +8,7 @@ const openai = new OpenAI();
  * @param {string} conversationText - El texto completo de la conversación con el cliente.
  * @returns {Promise<object>} - Un objeto con los datos del folio extraídos.
  */
-async function extractFolioData(conversationText) {
+async function getInitialExtraction(conversationText) {
     // La fecha actual se envía a la IA para que pueda interpretar fechas relativas como "mañana" o "el sábado".
     const today = new Date().toLocaleDateString('es-MX', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -61,4 +61,4 @@ async function extractFolioData(conversationText) {
     }
 }
 
-module.exports = { extractFolioData };
+module.exports = { getInitialExtraction };

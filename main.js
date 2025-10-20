@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Variable global para recordar la vista anterior
     window.previousView = 'calendar';
+    let currentSessionId = null; // Variable para saber en qué sesión de chat estamos
 
     // --- VISTAS Y ELEMENTOS GLOBALES ---
     const loginView = document.getElementById('loginView');
@@ -10,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const userManagementView = document.getElementById('userManagementView');
     const statsView = document.getElementById('statsView');
     const loadingEl = document.getElementById('loading');
+    const chatView = document.getElementById('chatView'); // <-- Nueva vista de chat
     
     const pendingView = document.getElementById('pendingView');
     const viewPendingButton = document.getElementById('viewPendingButton');
@@ -24,6 +26,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const viewStatsButton = document.getElementById('viewStatsButton');
     const productivityDateInput = document.getElementById('productivityDate');
     const commissionReportButton = document.getElementById('commissionReportButton');
+
+    // --- ELEMENTOS DEL CHAT ---
+    const chatTitle = document.getElementById('chat-title');
+    const backToSessionsBtn = document.getElementById('backToSessionsBtn');
+    const chatMessagesContainer = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const folioStatusPanel = document.getElementById('folio-status-panel');
+    const generateFolioBtn = document.getElementById('generate-folio-btn');
+    const manualEditBtn = document.getElementById('manual-edit-btn');
 
     // --- ELEMENTOS DEL FORMULARIO ---
     const folioForm = document.getElementById('folioForm'),
@@ -318,18 +330,14 @@ document.addEventListener('DOMContentLoaded', function() {
         userManagementView.classList.add('hidden');
         statsView.classList.add('hidden');
         pendingView.classList.add('hidden');
+        chatView.classList.add('hidden');
 
-        if (viewToShow === 'calendar') {
-            calendarView.classList.remove('hidden');
-        } else if (viewToShow === 'form') {
-            formView.classList.remove('hidden');
-        } else if (viewToShow === 'userManagement') {
-            userManagementView.classList.remove('hidden');
-        } else if (viewToShow === 'stats') {
-            statsView.classList.remove('hidden');
-        } else if (viewToShow === 'pending') {
-            pendingView.classList.remove('hidden');
-        }
+        if (viewToShow === 'calendar') calendarView.classList.remove('hidden');
+        else if (viewToShow === 'form') formView.classList.remove('hidden');
+        else if (viewToShow === 'userManagement') userManagementView.classList.remove('hidden');
+        else if (viewToShow === 'stats') statsView.classList.remove('hidden');
+        else if (viewToShow === 'pending') pendingView.classList.remove('hidden');
+        else if (viewToShow === 'chat') chatView.classList.remove('hidden');
     }
     
     function showAppView(token, role) {
@@ -347,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
             commissionReportButton.classList.add('hidden');
         }
 
-        loadPendingFolios();
+        loadActiveSessions();
 
         if (window.initializeCalendar) {
             window.initializeCalendar(token, role);
@@ -418,7 +426,7 @@ document.addEventListener('DOMContentLoaded', function() {
         folioForm.dataset.originalStatus = folio.status;
 
         if (folio.status === 'Pendiente') {
-            formTitle.textContent = `Confirmar Folio de IA: ${folio.folioNumber}`;
+            formTitle.textContent = `Confirmar Folio de IA: ${folio.folioNumber || ''}`;
         } else {
             formTitle.textContent = `Editando Folio: ${folio.folioNumber}`;
         }
@@ -437,11 +445,13 @@ document.addEventListener('DOMContentLoaded', function() {
         accessoriesInput.value = folio.accessories || '';
         deliveryCostInput.value = parseFloat(folio.deliveryCost) || 0;
 
-        const [hour, minute] = folio.deliveryTime.split(':');
-        const hour12 = (parseInt(hour) % 12) || 12;
-        deliveryHourSelect.value = hour12;
-        deliveryMinuteSelect.value = minute;
-        deliveryPeriodSelect.value = parseInt(hour) >= 12 ? 'PM' : 'AM';
+        if (folio.deliveryTime) {
+            const [hour, minute] = folio.deliveryTime.split(':');
+            const hour12 = (parseInt(hour) % 12) || 12;
+            deliveryHourSelect.value = hour12;
+            deliveryMinuteSelect.value = minute;
+            deliveryPeriodSelect.value = parseInt(hour) >= 12 ? 'PM' : 'AM';
+        }
         
         isPaidCheckbox.checked = folio.isPaid;
         hasExtraHeightCheckbox.checked = folio.hasExtraHeight;
@@ -579,7 +589,7 @@ document.addEventListener('DOMContentLoaded', function() {
         resetForm();
         showView(window.previousView || 'calendar'); 
         if (window.previousView === 'pending') {
-            loadPendingFolios();
+            loadActiveSessions();
         }
     });
 
@@ -592,7 +602,155 @@ document.addEventListener('DOMContentLoaded', function() {
 
     viewPendingButton.addEventListener('click', () => {
         showView('pending');
-        loadPendingFolios();
+        loadActiveSessions();
+    });
+
+    // --- LÓGICA DEL CHAT ---
+    
+    function addMessageToChat(text, sender) {
+        const messageEl = document.createElement('div');
+        messageEl.className = `chat-message ${sender === 'user' ? 'user-message' : 'assistant-message'}`;
+        messageEl.textContent = text;
+        chatMessagesContainer.appendChild(messageEl);
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    }
+
+    function renderFolioStatus(data) {
+        folioStatusPanel.innerHTML = '';
+        const keyMap = {
+            clientName: 'Cliente',
+            deliveryDate: 'Fecha Entrega',
+            deliveryTime: 'Hora Entrega',
+            persons: 'Personas',
+            shape: 'Forma',
+            cakeFlavor: 'Sabores',
+            filling: 'Rellenos',
+            designDescription: 'Descripción',
+            dedication: 'Dedicatoria',
+            total: 'Total'
+        };
+
+        for (const key in keyMap) {
+            if (data[key]) {
+                const value = Array.isArray(data[key]) ? data[key].join(', ') : data[key];
+                const itemEl = document.createElement('div');
+                itemEl.className = 'status-item';
+                itemEl.innerHTML = `<div class="status-label">${keyMap[key]}</div><div class="status-value">${value}</div>`;
+                folioStatusPanel.appendChild(itemEl);
+            }
+        }
+    }
+    
+    async function loadChatSession(sessionId) {
+        currentSessionId = sessionId;
+        loadingEl.classList.remove('hidden');
+        showView('chat');
+        chatMessagesContainer.innerHTML = '';
+        folioStatusPanel.innerHTML = '<p class="text-gray-500">Cargando datos...</p>';
+
+        try {
+            const authToken = localStorage.getItem('authToken');
+            const response = await fetch(`http://localhost:3000/api/ai-sessions/${sessionId}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (!response.ok) throw new Error('No se pudo cargar la sesión de chat.');
+
+            const session = await response.json();
+            chatTitle.textContent = `Asistente - Sesión #${session.id}`;
+
+            (session.chatHistory || []).forEach(msg => addMessageToChat(msg.content, msg.role));
+            renderFolioStatus(session.extractedData);
+            
+            if (!session.chatHistory || session.chatHistory.length === 0) {
+                 addMessageToChat('¡Hola! He analizado la conversación. ¿Qué te gustaría hacer? Puedes pedirme que modifique datos o que genere el folio.', 'assistant');
+            }
+
+        } catch (error) {
+            addMessageToChat(`Error: ${error.message}`, 'assistant');
+        } finally {
+            loadingEl.classList.add('hidden');
+        }
+    }
+
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const messageText = chatInput.value.trim();
+        if (!messageText || !currentSessionId) return;
+
+        addMessageToChat(messageText, 'user');
+        chatInput.value = '';
+        chatInput.disabled = true;
+
+        try {
+            const authToken = localStorage.getItem('authToken');
+            const response = await fetch(`http://localhost:3000/api/ai-sessions/${currentSessionId}/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ message: messageText })
+            });
+
+            if (!response.ok) throw new Error('El asistente no pudo responder.');
+
+            const assistantResponse = await response.json();
+            addMessageToChat(assistantResponse.content, 'assistant');
+            
+            const sessionResponse = await fetch(`http://localhost:3000/api/ai-sessions/${currentSessionId}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            const updatedSession = await sessionResponse.json();
+            renderFolioStatus(updatedSession.extractedData);
+
+        } catch (error) {
+            addMessageToChat(`Error: ${error.message}`, 'assistant');
+        } finally {
+            chatInput.disabled = false;
+            chatInput.focus();
+        }
+    });
+
+    backToSessionsBtn.addEventListener('click', () => {
+        currentSessionId = null;
+        showView('pending');
+        loadActiveSessions();
+    });
+
+    generateFolioBtn.addEventListener('click', () => {
+        if (!currentSessionId) return;
+        chatInput.value = "Genera el folio con los datos actuales";
+        chatForm.dispatchEvent(new Event('submit'));
+    });
+
+    manualEditBtn.addEventListener('click', async () => {
+        if (!currentSessionId) return;
+        loadingEl.classList.remove('hidden');
+        try {
+            const authToken = localStorage.getItem('authToken');
+            const response = await fetch(`http://localhost:3000/api/ai-sessions/${currentSessionId}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (!response.ok) throw new Error('No se pudo cargar la sesión para edición manual.');
+
+            const session = await response.json();
+            
+            const mockFolio = {
+                ...session.extractedData,
+                client: { name: session.extractedData.clientName, phone: session.extractedData.clientPhone },
+                imageUrls: session.imageUrls || [],
+                status: 'Pendiente', 
+            };
+            
+            window.previousView = 'chat';
+            populateFormForEdit(mockFolio);
+            showView('form');
+
+        } catch (error) {
+            alert(`Error: ${error.message}`);
+        } finally {
+            loadingEl.classList.add('hidden');
+        }
     });
 
     // --- Lógica para Estadísticas ---
@@ -807,7 +965,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('folioCreated', () => {
         showView('calendar');
-        loadPendingFolios();
+        loadActiveSessions();
         if (window.myAppCalendar) {
             window.myAppCalendar.refetchEvents();
         }
@@ -1416,104 +1574,69 @@ document.addEventListener('DOMContentLoaded', function() {
             window.open(url, '_blank');
         });
     }
-
-    // ===== SECCIÓN PARA LA BANDEJA DE ENTRADA (CON CORRECCIONES) =====
-    async function loadPendingFolios() {
+    
+    // ===== SECCIÓN PARA LA BANDEJA DE ENTRADA (NUEVA LÓGICA) =====
+    async function loadActiveSessions() {
         const authToken = localStorage.getItem('authToken');
         if (!authToken) return;
 
+        const pendingTitle = document.querySelector('#pendingView h2');
+        if(pendingTitle) pendingTitle.textContent = 'Bandeja de Entrada - Sesiones de IA Activas';
+
+        pendingFoliosList.innerHTML = '<p class="text-gray-500 text-center italic mt-4">Cargando sesiones...</p>';
+
         try {
-            const response = await fetch('http://localhost:3000/api/folios?status=Pendiente', {
+            const response = await fetch('http://localhost:3000/api/ai-sessions?status=active', {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
-            if (!response.ok) throw new Error('No se pudieron cargar los folios pendientes.');
-            
-            const pendingFolios = await response.json();
 
-            // Actualizar el contador
-            if (pendingFolios.length > 0) {
-                pendingCountBadge.textContent = pendingFolios.length;
+            if (!response.ok) {
+                if (response.status === 404) {
+                    pendingFoliosList.innerHTML = '<p class="text-orange-500 text-center italic mt-4">El backend aún no está listo para las sesiones de chat. Continúa con los siguientes pasos.</p>';
+                    pendingCountBadge.classList.add('hidden');
+                    return;
+                }
+                throw new Error('No se pudieron cargar las sesiones de IA.');
+            }
+            
+            const activeSessions = await response.json();
+
+            if (activeSessions.length > 0) {
+                pendingCountBadge.textContent = activeSessions.length;
                 pendingCountBadge.classList.remove('hidden');
             } else {
                 pendingCountBadge.classList.add('hidden');
             }
 
-            // Renderizar la lista
             pendingFoliosList.innerHTML = '';
-            if (pendingFolios.length === 0) {
-                pendingFoliosList.innerHTML = '<p class="text-gray-500 text-center italic mt-4">No hay folios pendientes por confirmar.</p>';
+            if (activeSessions.length === 0) {
+                pendingFoliosList.innerHTML = '<p class="text-gray-500 text-center italic mt-4">No hay sesiones de IA activas.</p>';
                 return;
             }
 
-            pendingFolios.forEach(folio => {
-                const folioCard = document.createElement('div');
-                folioCard.className = 'p-4 bg-gray-50 border rounded-lg flex justify-between items-center';
-                folioCard.dataset.folioId = folio.id;
+            activeSessions.forEach(session => {
+                const sessionCard = document.createElement('div');
+                sessionCard.className = 'p-4 bg-gray-50 border rounded-lg flex justify-between items-center cursor-pointer hover:bg-blue-100 transition-colors';
+                sessionCard.dataset.sessionId = session.id;
 
-                folioCard.innerHTML = `
+                const clientName = session.extractedData?.clientName || 'Cliente Desconocido';
+                const deliveryDate = session.extractedData?.deliveryDate ? new Date(session.extractedData.deliveryDate + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'long' }) : 'Fecha no definida';
+
+                sessionCard.innerHTML = `
                     <div>
-                        <p class="font-bold text-lg text-gray-800">Cliente: ${folio.client?.name || 'N/A'}</p>
-                        <p class="text-sm text-gray-600">Fecha de Entrega: <span class="font-semibold">${new Date(folio.deliveryDate + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'long' })}</span></p>
-                        <p class="text-sm text-gray-600">Personas: <span class="font-semibold">${folio.persons}</span> | Total: <span class="font-semibold">$${parseFloat(folio.total).toFixed(2)}</span></p>
+                        <p class="font-bold text-lg text-gray-800">Cliente: ${clientName}</p>
+                        <p class="text-sm text-gray-600">Fecha de Entrega: <span class="font-semibold">${deliveryDate}</span></p>
+                        <p class="text-sm text-gray-500">Sesión ID: ${session.id}</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button class="review-btn bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Revisar y Confirmar</button>
-                        <button class="reject-btn bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Rechazar</button>
-                    </div>
+                    <button class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Abrir Asistente</button>
                 `;
 
-                folioCard.addEventListener('click', async (e) => {
-                    const target = e.target;
-                
-                    // --- Lógica para REVISAR Y CONFIRMAR ---
-                    if (target.classList.contains('review-btn')) {
-                        window.previousView = 'pending';
-                        loadingEl.classList.remove('hidden');
-                        try {
-                            const folioResponse = await fetch(`http://localhost:3000/api/folios/${folio.id}`, {
-                                headers: { 'Authorization': `Bearer ${authToken}` }
-                            });
-                            if (!folioResponse.ok) throw new Error('No se pudo cargar el detalle del folio.');
-                            const folioDetails = await folioResponse.json();
-                            
-                            populateFormForEdit(folioDetails);
-                            showView('form');
-                
-                        } catch (error) {
-                            alert(error.message);
-                        } finally {
-                            loadingEl.classList.add('hidden');
-                        }
-                    }
-                
-                    // --- Lógica para RECHAZAR (ELIMINAR) ---
-                    if (target.classList.contains('reject-btn')) {
-                        if (confirm(`¿Estás seguro de que quieres rechazar y eliminar permanentemente el folio para "${folio.client?.name || 'N/A'}"?`)) {
-                            loadingEl.classList.remove('hidden');
-                            try {
-                                const response = await fetch(`http://localhost:3000/api/folios/${folio.id}`, {
-                                    method: 'DELETE',
-                                    headers: { 'Authorization': `Bearer ${authToken}` }
-                                });
-                                
-                                const result = await response.json();
-                                if (!response.ok) {
-                                    throw new Error(result.message || 'No se pudo eliminar el folio.');
-                                }
-                
-                                alert('Folio rechazado y eliminado con éxito.');
-                                loadPendingFolios();
-                
-                            } catch (error) {
-                                alert(`Error: ${error.message}`);
-                            } finally {
-                                loadingEl.classList.add('hidden');
-                            }
-                        }
-                    }
+                sessionCard.addEventListener('click', () => {
+                    window.previousView = 'pending';
+                    loadChatSession(session.id); 
                 });
 
-                pendingFoliosList.appendChild(folioCard);
+                pendingFoliosList.appendChild(sessionCard);
             });
 
         } catch (error) {

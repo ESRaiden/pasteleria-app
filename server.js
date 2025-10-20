@@ -15,6 +15,8 @@ const folioRoutes = require('./server/routes/folioRoutes');
 const userRoutes = require('./server/routes/userRoutes');
 const clientRoutes = require('./server/routes/clientRoutes');
 const whatsappRoutes = require('./server/routes/whatsappRoutes'); // <-- RUTA NUEVA
+const aiSessionRoutes = require('./server/routes/aiSessionRoutes');
+const testRoutes = require('./server/routes/testRoutes');
 
 // --- TAREAS PROGRAMADAS ---
 // Esta línea importa e inicia las tareas programadas (como el envío de correos)
@@ -49,6 +51,8 @@ app.use('/api/folios', folioRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/webhooks', whatsappRoutes); // <-- USANDO LA NUEVA RUTA
+app.use('/api/ai-sessions', aiSessionRoutes);
+app.use('/api/test', testRoutes);
 
 // --- INICIO DEL SERVIDOR ---
 sequelize.sync({ force: false }).then(() => {
