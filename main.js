@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Variable global para recordar la vista anterior
+    window.previousView = 'calendar';
+
     // --- VISTAS Y ELEMENTOS GLOBALES ---
     const loginView = document.getElementById('loginView');
     const appView = document.getElementById('appView');
@@ -8,12 +11,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const statsView = document.getElementById('statsView');
     const loadingEl = document.getElementById('loading');
     
-    // ===== NUEVO: Elementos de la Bandeja de Entrada =====
     const pendingView = document.getElementById('pendingView');
     const viewPendingButton = document.getElementById('viewPendingButton');
     const pendingFoliosList = document.getElementById('pendingFoliosList');
     const pendingCountBadge = document.getElementById('pending-count');
-    // ======================================================
 
     const manageUsersButton = document.getElementById('manageUsersButton');
     const loginForm = document.getElementById('loginForm');
@@ -311,13 +312,12 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // --- FUNCIONES DE MANEJO DE VISTAS Y SESIÓN ---
-    // ===== MODIFICADO: showView ahora conoce la nueva vista 'pending' =====
     function showView(viewToShow) {
         calendarView.classList.add('hidden');
         formView.classList.add('hidden');
         userManagementView.classList.add('hidden');
         statsView.classList.add('hidden');
-        pendingView.classList.add('hidden'); // Ocultar la nueva vista también
+        pendingView.classList.add('hidden');
 
         if (viewToShow === 'calendar') {
             calendarView.classList.remove('hidden');
@@ -327,12 +327,11 @@ document.addEventListener('DOMContentLoaded', function() {
             userManagementView.classList.remove('hidden');
         } else if (viewToShow === 'stats') {
             statsView.classList.remove('hidden');
-        } else if (viewToShow === 'pending') { // Mostrar la nueva vista
+        } else if (viewToShow === 'pending') {
             pendingView.classList.remove('hidden');
         }
     }
     
-    // ===== MODIFICADO: showAppView ahora carga los folios pendientes al iniciar =====
     function showAppView(token, role) {
         loginView.classList.add('hidden');
         appView.classList.remove('hidden');
@@ -348,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
             commissionReportButton.classList.add('hidden');
         }
 
-        loadPendingFolios(); // Cargar folios pendientes al iniciar sesión
+        loadPendingFolios();
 
         if (window.initializeCalendar) {
             window.initializeCalendar(token, role);
@@ -381,7 +380,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = JSON.parse(jsonString);
             return Array.isArray(result) ? result : [result];
         } catch (e) {
-            // Si el string no es un JSON válido, puede ser texto plano. Lo devolvemos en un array.
             return [jsonString];
         }
     }
@@ -414,11 +412,10 @@ document.addEventListener('DOMContentLoaded', function() {
         updateTotals();
     }
     
-    // ===== MODIFICADO: populateFormForEdit ahora guarda el estado original y cambia el título =====
     window.populateFormForEdit = (folio) => {
         resetForm();
         folioForm.dataset.editingId = folio.id;
-        folioForm.dataset.originalStatus = folio.status; // Guardamos el estado original
+        folioForm.dataset.originalStatus = folio.status;
 
         if (folio.status === 'Pendiente') {
             formTitle.textContent = `Confirmar Folio de IA: ${folio.folioNumber}`;
@@ -483,7 +480,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const location = folio.deliveryLocation || '';
         googleMapsLocationCheckbox.checked = location.includes('El cliente envía ubicación (Google Maps)');
         
-        if (location === 'Recoge en Tienda') {
+        if (location.toLowerCase().includes('recoge en tienda')) {
             inStorePickupCheckbox.checked = true;
         } else {
             inStorePickupCheckbox.checked = false;
@@ -569,15 +566,21 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     logoutButton.addEventListener('click', handleLogout);
+    
     newFolioButton.addEventListener('click', () => {
+        window.previousView = 'calendar';
         resetForm();
         showView('form');
     });
+
     viewCalendarButton.addEventListener('click', () => showView('calendar'));
+    
     cancelFormButton.addEventListener('click', () => {
         resetForm();
-        showView('pending'); // Volver a la bandeja de entrada al cancelar
-        loadPendingFolios(); 
+        showView(window.previousView || 'calendar'); 
+        if (window.previousView === 'pending') {
+            loadPendingFolios();
+        }
     });
 
     if (manageUsersButton) {
@@ -587,12 +590,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ===== NUEVO: Event listener para el botón de la bandeja de entrada =====
     viewPendingButton.addEventListener('click', () => {
         showView('pending');
-        loadPendingFolios(); // Cargar los datos al mostrar la vista
+        loadPendingFolios();
     });
-    // ===================================================================
 
     // --- Lógica para Estadísticas ---
     function renderStatsList(elementId, data) {
@@ -689,7 +690,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- LÓGICA DEL FORMULARIO ---
-    // ===== MODIFICADO: El submit del formulario ahora maneja la confirmación de folios pendientes =====
     folioForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const editingId = folioForm.dataset.editingId;
@@ -781,11 +781,9 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('referenceImages', fileData.file);
         }
         
-        // ===== LÓGICA AÑADIDA PARA CONFIRMACIÓN =====
         if (isEditing && folioForm.dataset.originalStatus === 'Pendiente') {
             formData.append('status', 'Nuevo');
         }
-        // ===========================================
         
         try {
             const response = await fetch(url, { method, headers: { 'Authorization': `Bearer ${authToken}` }, body: formData });
@@ -809,7 +807,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('folioCreated', () => {
         showView('calendar');
-        loadPendingFolios(); // Recargar los pendientes para actualizar el contador
+        loadPendingFolios();
         if (window.myAppCalendar) {
             window.myAppCalendar.refetchEvents();
         }
@@ -1419,11 +1417,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ===== SECCIÓN NUEVA: FUNCIONES PARA LA BANDEJA DE ENTRADA =====
-    /**
-     * Carga los folios con estado 'Pendiente' desde la API y los muestra en la lista.
-     * También actualiza el contador en el botón de la barra de navegación.
-     */
+    // ===== SECCIÓN PARA LA BANDEJA DE ENTRADA (CON CORRECCIONES) =====
     async function loadPendingFolios() {
         const authToken = localStorage.getItem('authToken');
         if (!authToken) return;
@@ -1453,7 +1447,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             pendingFolios.forEach(folio => {
                 const folioCard = document.createElement('div');
-                folioCard.className = 'p-4 bg-gray-50 border rounded-lg flex justify-between items-center cursor-pointer hover:bg-orange-100 transition-colors';
+                folioCard.className = 'p-4 bg-gray-50 border rounded-lg flex justify-between items-center';
                 folioCard.dataset.folioId = folio.id;
 
                 folioCard.innerHTML = `
@@ -1462,25 +1456,60 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p class="text-sm text-gray-600">Fecha de Entrega: <span class="font-semibold">${new Date(folio.deliveryDate + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'long' })}</span></p>
                         <p class="text-sm text-gray-600">Personas: <span class="font-semibold">${folio.persons}</span> | Total: <span class="font-semibold">$${parseFloat(folio.total).toFixed(2)}</span></p>
                     </div>
-                    <button class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Revisar y Confirmar</button>
+                    <div class="flex items-center gap-2">
+                        <button class="review-btn bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Revisar y Confirmar</button>
+                        <button class="reject-btn bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Rechazar</button>
+                    </div>
                 `;
 
-                folioCard.addEventListener('click', async () => {
-                    loadingEl.classList.remove('hidden');
-                    try {
-                        const folioResponse = await fetch(`http://localhost:3000/api/folios/${folio.id}`, {
-                            headers: { 'Authorization': `Bearer ${authToken}` }
-                        });
-                        if (!folioResponse.ok) throw new Error('No se pudo cargar el detalle del folio.');
-                        const folioDetails = await folioResponse.json();
-                        
-                        populateFormForEdit(folioDetails);
-                        showView('form');
-
-                    } catch (error) {
-                        alert(error.message);
-                    } finally {
-                        loadingEl.classList.add('hidden');
+                folioCard.addEventListener('click', async (e) => {
+                    const target = e.target;
+                
+                    // --- Lógica para REVISAR Y CONFIRMAR ---
+                    if (target.classList.contains('review-btn')) {
+                        window.previousView = 'pending';
+                        loadingEl.classList.remove('hidden');
+                        try {
+                            const folioResponse = await fetch(`http://localhost:3000/api/folios/${folio.id}`, {
+                                headers: { 'Authorization': `Bearer ${authToken}` }
+                            });
+                            if (!folioResponse.ok) throw new Error('No se pudo cargar el detalle del folio.');
+                            const folioDetails = await folioResponse.json();
+                            
+                            populateFormForEdit(folioDetails);
+                            showView('form');
+                
+                        } catch (error) {
+                            alert(error.message);
+                        } finally {
+                            loadingEl.classList.add('hidden');
+                        }
+                    }
+                
+                    // --- Lógica para RECHAZAR (ELIMINAR) ---
+                    if (target.classList.contains('reject-btn')) {
+                        if (confirm(`¿Estás seguro de que quieres rechazar y eliminar permanentemente el folio para "${folio.client?.name || 'N/A'}"?`)) {
+                            loadingEl.classList.remove('hidden');
+                            try {
+                                const response = await fetch(`http://localhost:3000/api/folios/${folio.id}`, {
+                                    method: 'DELETE',
+                                    headers: { 'Authorization': `Bearer ${authToken}` }
+                                });
+                                
+                                const result = await response.json();
+                                if (!response.ok) {
+                                    throw new Error(result.message || 'No se pudo eliminar el folio.');
+                                }
+                
+                                alert('Folio rechazado y eliminado con éxito.');
+                                loadPendingFolios();
+                
+                            } catch (error) {
+                                alert(`Error: ${error.message}`);
+                            } finally {
+                                loadingEl.classList.add('hidden');
+                            }
+                        }
                     }
                 });
 
@@ -1492,5 +1521,4 @@ document.addEventListener('DOMContentLoaded', function() {
             pendingFoliosList.innerHTML = `<p class="text-red-500 text-center">${error.message}</p>`;
         }
     }
-    // =================================================================
 });

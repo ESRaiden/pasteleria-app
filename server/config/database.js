@@ -10,6 +10,10 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     dialect: 'mysql',
     logging: false, // Se mantiene desactivado para no llenar la consola con logs de SQL.
+    dialectOptions: {
+      charset: 'utf8mb4',
+      collate: 'utf8mb4_general_ci'
+      }
   }
 );
 

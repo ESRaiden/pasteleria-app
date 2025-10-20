@@ -361,6 +361,7 @@ function initializeCalendar(authToken, userRole) {
         editFolioButton.addEventListener('click', async () => {
             const currentFolio = window.currentEditingFolio;
             if (currentFolio) {
+                window.previousView = 'calendar'; // <-- LÍNEA CORREGIDA
                 modal.classList.add('hidden');
                 document.getElementById('loading').classList.remove('hidden');
                 try {
