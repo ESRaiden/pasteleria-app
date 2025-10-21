@@ -20,9 +20,14 @@ async function getInitialExtraction(conversationText) {
 
         **Instrucciones:**
         1.  **Analiza la conversación:** Lee todo el texto para entender los detalles del pedido.
-        2.  **Interpreta fechas y horas:** Convierte fechas relativas (ej. "mañana", "el próximo lunes", "para este sábado") a un formato AAAA-MM-DD. Convierte las horas a formato de 24 horas (HH:MM:SS).
-        3.  **Extrae los datos:** Completa todos los campos del JSON que puedas. Si un campo no se menciona explícitamente en la conversación, déjalo como nulo (null).
+        2.  **Interpreta fechas y horas:** Convierte fechas relativas (ej. "mañana", "el próximo lunes") a un formato AAAA-MM-DD. Convierte las horas a formato de 24 horas (HH:MM:SS).
+        3.  **Extrae los datos:** Completa todos los campos del JSON que puedas. Si un campo no se menciona, déjalo como nulo (null).
         4.  **Formato de Salida:** Responde únicamente con un objeto JSON válido, sin ningún texto adicional antes o después.
+        
+        // ==================== INICIO DE LA CORRECCIÓN ====================
+        5.  **Regla CRÍTICA para la Dedicatoria**: Si en la descripción del diseño encuentras frases como "que diga '...'", "con el texto '...'", o una frase entre comillas que deba ir en el pastel, extrae ese texto EXCLUSIVAMENTE en el campo \`dedication\`. NO debes incluir la dedicatoria en el campo \`designDescription\`.
+        6.  **Regla para la Dirección**: Si se proporciona una dirección, intenta mantener un formato claro como "Calle y Número, Colonia Nombre de la Colonia" en el campo \`deliveryLocation\`. Si solo dice "recoge en tienda", usa ese texto exacto.
+        // ===================== FIN DE LA CORRECCIÓN ======================
 
         **Campos a extraer:**
         - \`clientName\`: El nombre del cliente.
@@ -33,10 +38,11 @@ async function getInitialExtraction(conversationText) {
         - \`shape\`: La forma del pastel (ej. "Redondo", "Rectangular").
         - \`cakeFlavor\`: Los sabores del pan, como un array de strings.
         - \`filling\`: Los rellenos, como un array de strings.
-        - \`designDescription\`: La descripción detallada de la decoración.
+        - \`designDescription\`: La descripción detallada de la decoración (SIN incluir el texto de la dedicatoria).
         - \`dedication\`: El texto de la dedicatoria si la hay.
         - \`deliveryLocation\`: La dirección de entrega o si "recoge en tienda".
-        - \`total\`: El costo total del pedido (solo el número).
+        - \`deliveryCost\`: El costo del envío a domicilio (solo el número, si se menciona).
+        - \`total\`: El costo del pastel o total del pedido (solo el número).
         - \`advancePayment\`: El anticipo que dio el cliente (solo el número).
 
         **Conversación a analizar:**

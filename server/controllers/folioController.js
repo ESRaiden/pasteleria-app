@@ -28,7 +28,10 @@ const calculateFillingCost = (folioType, persons, fillings, tiers) => {
 
 // --- CREAR un nuevo folio ---
 exports.createFolio = async (req, res, transaction) => {
-  const t = transaction || (await sequelize.transaction());
+  // CORRECCIÓN: Se determina si esta función es "dueña" de la transacción.
+  const isManagingTransaction = !transaction;
+  const t = isManagingTransaction ? await sequelize.transaction() : transaction;
+
   try {
     const {
         clientName, clientPhone, clientPhone2, total, advancePayment, deliveryDate,
@@ -113,17 +116,23 @@ exports.createFolio = async (req, res, transaction) => {
 
     await Commission.create({
         folioId: newFolio.id,
-        folioNumber: newFolio.folioNumber, // Guardamos la copia del número de folio
+        folioNumber: newFolio.folioNumber,
         amount: commissionAmount,
         appliedToCustomer: applyCommission,
         roundedAmount: applyCommission ? roundedCommissionAmount : null
     }, { transaction: t });
     
-    await t.commit();
+    // CORRECCIÓN: Solo se hace commit si esta función inició la transacción.
+    if (isManagingTransaction) {
+      await t.commit();
+    }
     res.status(201).json(newFolio);
 
   } catch (error) {
-    await t.rollback();
+    // CORRECCIÓN: Solo se hace rollback si esta función inició la transacción.
+    if (isManagingTransaction) {
+      await t.rollback();
+    }
     console.error('ERROR DETALLADO AL CREAR FOLIO:', error);
     res.status(400).json({ message: 'Error al crear el folio', error: error.message });
   }

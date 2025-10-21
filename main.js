@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const userManagementView = document.getElementById('userManagementView');
     const statsView = document.getElementById('statsView');
     const loadingEl = document.getElementById('loading');
-    const chatView = document.getElementById('chatView'); // <-- Nueva vista de chat
+    const chatView = document.getElementById('chatView');
     
     const pendingView = document.getElementById('pendingView');
     const viewPendingButton = document.getElementById('viewPendingButton');
@@ -440,8 +440,20 @@ document.addEventListener('DOMContentLoaded', function() {
         deliveryDateInput.value = folio.deliveryDate;
         personsInput.value = folio.persons;
         shapeInput.value = folio.shape;
-        designDescriptionTextarea.value = folio.designDescription;
-        dedicationInput.value = folio.dedication || '';
+
+        let desc = folio.designDescription || '';
+        let ded = folio.dedication || '';
+
+        if (!ded) {
+            const dedMatch = desc.match(/(?:diga|decir|con el texto)\s*[:"']?([^"']+)/i);
+            if (dedMatch && dedMatch[1]) {
+                ded = dedMatch[1].trim().replace(/['"]$/, '');
+                desc = desc.replace(dedMatch[0], '').trim().replace(/,$/, '').trim();
+            }
+        }
+        designDescriptionTextarea.value = desc;
+        dedicationInput.value = ded;
+
         accessoriesInput.value = folio.accessories || '';
         deliveryCostInput.value = parseFloat(folio.deliveryCost) || 0;
 
@@ -494,25 +506,26 @@ document.addEventListener('DOMContentLoaded', function() {
             inStorePickupCheckbox.checked = true;
         } else {
             inStorePickupCheckbox.checked = false;
-            let addressPart = location.replace('El cliente envía ubicación (Google Maps)', '').replace('(','').replace(')','').trim();
+            let addressPart = location.replace('El cliente envía ubicación (Google Maps)', '').replace(/[\(\)]/g, '').trim();
             
-            const colMatch = addressPart.match(/Col\.\s*([^,]+)/);
-            const intMatch = addressPart.match(/Int\.\s*([^,]+)/);
-            
-            if (colMatch) neighborhoodInput.value = colMatch[1].trim();
-            if (intMatch) intNumberInput.value = intMatch[1].trim();
-            
-            let remainingLocation = addressPart.replace(/Col\.\s*[^,]+,?/, '').replace(/Int\.\s*[^,]+,?/, '').trim();
-            const parts = remainingLocation.split(' ');
-            const lastPart = parts[parts.length - 1];
+            neighborhoodInput.value = '';
+            streetInput.value = '';
+            extNumberInput.value = '';
+            intNumberInput.value = '';
 
-            if (parts.length > 1 && !isNaN(parseFloat(lastPart))) {
-                extNumberInput.value = parts.pop();
-                streetInput.value = parts.join(' ');
-            } else {
-                streetInput.value = remainingLocation;
-                extNumberInput.value = '';
+            const colMatch = addressPart.match(/(?:Colonia|Col\.?)\s*([^,]+)/i);
+            if (colMatch) {
+                neighborhoodInput.value = colMatch[1].trim();
+                addressPart = addressPart.replace(colMatch[0], '').trim();
             }
+
+            const numMatch = addressPart.match(/\b(\d+[A-Z]?)\b/);
+            if (numMatch) {
+                extNumberInput.value = numMatch[1].trim();
+                addressPart = addressPart.replace(numMatch[0], '').trim();
+            }
+            
+            streetInput.value = addressPart.replace(/,$/, '').replace(/^,/, '').trim();
         }
         inStorePickupCheckbox.dispatchEvent(new Event('change'));
 
@@ -734,12 +747,22 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) throw new Error('No se pudo cargar la sesión para edición manual.');
 
             const session = await response.json();
+            const extracted = session.extractedData;
             
             const mockFolio = {
-                ...session.extractedData,
-                client: { name: session.extractedData.clientName, phone: session.extractedData.clientPhone },
+                ...extracted,
+                cakeFlavor: JSON.stringify(extracted.cakeFlavor || []),
+                filling: JSON.stringify(extracted.filling || []),
+                folioType: extracted.folioType || 'Normal',
+                client: { 
+                    name: extracted.clientName, 
+                    phone: extracted.clientPhone 
+                },
                 imageUrls: session.imageUrls || [],
-                status: 'Pendiente', 
+                status: 'Pendiente',
+                complements: extracted.complements || [],
+                additional: extracted.additional || [],
+                tiers: extracted.tiers || [],
             };
             
             window.previousView = 'chat';

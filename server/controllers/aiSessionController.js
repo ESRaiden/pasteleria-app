@@ -28,14 +28,12 @@ async function generate_folio_pdf(session, req) {
     const folioData = session.extractedData;
 
     // Extraemos el número de teléfono del remitente de la conversación original como respaldo.
-    // Esta es una suposición del formato, ajústala si tu webhook provee el 'from' de otra manera.
     const phoneMatch = session.whatsappConversation.match(/De:\s*(\d+)/) || session.whatsappConversation.match(/Cliente:\s*(\d+)/);
     const senderPhone = phoneMatch ? phoneMatch[1] : null;
     
     const mockReq = {
         body: {
             clientName: folioData.clientName,
-            // Si la IA no extrajo un teléfono, usamos el del remitente como respaldo crucial.
             clientPhone: folioData.clientPhone || senderPhone,
             clientPhone2: folioData.clientPhone2,
             deliveryDate: folioData.deliveryDate,
@@ -49,11 +47,11 @@ async function generate_folio_pdf(session, req) {
             deliveryLocation: folioData.deliveryLocation,
             total: folioData.total,
             advancePayment: folioData.advancePayment || 0,
-            folioType: 'Normal', // Asumimos Normal por defecto para la IA
+            folioType: 'Normal',
             existingImageUrls: JSON.stringify(session.imageUrls || [])
         },
-        user: req.user, // Usamos el usuario autenticado que hizo la petición
-        files: [] // No hay nuevos archivos subiéndose
+        user: req.user,
+        files: []
     };
 
     let newFolio = null;
@@ -62,18 +60,19 @@ async function generate_folio_pdf(session, req) {
             json: (data) => {
                 if (code === 201) {
                     newFolio = data;
-                    console.log(`Folio #${newFolio.folio.folioNumber} creado a través del asistente.`);
+                    // CORRECCIÓN: Se accede directamente a newFolio.folioNumber
+                    console.log(`Folio #${newFolio.folioNumber} creado a través del asistente.`);
                 }
             }
         })
     };
 
-    // Usamos una transacción para asegurar la integridad de los datos
     const t = await sequelize.transaction();
     try {
         await folioController.createFolio(mockReq, mockRes, t);
 
-        if (!newFolio || !newFolio.folio || !newFolio.folio.folioNumber) {
+        // CORRECCIÓN: Se valida directamente newFolio y su propiedad folioNumber
+        if (!newFolio || !newFolio.folioNumber) {
             throw new Error("No se pudo crear el folio final a partir de los datos de la sesión.");
         }
         
@@ -81,11 +80,12 @@ async function generate_folio_pdf(session, req) {
         await session.save({ transaction: t });
 
         await t.commit();
-        return `¡Hecho! Se ha creado el Folio ${newFolio.folio.folioNumber}. Puedes verlo en el calendario.`;
+        // CORRECCIÓN: Se accede directamente a newFolio.folioNumber
+        return `¡Hecho! Se ha creado el Folio ${newFolio.folioNumber}. Puedes verlo en el calendario.`;
     } catch (error) {
         await t.rollback();
         console.error("Error detallado dentro de generate_folio_pdf:", error);
-        throw error; // Lanzamos el error para que sea capturado por postChatMessage
+        throw error;
     }
 }
 
