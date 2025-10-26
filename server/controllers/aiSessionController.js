@@ -4,30 +4,22 @@ const folioController = require('./folioController'); // Importamos para reutili
 
 // --- FUNCIONES DE HERRAMIENTA (TOOLS) ---
 
-/**
- * Actualiza los datos del folio en la sesión actual.
- * @param {AISession} session - La instancia de la sesión de Sequelize.
- * @param {object} updates - El objeto con los campos y valores a actualizar.
- */
 async function update_folio_data(session, updates) {
   console.log('⚡ Ejecutando herramienta: update_folio_data con:', updates);
-  // Unimos los datos existentes con las nuevas actualizaciones
+  if (!updates || Object.keys(updates).length === 0) {
+    console.warn("Se llamó a update_folio_data sin 'updates'. La IA puede estar cometiendo un error.");
+    return "Error: No se proporcionaron datos para actualizar.";
+  }
   const updatedData = { ...session.extractedData, ...updates };
-  session.extractedData = updatedData; // Sequelize se encarga de detectar el cambio en el JSON
+  session.extractedData = updatedData;
   await session.save();
   return "Datos actualizados exitosamente.";
 }
 
-/**
- * Crea el folio final y genera el PDF.
- * @param {AISession} session - La instancia de la sesión de Sequelize.
- * @param {object} req - El objeto de la petición (para acceder al usuario).
- */
 async function generate_folio_pdf(session, req) {
     console.log('⚡ Ejecutando herramienta: generate_folio_pdf');
     const folioData = session.extractedData;
 
-    // Extraemos el número de teléfono del remitente de la conversación original como respaldo.
     const phoneMatch = session.whatsappConversation.match(/De:\s*(\d+)/) || session.whatsappConversation.match(/Cliente:\s*(\d+)/);
     const senderPhone = phoneMatch ? phoneMatch[1] : null;
     
@@ -60,7 +52,6 @@ async function generate_folio_pdf(session, req) {
             json: (data) => {
                 if (code === 201) {
                     newFolio = data;
-                    // CORRECCIÓN: Se accede directamente a newFolio.folioNumber
                     console.log(`Folio #${newFolio.folioNumber} creado a través del asistente.`);
                 }
             }
@@ -71,7 +62,6 @@ async function generate_folio_pdf(session, req) {
     try {
         await folioController.createFolio(mockReq, mockRes, t);
 
-        // CORRECCIÓN: Se valida directamente newFolio y su propiedad folioNumber
         if (!newFolio || !newFolio.folioNumber) {
             throw new Error("No se pudo crear el folio final a partir de los datos de la sesión.");
         }
@@ -80,7 +70,6 @@ async function generate_folio_pdf(session, req) {
         await session.save({ transaction: t });
 
         await t.commit();
-        // CORRECCIÓN: Se accede directamente a newFolio.folioNumber
         return `¡Hecho! Se ha creado el Folio ${newFolio.folioNumber}. Puedes verlo en el calendario.`;
     } catch (error) {
         await t.rollback();
@@ -125,11 +114,18 @@ exports.postChatMessage = async (req, res) => {
         const session = await AISession.findByPk(id, { transaction: t });
         if (!session) return res.status(404).json({ message: 'Sesión no encontrada.' });
 
-        session.chatHistory = [...(session.chatHistory || []), { role: 'user', content: message }];
+        // ***** INICIO DE LA CORRECCIÓN *****
+        // El historial de chat ahora se construye paso a paso de forma correcta.
 
+        // 1. Añadimos el mensaje del usuario al historial
+        session.chatHistory = [...(session.chatHistory || []), { role: 'user', content: message }];
+        // NO guardamos aún, lo haremos después de tener la respuesta del asistente.
+
+        // 2. Obtenemos la respuesta del asistente (puede ser texto o una llamada a herramienta)
         const assistantResponse = await getNextAssistantResponse(session, message);
 
         if (assistantResponse.tool_calls) {
+            // Si la IA quiere usar una herramienta...
             const toolCall = assistantResponse.tool_calls[0];
             const functionName = toolCall.function.name;
             const functionArgs = JSON.parse(toolCall.function.arguments);
@@ -145,6 +141,7 @@ exports.postChatMessage = async (req, res) => {
                 functionResult = `Error: La función "${functionName}" no existe.`;
             }
             
+            // 3. Añadimos al historial TANTO la decisión de la IA como el resultado de la herramienta
             session.chatHistory = [
                 ...session.chatHistory,
                 assistantResponse,
@@ -156,19 +153,22 @@ exports.postChatMessage = async (req, res) => {
                 },
             ];
             
-            const finalResponse = await getNextAssistantResponse(session, "");
+            // 4. Pedimos a la IA la respuesta final en texto, ahora que ya conoce el resultado de la herramienta
+            const finalResponse = await getNextAssistantResponse(session, ""); // Pasamos un mensaje vacío porque el historial ya lo tiene todo
             session.chatHistory = [...session.chatHistory, finalResponse];
-            await session.save({ transaction: t });
             
+            await session.save({ transaction: t });
             await t.commit();
-            return res.status(200).json(finalResponse);
+            return res.status(200).json({ message: finalResponse, sessionData: session.toJSON() });
 
         } else {
+            // Si la IA responde directamente con texto...
             session.chatHistory = [...session.chatHistory, assistantResponse];
             await session.save({ transaction: t });
             await t.commit();
-            return res.status(200).json(assistantResponse);
+            return res.status(200).json({ message: assistantResponse, sessionData: session.toJSON() });
         }
+        // ***** FIN DE LA CORRECCIÓN *****
     } catch (error) {
         await t.rollback();
         console.error("Error en postChatMessage:", error);

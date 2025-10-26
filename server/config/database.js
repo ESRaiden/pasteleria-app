@@ -12,7 +12,6 @@ const sequelize = new Sequelize(
     logging: false, // Se mantiene desactivado para no llenar la consola con logs de SQL.
     dialectOptions: {
       charset: 'utf8mb4',
-      collate: 'utf8mb4_general_ci'
       }
   }
 );

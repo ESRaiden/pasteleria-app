@@ -640,7 +640,8 @@ document.addEventListener('DOMContentLoaded', function() {
             filling: 'Rellenos',
             designDescription: 'Descripción',
             dedication: 'Dedicatoria',
-            total: 'Total'
+            total: 'Total',
+            deliveryCost: 'Costo de Envío'
         };
 
         for (const key in keyMap) {
@@ -671,7 +672,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const session = await response.json();
             chatTitle.textContent = `Asistente - Sesión #${session.id}`;
 
-            (session.chatHistory || []).forEach(msg => addMessageToChat(msg.content, msg.role));
+            (session.chatHistory || []).forEach(msg => {
+                if (msg.content) {
+                    addMessageToChat(msg.content, msg.role)
+                }
+            });
             renderFolioStatus(session.extractedData);
             
             if (!session.chatHistory || session.chatHistory.length === 0) {
@@ -685,6 +690,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // ==================== INICIO DE LA CORRECCIÓN ====================
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const messageText = chatInput.value.trim();
@@ -705,16 +711,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ message: messageText })
             });
 
-            if (!response.ok) throw new Error('El asistente no pudo responder.');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'El asistente no pudo responder.');
+            }
 
-            const assistantResponse = await response.json();
-            addMessageToChat(assistantResponse.content, 'assistant');
+            // Ahora recibimos un objeto con el mensaje y los datos de la sesión.
+            const { message, sessionData } = await response.json();
+
+            // Añadimos el mensaje del asistente al chat, solo si tiene contenido de texto.
+            // La respuesta de la IA después de una llamada a herramienta a veces no tiene contenido.
+            if (message && message.content) {
+                addMessageToChat(message.content, 'assistant');
+            }
             
-            const sessionResponse = await fetch(`http://localhost:3000/api/ai-sessions/${currentSessionId}`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            const updatedSession = await sessionResponse.json();
-            renderFolioStatus(updatedSession.extractedData);
+            // Actualizamos el panel de estado directamente con los datos recibidos.
+            if (sessionData && sessionData.extractedData) {
+                renderFolioStatus(sessionData.extractedData);
+            } else {
+                console.error("No se recibieron datos de sesión actualizados del backend.");
+            }
 
         } catch (error) {
             addMessageToChat(`Error: ${error.message}`, 'assistant');
@@ -723,6 +739,7 @@ document.addEventListener('DOMContentLoaded', function() {
             chatInput.focus();
         }
     });
+    // ===================== FIN DE LA CORRECCIÓN ======================
 
     backToSessionsBtn.addEventListener('click', () => {
         currentSessionId = null;

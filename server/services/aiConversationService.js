@@ -54,47 +54,33 @@ const tools = [
 exports.getNextAssistantResponse = async (session, userMessage) => {
   const today = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
-  // ==================== INICIO DE LA CORRECCIÓN ====================
+  // ==================== INICIO DE LA CORRECCIÓN FINAL ====================
   const systemPrompt = `
-    Eres un asistente de pastelería ultra eficiente. Tu trabajo es ayudar al empleado a finalizar un pedido.
-    La fecha de hoy es ${today}.
+    Eres un motor de llamadas a funciones. Tu único propósito es analizar el mensaje del usuario y traducirlo a una llamada de función JSON válida. NO CONVERSES.
 
-    **Regla Crítica**: NUNCA confirmes un cambio en los datos del pedido (como 'datos actualizados') a menos que hayas usado la herramienta \`update_folio_data\`. Tu única forma de modificar los datos es llamando a esa función. No puedes cambiar los datos simplemente con una respuesta de texto.
+    **REGLA MÁXIMA: Tu salida DEBE ser una llamada a una de las herramientas disponibles. No respondas con texto si puedes usar una herramienta.**
 
-    Siempre debes basarte en la siguiente estructura de datos para el pedido. Estos son TODOS los campos que puedes modificar:
-    - clientName: (string) Nombre del cliente.
-    - clientPhone: (string) Teléfono principal.
-    - deliveryDate: (string) Fecha de entrega en formato YYYY-MM-DD.
-    - deliveryTime: (string) Hora de entrega en formato HH:MM:SS.
-    - persons: (number) Cantidad de personas.
-    - shape: (string) Forma del pastel.
-    - cakeFlavor: (array de strings) Sabores del pan.
-    - filling: (array de strings) Rellenos.
-    - designDescription: (string) Descripción del decorado.
-    - dedication: (string) Texto que irá en el pastel.
-    - deliveryLocation: (string) Dirección de entrega o "Recoge en Tienda".
-    - deliveryCost: (number) Costo del envío.
-    - total: (number) Costo base del pastel (sin envío ni adicionales).
-    - advancePayment: (number) Anticipo pagado por el cliente.
+    **PROCESO OBLIGATORIO PARA MODIFICACIONES:**
+    1.  Lee el mensaje del usuario, por ejemplo: "agrega 80 de envio".
+    2.  Identifica el campo a cambiar del JSON de estado actual: 'deliveryCost'.
+    3.  Identifica el nuevo valor: 80.
+    4.  Construye el objeto 'updates' EXACTAMENTE así: \`{"deliveryCost": 80}\`.
+    5.  Llama a la herramienta \`update_folio_data\` con esos argumentos.
 
-    Tus herramientas son:
-    1. 'update_folio_data': para modificar los detalles del pedido según la estructura anterior.
-    2. 'generate_folio_pdf': para finalizar el proceso.
-    3. 'answer_question_from_context': para responder preguntas sobre la conversación original.
+    **MÁS EJEMPLOS:**
+    - Si el usuario dice: "el nombre es ana", tu llamada a la herramienta DEBE ser: \`update_folio_data(updates={"clientName": "Ana"})\`
+    - Si el usuario dice: "ponle 500 de anticipo", tu llamada a la herramienta DEBE ser: \`update_folio_data(updates={"advancePayment": 500})\`
+    - Si el usuario dice: "quita la dedicatoria", tu llamada a la herramienta DEBE ser: \`update_folio_data(updates={"dedication": null})\`
 
-    Contexto actual:
-    
-    --- INICIO CONVERSACIÓN ORIGINAL WHATSAPP ---
-    ${session.whatsappConversation}
-    --- FIN CONVERSACIÓN ORIGINAL WHATSAPP ---
+    Si el usuario pide finalizar (ej. "genera el folio"), DEBES llamar a \`generate_folio_pdf\`.
 
-    --- INICIO DATOS DEL PEDIDO (ESTADO ACTUAL) ---
+    **Estado Actual del Pedido (JSON):**
     ${JSON.stringify(session.extractedData, null, 2)}
-    --- FIN DATOS DEL PEDIDO (ESTADO ACTUAL) ---
 
-    Basado en el nuevo mensaje del empleado, decide qué herramienta usar o si debes responder con texto. Si el usuario pide modificar, añadir o eliminar cualquier dato, DEBES usar la herramienta 'update_folio_data'.
+    **Conversación Original del Cliente:**
+    ${session.whatsappConversation}
   `;
-  // ===================== FIN DE LA CORRECCIÓN ======================
+  // ===================== FIN DE LA CORRECCIÓN FINAL ======================
 
   const messages = [
     { role: "system", content: systemPrompt },
@@ -104,7 +90,7 @@ exports.getNextAssistantResponse = async (session, userMessage) => {
 
   console.log("🤖 Enviando petición a OpenAI con el contexto...");
   const response = await openai.chat.completions.create({
-    model: "gpt-4-turbo-preview",
+    model: "gpt-4o", // Mantenemos el modelo más potente para asegurar el seguimiento de instrucciones.
     messages: messages,
     tools: tools,
     tool_choice: "auto",
