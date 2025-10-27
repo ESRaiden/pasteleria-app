@@ -54,7 +54,6 @@ const tools = [
 exports.getNextAssistantResponse = async (session, userMessage) => {
   const today = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
-  // ==================== INICIO DE LA CORRECCIÓN FINAL ====================
   const systemPrompt = `
     Eres un motor de llamadas a funciones. Tu único propósito es analizar el mensaje del usuario y traducirlo a una llamada de función JSON válida. NO CONVERSES.
 
@@ -80,18 +79,24 @@ exports.getNextAssistantResponse = async (session, userMessage) => {
     **Conversación Original del Cliente:**
     ${session.whatsappConversation}
   `;
-  // ===================== FIN DE LA CORRECCIÓN FINAL ======================
 
-  const messages = [
+  // ----- INICIO DE LA CORRECCIÓN -----
+  let messages = [
     { role: "system", content: systemPrompt },
-    ...(session.chatHistory || []),
-    { role: "user", content: userMessage }
+    ...(session.chatHistory || [])
   ];
+
+  // Solo añadir el mensaje del usuario si NO está vacío
+  // (así evitamos añadirlo en la segunda llamada después de ejecutar una herramienta)
+  if (userMessage) {
+    messages.push({ role: "user", content: userMessage });
+  }
+  // ----- FIN DE LA CORRECCIÓN -----
 
   console.log("🤖 Enviando petición a OpenAI con el contexto...");
   const response = await openai.chat.completions.create({
     model: "gpt-4o", // Mantenemos el modelo más potente para asegurar el seguimiento de instrucciones.
-    messages: messages,
+    messages: messages, // Usamos la variable 'messages' modificada
     tools: tools,
     tool_choice: "auto",
   });
