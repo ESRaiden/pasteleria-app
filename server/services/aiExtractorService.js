@@ -1,3 +1,4 @@
+require('dotenv').config(); // Asegúrate de que dotenv esté configurado al inicio
 const OpenAI = require('openai');
 
 // La clave de la API se carga automáticamente desde las variables de entorno (process.env.OPENAI_API_KEY)
@@ -5,45 +6,70 @@ const openai = new OpenAI();
 
 /**
  * Analiza el texto de una conversación de WhatsApp y extrae los datos del pedido en formato JSON.
+ * Detecta si es un pastel Normal o Base/Especial y extrae la estructura correspondiente.
  * @param {string} conversationText - El texto completo de la conversación con el cliente.
  * @returns {Promise<object>} - Un objeto con los datos del folio extraídos.
  */
 async function getInitialExtraction(conversationText) {
-    // La fecha actual se envía a la IA para que pueda interpretar fechas relativas como "mañana" o "el sábado".
     const today = new Date().toLocaleDateString('es-MX', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
+    // ===== PROMPT ACTUALIZADO PARA DETECCIÓN Y ESTRUCTURACIÓN DE BASE/ESPECIAL =====
     const prompt = `
         Eres un asistente experto para una pastelería llamada "La Fiesta". Tu tarea es analizar la siguiente conversación de WhatsApp
-        y extraer la información clave para generar un folio de pedido. La fecha de hoy es ${today}.
+        y extraer la información clave para generar un folio de pedido en formato JSON. La fecha de hoy es ${today}.
 
-        **Instrucciones:**
+        **Instrucciones Generales:**
         1.  **Analiza la conversación:** Lee todo el texto para entender los detalles del pedido.
-        2.  **Interpreta fechas y horas:** Convierte fechas relativas (ej. "mañana", "el próximo lunes") a un formato AAAA-MM-DD. Convierte las horas a formato de 24 horas (HH:MM:SS).
-        3.  **Extrae los datos:** Completa todos los campos del JSON que puedas. Si un campo no se menciona, déjalo como nulo (null).
-        4.  **Formato de Salida:** Responde únicamente con un objeto JSON válido, sin ningún texto adicional antes o después.
-        
-        // ==================== INICIO DE LA CORRECCIÓN ====================
-        5.  **Regla CRÍTICA para la Dedicatoria**: Si en la descripción del diseño encuentras frases como "que diga '...'", "con el texto '...'", o una frase entre comillas que deba ir en el pastel, extrae ese texto EXCLUSIVAMENTE en el campo \`dedication\`. NO debes incluir la dedicatoria en el campo \`designDescription\`.
-        6.  **Regla para la Dirección**: Si se proporciona una dirección, intenta mantener un formato claro como "Calle y Número, Colonia Nombre de la Colonia" en el campo \`deliveryLocation\`. Si solo dice "recoge en tienda", usa ese texto exacto.
-        // ===================== FIN DE LA CORRECCIÓN ======================
+        2.  **Interpreta fechas y horas:** Convierte fechas relativas (ej. "mañana", "el próximo lunes") a formato AAAA-MM-DD. Convierte horas a formato HH:MM:SS de 24 horas.
+        3.  **Formato de Salida:** Responde únicamente con un objeto JSON válido, sin ningún texto adicional antes o después.
 
-        **Campos a extraer:**
-        - \`clientName\`: El nombre del cliente.
-        - \`clientPhone\`: El número de teléfono del cliente (si se menciona).
-        - \`deliveryDate\`: La fecha de entrega en formato YYYY-MM-DD.
-        - \`deliveryTime\`: La hora de entrega en formato HH:MM:SS de 24 horas.
-        - \`persons\`: El número de personas para el pastel.
-        - \`shape\`: La forma del pastel (ej. "Redondo", "Rectangular").
-        - \`cakeFlavor\`: Los sabores del pan, como un array de strings.
-        - \`filling\`: Los rellenos, como un array de strings.
-        - \`designDescription\`: La descripción detallada de la decoración (SIN incluir el texto de la dedicatoria).
-        - \`dedication\`: El texto de la dedicatoria si la hay.
-        - \`deliveryLocation\`: La dirección de entrega o si "recoge en tienda".
-        - \`deliveryCost\`: El costo del envío a domicilio (solo el número, si se menciona).
-        - \`total\`: El costo del pastel o total del pedido (solo el número).
-        - \`advancePayment\`: El anticipo que dio el cliente (solo el número).
+        **Instrucciones Específicas para Tipo de Folio y Estructura:**
+        1.  **Detecta el Tipo de Folio:**
+            * Si la conversación menciona explícitamente "pisos", "bases", "pastel especial", "de base", o describe claramente diferentes secciones/pisos del pastel con distintas características (personas, panes, rellenos por sección), establece \`folioType\` como \`"Base/Especial"\`.
+            * En cualquier otro caso, establece \`folioType\` como \`"Normal"\`.
+        2.  **Extrae Datos según el Tipo:**
+            * **Si es "Normal":**
+                * Extrae los sabores generales en el array \`cakeFlavor\`. Pueden ser hasta 2.
+                * Extrae los rellenos generales en el array \`filling\`. Pueden ser hasta 2.
+                * Deja el campo \`tiers\` como \`null\` o un array vacío \`[]\`.
+            * **Si es "Base/Especial":**
+                * **Deja los campos \`cakeFlavor\` y \`filling\` como \`null\` o arrays vacíos \`[]\`**. La información irá en \`tiers\`.
+                * Analiza la descripción de cada piso y crea un array de objetos en el campo \`tiers\`.
+                * Cada objeto dentro de \`tiers\` DEBE tener la siguiente estructura exacta:
+                    \`\`\`
+                    {
+                      "persons": number,      // Personas para ESE piso
+                      "panes": [string, string, string], // Intenta extraer 3 sabores de pan para el piso. Si solo mencionan uno, repítelo 3 veces. Si mencionan dos, añade el primero de nuevo al final. Si no mencionan, usa [null, null, null].
+                      "rellenos": [string, string], // Intenta extraer 2 rellenos para el piso. Si solo mencionan uno, añádelo y pon el segundo como null. Si no mencionan o no aplica (ej. pan queso), usa [null, null].
+                      "notas": string | null  // Notas adicionales o forma específica del piso (opcional)
+                    }
+                    \`\`\`
+                * Asegúrate de que \`persons\` en el nivel raíz del JSON siga siendo el número total de personas para todo el pedido (la suma de las personas de los pisos si está disponible, o el total mencionado).
+
+        **Reglas Adicionales:**
+        * **Dedicatoria:** Si encuentras frases como "que diga '...'", "con el texto '...'", o una frase entre comillas que deba ir en el pastel, extrae ese texto EXCLUSIVAMENTE en el campo \`dedication\`. NO incluyas la dedicatoria en \`designDescription\`.
+        * **Dirección:** Intenta formatear como "Calle y Número, Colonia Nombre de la Colonia" en \`deliveryLocation\`. Si es "recoge en tienda", usa ese texto exacto. Si es "envía ubicación por Maps", usa "El cliente envía ubicación (Google Maps)".
+        * **Valores Numéricos:** Extrae solo el número para \`deliveryCost\`, \`total\`, \`advancePayment\`. Si no se mencionan, usa \`null\`.
+
+        **Campos a extraer (adapta según el folioType detectado):**
+        - \`folioType\`: (String) "Normal" o "Base/Especial". **Obligatorio**.
+        - \`clientName\`: (String | null) Nombre del cliente.
+        - \`clientPhone\`: (String | null) Teléfono (si se menciona).
+        - \`deliveryDate\`: (String | null) Fecha de entrega (YYYY-MM-DD).
+        - \`deliveryTime\`: (String | null) Hora de entrega (HH:MM:SS).
+        - \`persons\`: (Number | null) Número TOTAL de personas para el pedido completo. **Obligatorio**.
+        - \`shape\`: (String | null) Forma general del pastel (ej. "Redondo", "Rectangular").
+        - \`cakeFlavor\`: (Array of Strings | null) Sabores generales del pan (SOLO para tipo "Normal").
+        - \`filling\`: (Array of Strings | null) Rellenos generales (SOLO para tipo "Normal").
+        - \`tiers\`: (Array of Objects | null) Estructura por pisos (SOLO para tipo "Base/Especial", sigue la estructura definida arriba).
+        - \`designDescription\`: (String | null) Descripción detallada de la decoración (SIN dedicatoria).
+        - \`dedication\`: (String | null) Texto de la dedicatoria.
+        - \`deliveryLocation\`: (String | null) Dirección de entrega o "recoge en tienda".
+        - \`deliveryCost\`: (Number | null) Costo del envío (solo número).
+        - \`total\`: (Number | null) Costo total o del pastel (solo número).
+        - \`advancePayment\`: (Number | null) Anticipo (solo número).
 
         **Conversación a analizar:**
         ---
@@ -52,18 +78,84 @@ async function getInitialExtraction(conversationText) {
     `;
 
     try {
+        console.log("🤖 Iniciando extracción inicial con IA...");
         const response = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo-1106", // Un modelo eficiente y optimizado para JSON
+            model: "gpt-4o", // Usamos gpt-4o por su mejor capacidad para seguir instrucciones complejas y estructurar JSON
             messages: [{ role: "system", content: prompt }],
-            response_format: { type: "json_object" }, // Forzamos la salida en formato JSON
+            response_format: { type: "json_object" }, // Forzar salida JSON
         });
 
-        const extractedJson = response.choices[0].message.content;
-        return JSON.parse(extractedJson);
+        const extractedJsonString = response.choices[0].message.content;
+        console.log("🤖 Datos extraídos por la IA (Extracción Inicial - Raw):", extractedJsonString);
+
+        // Validación básica antes de parsear
+        if (!extractedJsonString || !extractedJsonString.trim().startsWith('{') || !extractedJsonString.trim().endsWith('}')) {
+             console.error("Respuesta inválida de OpenAI:", extractedJsonString);
+             throw new Error("La respuesta de la IA no fue un objeto JSON válido.");
+        }
+
+        let extractedData;
+        try {
+            extractedData = JSON.parse(extractedJsonString);
+        } catch (parseError) {
+             console.error("Error al parsear JSON de OpenAI:", parseError, "JSON recibido:", extractedJsonString);
+            throw new Error(`Error al interpretar la respuesta de la IA: ${parseError.message}`);
+        }
+
+
+        // --- Validaciones y Aseguramiento de Tipos ---
+        const requiredKeys = ['folioType', 'persons', 'deliveryDate']; // Campos mínimos esperados
+        for (const key of requiredKeys) {
+            if (!(key in extractedData) || extractedData[key] === null || extractedData[key] === undefined) {
+                 console.warn(`Advertencia: La IA no extrajo el campo obligatorio '${key}'. Se intentará continuar, pero puede causar errores.`);
+                 // Podrías establecer un valor por defecto o lanzar un error más estricto si lo prefieres
+                 // extractedData[key] = null; // Ejemplo: asegurar que exista aunque sea nulo
+            }
+        }
+
+        // Asegurar que 'persons' sea un número
+        if (extractedData.persons && typeof extractedData.persons !== 'number') {
+            const parsedPersons = parseInt(extractedData.persons, 10);
+            extractedData.persons = !isNaN(parsedPersons) ? parsedPersons : null;
+        }
+
+        // Asegurar que folioType sea uno de los valores permitidos, si no, default a Normal
+        if (!['Normal', 'Base/Especial'].includes(extractedData.folioType)) {
+            console.warn(`folioType inválido ('${extractedData.folioType}') recibido de la IA. Se usará 'Normal' por defecto.`);
+            extractedData.folioType = 'Normal';
+        }
+
+        // Limpieza condicional basada en folioType (asegurar consistencia)
+        if (extractedData.folioType === 'Base/Especial') {
+            extractedData.cakeFlavor = null; // O []
+            extractedData.filling = null;    // O []
+            if (!Array.isArray(extractedData.tiers)) {
+                console.warn("folioType es Base/Especial pero 'tiers' no es un array. Se establecerá a [].");
+                extractedData.tiers = [];
+            }
+        } else { // Si es 'Normal'
+            extractedData.tiers = null; // O []
+             if (!Array.isArray(extractedData.cakeFlavor)) extractedData.cakeFlavor = [];
+             if (!Array.isArray(extractedData.filling)) extractedData.filling = [];
+        }
+
+        // Convertir campos numéricos que puedan venir como string
+        ['deliveryCost', 'total', 'advancePayment'].forEach(key => {
+            if (extractedData[key] && typeof extractedData[key] === 'string') {
+                const num = parseFloat(extractedData[key]);
+                extractedData[key] = isNaN(num) ? null : num;
+            } else if (extractedData[key] === undefined) {
+                extractedData[key] = null;
+            }
+        });
+
+        console.log("✅ Datos extraídos y procesados:", JSON.stringify(extractedData, null, 2));
+        return extractedData;
 
     } catch (error) {
-        console.error("❌ Error al contactar la API de OpenAI:", error);
-        throw new Error("No se pudieron extraer los datos de la conversación.");
+        console.error("❌ Error en getInitialExtraction:", error);
+        // Devolver un objeto de error estructurado podría ser útil para el controlador
+        throw new Error(`Error durante la extracción inicial con IA: ${error.message}`);
     }
 }
 

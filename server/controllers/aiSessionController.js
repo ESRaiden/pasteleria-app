@@ -1,99 +1,187 @@
 const { AISession, Folio, Client, sequelize } = require('../models');
+// Asegúrate que la ruta sea correcta según tu estructura
 const { getNextAssistantResponse } = require('../services/aiConversationService');
 const folioController = require('./folioController'); // Importamos para reutilizar la lógica de creación
 
 // --- FUNCIONES DE HERRAMIENTA (TOOLS) ---
 
+// Función para actualizar los datos de la sesión basados en la llamada de la IA
 async function update_folio_data(session, updates) {
-  // (Sin cambios)
   console.log('⚡ Ejecutando herramienta: update_folio_data con:', updates);
-  if (!updates || Object.keys(updates).length === 0) {
-    console.warn("Se llamó a update_folio_data sin 'updates'. La IA puede estar cometiendo un error.");
-    return "Error: No se proporcionaron datos para actualizar.";
+  // Validación básica de los updates
+  if (!updates || typeof updates !== 'object' || updates === null || Object.keys(updates).length === 0) {
+    console.warn("Llamada a update_folio_data inválida o sin datos. Argumentos:", updates);
+    // Devuelve un mensaje de error claro que la IA pueda interpretar
+    return "Error: No se proporcionaron datos válidos en formato de objeto para actualizar.";
   }
-  if (typeof updates !== 'object' || updates === null) {
-       console.error("Error: 'updates' no es un objeto válido:", updates);
-       return "Error: Los datos para actualizar no tienen el formato correcto.";
-   }
-  const currentExtractedData = (typeof session.extractedData === 'object' && session.extractedData !== null) ? session.extractedData : {};
-  const updatedData = { ...currentExtractedData, ...updates };
-  session.extractedData = updatedData;
-  return "Datos actualizados exitosamente.";
+
+  try {
+    // Obtener datos actuales de forma segura, asegurando que sea un objeto
+    const currentExtractedData = (typeof session.extractedData === 'object' && session.extractedData !== null)
+                                   ? JSON.parse(JSON.stringify(session.extractedData)) // Clonar para evitar mutación directa
+                                   : {};
+
+    // --- Lógica mejorada para manejar arrays y strings ---
+    let updatedData = { ...currentExtractedData }; // Empezar con una copia
+
+    for (const key in updates) {
+        if (Object.hasOwnProperty.call(updates, key)) {
+            const newValue = updates[key];
+            // Para arrays, reemplaza completamente con el nuevo array.
+            if (['tiers', 'complements', 'additional', 'cakeFlavor', 'filling'].includes(key) && Array.isArray(newValue)) {
+                 console.log(`[Session ${session.id}] Actualizando array '${key}' completo.`);
+                 updatedData[key] = newValue;
+            } else if (key === 'accessories' && typeof newValue === 'string' && typeof updatedData[key] === 'string' && updatedData[key]) {
+                 // Si accessories ya tiene algo y lo nuevo es string, concatenar.
+                 updatedData[key] = `${updatedData[key]}, ${newValue}`;
+                 console.log(`[Session ${session.id}] Concatenando accesorios a '${key}'.`);
+            }
+             else {
+                 // Actualización/reemplazo simple para otros campos.
+                 updatedData[key] = newValue;
+                 console.log(`[Session ${session.id}] Actualizando campo '${key}'.`);
+            }
+        }
+    }
+
+
+    // Validar/Limpiar estructura final según folioType
+     if (updatedData.folioType === 'Base/Especial') {
+         updatedData.cakeFlavor = null; // O []
+         updatedData.filling = null;    // O []
+     } else if (updatedData.folioType === 'Normal') {
+         updatedData.tiers = null; // O []
+     }
+
+
+    session.extractedData = updatedData; // Guardar los datos actualizados en el objeto de sesión (en memoria)
+    console.log(`[Session ${session.id}] Datos después de update_folio_data:`, JSON.stringify(session.extractedData, null, 2));
+    return "Datos actualizados exitosamente."; // Mensaje de éxito para la IA
+
+  } catch (error) {
+      console.error(`[Session ${session.id}] Error dentro de update_folio_data:`, error);
+      return `Error al procesar la actualización de datos: ${error.message}`; // Mensaje de error para la IA
+  }
 }
 
-async function generate_folio_pdf(session, req, transaction) {
-    // (Sin cambios)
+
+// Función para generar el Folio PDF usando folioController
+// ===== CORRECCIÓN: Eliminado el parámetro 'transaction' =====
+async function generate_folio_pdf(session, req /* Sin transaction aquí */) {
     console.log('⚡ Ejecutando herramienta: generate_folio_pdf');
     const folioData = session.extractedData;
-    const phoneMatch = session.whatsappConversation.match(/De:\s*(\d+)/) || session.whatsappConversation.match(/Cliente:\s*(\d+)/);
-    const senderPhone = phoneMatch ? phoneMatch[1] : null;
 
+    // Validación mínima de datos
+    if (!folioData || !folioData.clientName || !folioData.deliveryDate || !folioData.persons || folioData.total === null || folioData.total === undefined) {
+        console.error(`[Session ${session.id}] Error: Faltan datos esenciales para generar el folio.`, folioData);
+        return "Error: Faltan datos esenciales como nombre, fecha, personas o total para generar el folio. Pide al empleado que los complete.";
+    }
+
+    // Obtener teléfono
+    const phoneMatch = session.whatsappConversation?.match(/De:\s*(\d+)/) || session.whatsappConversation?.match(/Cliente:\s*(\+?\d+)/);
+    const senderPhone = phoneMatch ? phoneMatch[1] : null;
+    const clientPhone = folioData.clientPhone || senderPhone;
+    // (Advertencia si no hay teléfono, pero no bloqueante por ahora)
+    if (!clientPhone) {
+        console.warn(`[Session ${session.id}] Advertencia: No se pudo determinar el teléfono del cliente.`);
+    }
+
+    // Preparar el objeto mockReq para folioController.createFolio
     const mockReq = {
         body: {
-            clientName: folioData.clientName,
-            clientPhone: folioData.clientPhone || senderPhone,
-            clientPhone2: folioData.clientPhone2,
+            clientName: folioData.clientName || 'Cliente Desconocido',
+            clientPhone: clientPhone || 'Sin Telefono', // Default si falta
+            clientPhone2: folioData.clientPhone2 || null,
             deliveryDate: folioData.deliveryDate,
-            deliveryTime: folioData.deliveryTime,
+            deliveryTime: folioData.deliveryTime || '00:00:00',
             persons: folioData.persons,
-            shape: folioData.shape,
+            shape: folioData.shape || 'Redondo',
             cakeFlavor: JSON.stringify(Array.isArray(folioData.cakeFlavor) ? folioData.cakeFlavor : []),
-            filling: JSON.stringify(Array.isArray(folioData.filling) ? folioData.filling : []),
-            designDescription: folioData.designDescription,
-            dedication: folioData.dedication,
-            deliveryLocation: folioData.deliveryLocation,
-            total: folioData.total,
+            // Asegurar formato [{name, hasCost}] para filling
+            filling: JSON.stringify(
+                Array.isArray(folioData.filling)
+                    ? folioData.filling.map(f => (typeof f === 'string' ? { name: f, hasCost: false } : (f || {name: 'Inválido', hasCost: false})))
+                    : []
+            ),
+            tiers: JSON.stringify(Array.isArray(folioData.tiers) ? folioData.tiers : []),
+            designDescription: folioData.designDescription || 'Sin descripción.',
+            dedication: folioData.dedication || null,
+            deliveryLocation: folioData.deliveryLocation || 'Recoge en Tienda',
+            total: folioData.total, // Costo BASE
             advancePayment: folioData.advancePayment || 0,
-            folioType: folioData.folioType || 'Normal',
-            existingImageUrls: JSON.stringify(session.imageUrls || []),
             deliveryCost: folioData.deliveryCost || 0,
-            accessories: folioData.accessories || '',
-            additional: JSON.stringify(Array.isArray(folioData.additional) ? folioData.additional : []),
+            folioType: folioData.folioType || 'Normal',
+            accessories: folioData.accessories || null,
+            // Asegurar formato [{name, price}] para additional
+            additional: JSON.stringify(
+                 Array.isArray(folioData.additional)
+                     ? folioData.additional.map(a => ({ name: a?.name || 'Adicional inválido', price: a?.price || 0 }))
+                     : []
+             ),
             complements: JSON.stringify(Array.isArray(folioData.complements) ? folioData.complements : []),
             isPaid: folioData.isPaid || false,
             hasExtraHeight: folioData.hasExtraHeight || false,
             addCommissionToCustomer: folioData.addCommissionToCustomer || false,
-            imageComments: JSON.stringify(folioData.imageComments || []),
-            existingImageComments: JSON.stringify([])
+            existingImageUrls: JSON.stringify(session.imageUrls || []),
+            existingImageComments: JSON.stringify([]), // No se usan en este flujo
+            imageComments: JSON.stringify([]), // No se usan en este flujo
+            status: 'Nuevo' // Siempre 'Nuevo' al crear desde IA
         },
-        user: req.user,
-        files: []
+        user: req.user, // Usuario autenticado
+        files: [] // No hay archivos subidos en este flujo
     };
 
     let newFolio = null;
     const mockRes = {
+        // Objeto simulado para capturar respuesta de createFolio
         status: (code) => ({
             json: (data) => {
-                if (code === 201) {
+                if (code >= 200 && code < 300 && data && data.folioNumber) {
                     newFolio = data;
-                    console.log(`Folio #${newFolio.folioNumber} creado a través del asistente.`);
                 } else {
-                    console.error(`Error al crear folio desde asistente (${code}):`, data.message || data);
+                     newFolio = { error: data?.message || `Error ${code} al crear folio.` };
                  }
             }
         }),
-        send: (message) => {
-            console.warn("generate_folio_pdf mockRes.send llamado:", message);
+        send: (message) => { // Capturar si usa res.send
+            console.warn(`[Session ${session.id}] folioController.createFolio usó res.send:`, message);
+             if (!newFolio) newFolio = { error: message };
         }
     };
 
     try {
-        await folioController.createFolio(mockReq, mockRes, transaction);
-        if (!newFolio || !newFolio.folioNumber) {
-             throw new Error("No se pudo obtener la información del folio creado. Revisa los logs del servidor para detalles del error en folioController.createFolio.");
+        // Llamar a createFolio SIN transacción, ya que la maneja internamente
+        await folioController.createFolio(mockReq, mockRes /* Sin transaction */);
+
+        if (newFolio && newFolio.error) {
+             throw new Error(newFolio.error);
         }
-        session.status = 'completed';
-        return `¡Hecho! Se ha creado el Folio ${newFolio.folioNumber}. Puedes verlo en el calendario.`;
+        if (!newFolio || !newFolio.folioNumber) {
+             throw new Error("La creación del folio no devolvió la información esperada.");
+        }
+
+        session.status = 'completed'; // Marcar sesión como completada EN MEMORIA
+        console.log(`[Session ${session.id}] Marcada como 'completed'.`);
+        // Devolver mensaje de éxito para la IA y el historial
+        return `¡Folio ${newFolio.folioNumber} creado exitosamente! La sesión ha finalizado.`;
+
     } catch (error) {
-        console.error("Error detallado dentro de generate_folio_pdf:", error);
-        return `Error al generar el folio PDF: ${error.message}`;
+        console.error(`[Session ${session.id}] Error detallado dentro de generate_folio_pdf:`, error);
+        // Devolver mensaje de error para la IA y el historial
+        return `Error al intentar generar el folio: ${error.message}. Por favor, revisa los datos o pide ayuda al empleado.`;
     }
+}
+
+// Función placeholder para answer_question_from_context
+async function answer_question_from_context(session, answer) {
+    console.log('⚡ Ejecutando herramienta: answer_question_from_context');
+    return answer || "No encontré una respuesta específica en la conversación original.";
 }
 
 
 // --- CONTROLADORES DE RUTA ---
 
-// (exports.getActiveSessions sin cambios)
+// Obtener sesiones activas
 exports.getActiveSessions = async (req, res) => {
     try {
         const sessions = await AISession.findAll({
@@ -102,11 +190,12 @@ exports.getActiveSessions = async (req, res) => {
         });
         res.status(200).json(sessions);
     } catch (error) {
+        console.error("Error en getActiveSessions:", error);
         res.status(500).json({ message: 'Error al obtener las sesiones activas', error: error.message });
     }
 };
 
-// (exports.getSessionById sin cambios)
+// Obtener sesión por ID
 exports.getSessionById = async (req, res) => {
     try {
         const session = await AISession.findByPk(req.params.id);
@@ -115,169 +204,207 @@ exports.getSessionById = async (req, res) => {
         }
         res.status(200).json(session);
     } catch (error) {
+        console.error("Error en getSessionById:", error);
         res.status(500).json({ message: 'Error al obtener la sesión', error: error.message });
     }
 };
 
+// Controlador principal para manejar mensajes del chat
 exports.postChatMessage = async (req, res) => {
-    const t = await sequelize.transaction();
     const sessionId = req.params.id;
-    console.log(`\n--- [Session ${sessionId || 'ID?'}] DEBUG: Inicio postChatMessage ---`);
+    // Iniciar transacción para update_folio_data y session.save
+    const t = await sequelize.transaction();
+    console.log(`\n--- [Session ${sessionId || 'ID?'}] Inicio postChatMessage ---`);
 
     try {
+        // Validaciones iniciales
         if (!sessionId) {
             await t.rollback();
-            console.error(`Error: No se recibió sessionId en req.params.`);
             return res.status(400).json({ message: 'Falta el ID de la sesión en la URL.' });
         }
-
-        const { message } = req.body;
-        if (!message) {
+        const { message: userMessageContent } = req.body;
+        if (!userMessageContent) {
             await t.rollback();
-            console.error(`[Session ${sessionId}] Error: Mensaje vacío recibido.`);
             return res.status(400).json({ message: 'El mensaje no puede estar vacío.' });
         }
-
         const session = await AISession.findByPk(sessionId, { transaction: t, lock: t.LOCK.UPDATE });
         if (!session) {
             await t.rollback();
-            console.error(`[Session ${sessionId}] Error: Sesión no encontrada.`);
             return res.status(404).json({ message: 'Sesión no encontrada.' });
         }
-
-        console.log(`[Session ${sessionId}] Mensaje Usuario: "${message}"`);
-        const existingHistory = session.chatHistory ? JSON.parse(JSON.stringify(session.chatHistory)) : [];
-        console.log(`[Session ${sessionId}] Historial existente (roles):`, JSON.stringify(existingHistory.map(m => m.role), null, 2));
-
-        // *** IMPORTANTE: Verificar si el historial existente ya está corrupto ***
-        if (existingHistory.length > 0) {
-            const lastExistingMessage = existingHistory[existingHistory.length - 1];
-            if (lastExistingMessage.role === 'assistant' && lastExistingMessage.tool_calls && lastExistingMessage.tool_calls.length > 0) {
-                 console.error(`[Session ${sessionId}] ¡ERROR! El historial existente ya termina con tool_calls pendientes. No se puede continuar. ID de llamada pendiente: ${lastExistingMessage.tool_calls[0].id}`);
-                 await t.rollback(); // Cancelar transacción
-                 return res.status(409).json({ message: `La sesión está en un estado inconsistente (llamada a herramienta ${lastExistingMessage.tool_calls[0].id} pendiente). Por favor, corrige manualmente o cancela la sesión.` });
+         if (session.status !== 'active') {
+             await t.rollback();
+             return res.status(400).json({ message: `La sesión ya está ${session.status}. No se pueden procesar más mensajes.` });
+         }
+         console.log(`[Session ${sessionId}] Mensaje Usuario: "${userMessageContent}"`);
+         const existingHistory = session.chatHistory ? JSON.parse(JSON.stringify(session.chatHistory)) : [];
+         // Verificación de consistencia del historial
+         if (existingHistory.length > 0) {
+            const lastMsg = existingHistory[existingHistory.length - 1];
+            if (lastMsg.role === 'assistant' && lastMsg.tool_calls) {
+                console.error(`[Session ${sessionId}] ¡ERROR DE CONSISTENCIA! Historial termina con tool_calls pendientes.`);
+                await t.rollback();
+                return res.status(409).json({ message: `Error: La sesión tiene una llamada a herramienta pendiente. No se puede continuar.` });
             }
         }
-        // *** FIN VERIFICACIÓN ***
 
-        let currentHistory = [...existingHistory, { role: 'user', content: message }];
-        console.log(`[Session ${sessionId}] Historial PARA 1ra llamada OpenAI (roles):`, JSON.stringify(currentHistory.map(m => m.role), null, 2));
+        let currentHistory = [...existingHistory, { role: 'user', content: userMessageContent }];
 
+        // === Primera Llamada a OpenAI ===
+        console.log(`[Session ${sessionId}] Enviando a IA (1ra llamada)...`);
         const firstAssistantResponse = await getNextAssistantResponse({
             extractedData: session.extractedData,
             whatsappConversation: session.whatsappConversation,
             chatHistory: currentHistory
-        }, message);
-        console.log(`[Session ${sessionId}] Respuesta 1ra llamada OpenAI:`, JSON.stringify(firstAssistantResponse, null, 2));
+        }, userMessageContent);
 
         currentHistory.push(firstAssistantResponse);
+        console.log(`[Session ${sessionId}] Respuesta IA (1ra llamada):`, JSON.stringify(firstAssistantResponse, null, 2));
 
-        let finalResponseToSend;
+        let finalNaturalResponse = { role: 'assistant', content: null }; // Default
+        let toolRanAndCompletedSession = false; // Flag para éxito de generate_folio_pdf
 
+        // === Procesamiento de Tool Calls ===
         if (firstAssistantResponse.tool_calls && firstAssistantResponse.tool_calls.length > 0) {
-            console.log(`[Session ${sessionId}] DEBUG: Detectado ${firstAssistantResponse.tool_calls.length} tool_calls.`);
-            const toolMessages = [];
+            console.log(`[Session ${sessionId}] Detectadas ${firstAssistantResponse.tool_calls.length} tool_calls.`);
+            const toolMessages = []; // Colección de mensajes con role: 'tool'
+
             for (const toolCall of firstAssistantResponse.tool_calls) {
                 const functionName = toolCall.function.name;
                 let functionArgs = {};
+
+                 // Parseo de argumentos
                  try {
-                     if (typeof toolCall.function.arguments === 'string') {
-                         functionArgs = JSON.parse(toolCall.function.arguments);
-                     } else {
-                         console.warn(`[Session ${sessionId}] Warning: tool_call.function.arguments no es un string:`, toolCall.function.arguments);
-                      }
-                 } catch (parseError) {
-                     console.error(`[Session ${sessionId}] Error parseando argumentos de ${functionName}:`, parseError, "Argumentos recibidos:", toolCall.function.arguments);
-                     functionArgs = {};
-                  }
+                    if (typeof toolCall.function.arguments === 'string' && toolCall.function.arguments.trim()) {
+                        functionArgs = JSON.parse(toolCall.function.arguments);
+                    } else if (functionName !== 'generate_folio_pdf') { // generate_folio_pdf no necesita args
+                         throw new Error("Argumentos faltantes o inválidos.");
+                    }
+                } catch (parseError) {
+                    console.error(`[Session ${sessionId}] Error parseando args para ${functionName}:`, parseError);
+                     toolMessages.push({ tool_call_id: toolCall.id, role: 'tool', name: functionName, content: `Error: Argumentos inválidos - ${parseError.message}` });
+                     continue; // Saltar a la siguiente herramienta si falla el parseo
+                }
 
                 let functionResult = "";
-                console.log(`[Session ${sessionId}] DEBUG: Ejecutando herramienta ${functionName} con args:`, functionArgs);
+                console.log(`[Session ${sessionId}] Ejecutando ${functionName}...`);
                 try {
                     if (functionName === 'update_folio_data') {
-                        functionResult = await update_folio_data(session, functionArgs.updates);
+                        // Pasar 'session' que está bloqueada por la transacción 't'
+                        // Pasar functionArgs directamente
+                        functionResult = await update_folio_data(session, functionArgs);
                     } else if (functionName === 'generate_folio_pdf') {
-                        functionResult = await generate_folio_pdf(session, req, t);
+                        // Llamar SIN pasar 't'
+                        functionResult = await generate_folio_pdf(session, req /* Sin 't' */);
+                        // Verificar si tuvo éxito y cambió el estado DE LA SESIÓN EN MEMORIA
+                        if (session.status === 'completed' && !String(functionResult).toLowerCase().startsWith('error')) {
+                            toolRanAndCompletedSession = true; // Marcar éxito
+                        }
                     } else if (functionName === 'answer_question_from_context') {
-                         functionResult = functionArgs.answer || "No encontré una respuesta en el contexto.";
-                     } else {
-                        functionResult = `Error: La función "${functionName}" no existe.`;
+                        functionResult = await answer_question_from_context(session, functionArgs.answer);
+                    } else {
+                        functionResult = `Error: Función desconocida "${functionName}".`;
                     }
-                 } catch (toolError) {
-                    console.error(`[Session ${sessionId}] Error EJECUTANDO herramienta ${functionName}:`, toolError);
-                    functionResult = `Error al ejecutar la herramienta ${functionName}: ${toolError.message}`;
-                  }
+                 } catch (toolExecError) {
+                    console.error(`[Session ${sessionId}] Error EJECUTANDO ${functionName}:`, toolExecError);
+                    functionResult = `Error al ejecutar la herramienta: ${toolExecError.message}`;
+                 }
 
-                if (typeof functionResult !== 'string') {
-                    console.warn(`[Session ${sessionId}] Resultado de ${functionName} no es string:`, functionResult);
-                    functionResult = JSON.stringify(functionResult);
-                }
-                console.log(`[Session ${sessionId}] DEBUG: Resultado de ${functionName}:`, functionResult);
+                if (typeof functionResult !== 'string') functionResult = JSON.stringify(functionResult);
+                console.log(`[Session ${sessionId}] Resultado ${functionName}:`, functionResult);
+                toolMessages.push({ tool_call_id: toolCall.id, role: 'tool', name: functionName, content: functionResult });
 
-                toolMessages.push({
-                    tool_call_id: toolCall.id,
-                    role: 'tool',
-                    name: functionName,
-                    content: functionResult,
-                });
+                // Salir del bucle si generate_pdf completó la sesión
+                 if (toolRanAndCompletedSession) {
+                     break;
+                 }
+            } // Fin for toolCall
+
+            currentHistory.push(...toolMessages); // Añadir resultados de tools
+
+            // === Segunda Llamada a OpenAI o Respuesta Final (Corregida) ===
+            if (toolRanAndCompletedSession) {
+                // Si generate_pdf tuvo éxito, crear el mensaje final de assistant y añadirlo
+                const successMsg = toolMessages.find(m => m.name === 'generate_folio_pdf')?.content || "Proceso de creación finalizado.";
+                finalNaturalResponse = { role: 'assistant', content: successMsg };
+                currentHistory.push(finalNaturalResponse); // <<< AÑADIR AL HISTORIAL
+                console.log(`[Session ${sessionId}] Folio generado. Respuesta final directa añadida al historial.`);
+
+            } else if (session.status === 'active') { // Si no se completó y sigue activa
+                 // Hacer la segunda llamada para obtener respuesta natural post-update
+                 console.log(`[Session ${sessionId}] Enviando a IA (2da llamada) para respuesta natural...`);
+                 const secondAssistantResponse = await getNextAssistantResponse({
+                     extractedData: session.extractedData,
+                     whatsappConversation: session.whatsappConversation,
+                     chatHistory: currentHistory // Historial ya incluye resultados 'tool'
+                 }, null); // Sin userMessage
+
+                 currentHistory.push(secondAssistantResponse); // Añadir al historial
+                 console.log(`[Session ${sessionId}] Respuesta IA (2da llamada - final):`, JSON.stringify(secondAssistantResponse, null, 2));
+                 finalNaturalResponse = secondAssistantResponse; // Esta es la que se envía al usuario
+            } else {
+                 // Caso de error en generate_pdf o cambio de estado inesperado
+                 const errorMsg = toolMessages.find(m => m.name === 'generate_folio_pdf')?.content || "El proceso terminó con un estado inesperado.";
+                 finalNaturalResponse = { role: 'assistant', content: errorMsg };
+                 currentHistory.push(finalNaturalResponse);
+                 console.warn(`[Session ${sessionId}] Estado cambió a ${session.status} por error. Añadiendo mensaje de error como respuesta final.`);
             }
 
-            currentHistory.push(...toolMessages);
-            console.log(`[Session ${sessionId}] Historial PARA 2da llamada OpenAI (roles):`, JSON.stringify(currentHistory.map(m => m.role), null, 2));
-
-            const finalAssistantResponse = await getNextAssistantResponse({
-                 extractedData: session.extractedData,
-                 whatsappConversation: session.whatsappConversation,
-                 chatHistory: currentHistory
-            }, "");
-            console.log(`[Session ${sessionId}] Respuesta 2da llamada OpenAI (final):`, JSON.stringify(finalAssistantResponse, null, 2));
-
-            currentHistory.push(finalAssistantResponse);
-            finalResponseToSend = finalAssistantResponse;
-
         } else {
-            console.log(`[Session ${sessionId}] DEBUG: No se detectaron tool_calls. Usando primera respuesta.`);
-            finalResponseToSend = firstAssistantResponse;
+            console.log(`[Session ${sessionId}] No hubo tool_calls.`);
+            finalNaturalResponse = firstAssistantResponse; // La primera respuesta es la final
         }
 
+        // ***** Verificación de Consistencia Final *****
+        // El último mensaje DEBE ser 'assistant' y NO tener 'tool_calls'
+         const lastMessageToSave = currentHistory[currentHistory.length - 1];
+         if (!lastMessageToSave || lastMessageToSave.role !== 'assistant' || (lastMessageToSave.tool_calls && lastMessageToSave.tool_calls.length > 0)) {
+             console.error(`[Session ${sessionId}] ¡ERROR DE CONSISTENCIA FINAL! Último mensaje inválido.`, lastMessageToSave);
+             // Intentar añadir un mensaje genérico si el último es 'tool' y no hubo error mayor
+             if(lastMessageToSave && lastMessageToSave.role === 'tool' && !lastMessageToSave.content.toLowerCase().startsWith('error')) {
+                console.warn(`[Session ${sessionId}] Intentando corregir consistencia añadiendo mensaje final genérico.`);
+                finalNaturalResponse = { role: 'assistant', content: "Acción procesada." }; // Mensaje genérico post-tool
+                currentHistory.push(finalNaturalResponse);
+                // Volver a verificar por si acaso, aunque debería estar bien ahora
+                const correctedLastMessage = currentHistory[currentHistory.length - 1];
+                if (!correctedLastMessage || correctedLastMessage.role !== 'assistant' || (correctedLastMessage.tool_calls && correctedLastMessage.tool_calls.length > 0)) {
+                    await t.rollback();
+                    return res.status(500).json({ message: 'Error interno crítico: No se pudo corregir el estado final del historial.' });
+                }
+                 console.log(`[Session ${sessionId}] Consistencia corregida.`);
+             } else {
+                 // Si el problema es otro (ej. último mensaje 'user' o 'tool' con error), lanzar error
+                 await t.rollback();
+                 return res.status(500).json({ message: `Error interno crítico: El estado final del historial es inválido (${lastMessageToSave?.role}).` });
+             }
+         } else {
+             console.log(`[Session ${sessionId}] Verificación final OK.`);
+         }
+        // ***** Fin Verificación *****
+
+        // Guardar historial y estado actualizados
         session.chatHistory = currentHistory;
-        console.log(`[Session ${sessionId}] Historial FINAL a guardar (roles):`, JSON.stringify(session.chatHistory.map(m => m.role), null, 2));
-
-        const lastMessageBeforeSave = currentHistory[currentHistory.length - 1];
-        // **** INICIO VERIFICACIÓN PRE-GUARDADO ****
-        if (lastMessageBeforeSave && lastMessageBeforeSave.role === 'assistant' && lastMessageBeforeSave.tool_calls && lastMessageBeforeSave.tool_calls.length > 0) {
-             console.error(`[Session ${sessionId}] ¡ERROR CRÍTICO! El historial final termina con una llamada a herramienta pendiente. NO SE GUARDARÁ. Último mensaje:`, JSON.stringify(lastMessageBeforeSave, null, 2));
-             await t.rollback(); // <-- ROLLBACK ANTES DE SALIR
-             console.log(`[Session ${sessionId}] DEBUG: Transacción revertida (rollback) debido a estado final inválido.`);
-             return res.status(500).json({ message: 'Error interno del servidor al procesar la respuesta del asistente. El estado final era inválido.' });
-        } else if (!lastMessageBeforeSave || lastMessageBeforeSave.role !== 'assistant') {
-             console.warn(`[Session ${sessionId}] Advertencia: El último mensaje antes de guardar no es del asistente o está ausente. Revisar flujo. Último mensaje:`, JSON.stringify(lastMessageBeforeSave, null, 2));
-        } else {
-            console.log(`[Session ${sessionId}] Verificación: Último mensaje es role=assistant y sin tool_calls. OK para guardar.`);
-        }
-         // **** FIN VERIFICACIÓN PRE-GUARDADO ****
-
         await session.save({ transaction: t });
 
+        // Confirmar transacción (guarda historial y status='completed')
         await t.commit();
-        console.log(`[Session ${sessionId}] DEBUG: Transacción completada (commit).`);
+        console.log(`[Session ${sessionId}] Transacción completada (commit).`);
 
-        res.status(200).json({ message: finalResponseToSend, sessionData: session.toJSON() });
+        // Enviar respuesta y datos
+        res.status(200).json({
+            message: finalNaturalResponse, // Objeto {role: 'assistant', content: '...'}
+            sessionData: session.toJSON() // Datos sesión actualizados (incl. status)
+        });
 
     } catch (error) {
-        await t.rollback();
-        console.error(`[Session ${sessionId || 'ID?'}] Error DETALLADO en postChatMessage:`, error);
-        if (error.status === 400 && error.type === 'invalid_request_error') {
-            console.error(`[Session ${sessionId || 'ID?'}] Error específico de OpenAI:`, error.error);
-            // Intentar dar un mensaje más útil basado en el param
-             let userMessage = `Error de OpenAI: ${error.message}`;
-             if (error.param && error.param.startsWith('messages.')) {
-                 userMessage += ` (Problema con la secuencia de mensajes)`;
-             }
-             res.status(400).json({ message: userMessage });
-        } else {
-            res.status(500).json({ message: 'Error interno al procesar el mensaje.' });
+        // Revertir transacción en caso de error no capturado
+        if (t && !t.finished) { // Verificar si la transacción sigue activa
+            await t.rollback();
+            console.log(`[Session ${sessionId || 'ID?'}] Transacción revertida (rollback) en catch principal.`);
         }
-        console.log(`[Session ${sessionId || 'ID?'}] DEBUG: Transacción revertida (rollback).`);
+        console.error(`[Session ${sessionId || 'ID?'}] Error en postChatMessage:`, error);
+        const statusCode = error.status || 500; // Usar status de OpenAI si existe
+        // Enviar mensaje de error al frontend
+        res.status(statusCode).json({ message: error.message || 'Error interno al procesar el mensaje.' });
     }
 };
