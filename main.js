@@ -94,6 +94,24 @@ document.addEventListener('DOMContentLoaded', function() {
         normalFields = document.getElementById('normalFields'),
         specialFields = document.getElementById('specialFields');
 
+    // --- NUEVO: ELEMENTOS DE DICTADO ---
+    const dictateOrderButton = document.getElementById('dictateOrderButton');
+    const dictationModal = document.getElementById('dictationModal');
+    const closeDictationModalBtn = document.getElementById('closeDictationModal');
+    const recordButton = document.getElementById('recordButton');
+    const stopButton = document.getElementById('stopButton');
+    const dictationStatus = document.getElementById('dictationStatus');
+    const recordingIndicator = document.getElementById('recordingIndicator');
+    const recordingTimer = document.getElementById('recordingTimer');
+    const dictationError = document.getElementById('dictationError');
+
+    // --- NUEVO: Variables para grabación ---
+    let mediaRecorder;
+    let audioChunks = [];
+    let timerInterval;
+    let startTime;
+    // --- FIN NUEVO ---
+
     // --- MANEJO DE MODALES ---
     const dailyFoliosModal = document.getElementById('dailyFoliosModal');
     const closeDailyFoliosModalBtn = document.getElementById('closeDailyFoliosModal');
@@ -643,56 +661,318 @@ document.addEventListener('DOMContentLoaded', function() {
         loadActiveSessions();
     });
 
-    // --- LÓGICA DEL CHAT (sin cambios respecto a tu código base) ---
+    // --- NUEVO: Lógica del Modal de Dictado ---
+
+     function startRecording() {
+         navigator.mediaDevices.getUserMedia({ audio: true })
+             .then(stream => {
+                 audioChunks = []; // Limpiar chunks anteriores
+                 mediaRecorder = new MediaRecorder(stream);
+                 mediaRecorder.ondataavailable = event => {
+                     audioChunks.push(event.data);
+                 };
+                 mediaRecorder.onstop = sendAudioToServer; // Llama a esta función al detener
+
+                 mediaRecorder.start();
+                 dictationStatus.textContent = 'Dicta los detalles del pedido...';
+                 dictationError.textContent = '';
+                 recordButton.classList.add('hidden');
+                 stopButton.classList.remove('hidden');
+                 recordingIndicator.classList.remove('hidden');
+
+                 // Iniciar temporizador
+                 startTime = Date.now();
+                 timerInterval = setInterval(() => {
+                     const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+                     const minutes = Math.floor(elapsedTime / 60);
+                     const seconds = elapsedTime % 60;
+                     recordingTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                 }, 1000);
+
+             })
+             .catch(err => {
+                 console.error("Error al acceder al micrófono:", err);
+                 dictationStatus.textContent = 'Error al acceder al micrófono.';
+                 dictationError.textContent = 'Asegúrate de permitir el acceso al micrófono.';
+             });
+     }
+
+     function stopRecording() {
+         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+             mediaRecorder.stop();
+             // Detener el stream para apagar el indicador del micrófono en el navegador
+             mediaRecorder.stream.getTracks().forEach(track => track.stop());
+         }
+         stopButton.classList.add('hidden');
+         recordButton.classList.remove('hidden');
+         recordingIndicator.classList.add('hidden');
+         clearInterval(timerInterval);
+         recordingTimer.textContent = '0:00';
+         dictationStatus.textContent = 'Procesando audio... por favor espera.';
+         // Deshabilitar botones mientras procesa
+         recordButton.disabled = true;
+         stopButton.disabled = true;
+     }
+
+     async function sendAudioToServer() {
+         if (audioChunks.length === 0) {
+            console.warn("No audio data recorded.");
+            dictationStatus.textContent = 'No se grabó audio. Intenta de nuevo.';
+            recordButton.disabled = false;
+            stopButton.disabled = false;
+            return;
+         }
+         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); // Asegúrate que el backend espere este tipo
+         const formData = new FormData();
+         formData.append('audio', audioBlob, 'dictated_order.webm');
+
+         const authToken = localStorage.getItem('authToken');
+         loadingEl.classList.remove('hidden'); // Mostrar indicador global
+         dictationError.textContent = '';
+
+         try {
+             const response = await fetch('http://localhost:3000/api/dictation/process', {
+                 method: 'POST',
+                 headers: { 'Authorization': `Bearer ${authToken}` },
+                 body: formData
+             });
+
+             const result = await response.json();
+
+             if (!response.ok) {
+                 throw new Error(result.message || `Error del servidor: ${response.status}`);
+             }
+
+             console.log("Datos extraídos del dictado:", result);
+             dictationModal.classList.add('hidden'); // Cerrar modal
+             // Resetear estado del modal
+             dictationStatus.textContent = 'Presiona "Grabar" para empezar...';
+             recordButton.disabled = false;
+             stopButton.disabled = false;
+
+             // Pre-rellenar formulario y mostrarlo
+             populateFormFromDictation(result);
+             window.previousView = 'calendar'; // O la vista desde donde se abrió el modal
+             showView('form'); // Mostrar vista del formulario
+
+         } catch (error) {
+             console.error("Error al procesar dictado:", error);
+             dictationStatus.textContent = 'Error al procesar el audio.';
+             dictationError.textContent = error.message;
+             // Habilitar botones de nuevo en caso de error
+             recordButton.disabled = false;
+             stopButton.disabled = false;
+         } finally {
+             loadingEl.classList.add('hidden'); // Ocultar indicador global
+         }
+     }
+
+     // --- NUEVO: Event Listeners para Dictado ---
+     if (dictateOrderButton) {
+         dictateOrderButton.addEventListener('click', () => {
+             // Resetear UI del modal antes de mostrar
+             dictationModal.classList.remove('hidden');
+             dictationStatus.textContent = 'Presiona "Grabar" para empezar...';
+             dictationError.textContent = '';
+             recordButton.classList.remove('hidden');
+             stopButton.classList.add('hidden');
+             recordingIndicator.classList.add('hidden');
+             recordButton.disabled = false;
+             stopButton.disabled = false;
+             clearInterval(timerInterval); // Limpiar timer por si acaso
+             recordingTimer.textContent = '0:00';
+         });
+     }
+
+     if (closeDictationModalBtn) {
+         closeDictationModalBtn.addEventListener('click', () => {
+             if (mediaRecorder && mediaRecorder.state === 'recording') {
+                 stopRecording(); // Detener si está grabando al cerrar
+             }
+             dictationModal.classList.add('hidden');
+         });
+     }
+
+     if (recordButton) {
+         recordButton.addEventListener('click', startRecording);
+     }
+
+     if (stopButton) {
+         stopButton.addEventListener('click', stopRecording);
+     }
+     // --- FIN NUEVO ---
+
+     // --- NUEVO: Función para poblar el formulario desde el dictado ---
+     // Adaptación de populateFormForEdit
+     function populateFormFromDictation(extractedData) {
+         resetForm(); // Limpia el formulario primero
+         formTitle.textContent = 'Revisar Folio Dictado'; // Nuevo título
+
+         // Marcar que viene de dictado (opcional, podrías usar un dataset)
+         folioForm.dataset.source = 'dictation';
+         folioForm.dataset.originalStatus = 'Pendiente'; // Marcar como pendiente internamente
+
+         // Rellenar campos simples
+         clientNameInput.value = extractedData.clientName || '';
+         clientPhoneInput.value = extractedData.clientPhone || '';
+         clientPhone2Input.value = extractedData.clientPhone2 || '';
+         deliveryDateInput.value = extractedData.deliveryDate || '';
+         personsInput.value = extractedData.persons || '';
+         shapeInput.value = extractedData.shape || '';
+         designDescriptionTextarea.value = extractedData.designDescription || '';
+         dedicationInput.value = extractedData.dedication || '';
+         deliveryCostInput.value = (parseFloat(extractedData.deliveryCost) || 0).toFixed(2);
+         totalInput.value = (parseFloat(extractedData.total) || 0).toFixed(2); // Costo base
+         advanceInput.value = (parseFloat(extractedData.advancePayment) || 0).toFixed(2);
+         accessoriesInput.value = extractedData.accessories || '';
+         isPaidCheckbox.checked = extractedData.isPaid || false;
+         hasExtraHeightCheckbox.checked = extractedData.hasExtraHeight || false;
+         addCommissionCheckbox.checked = extractedData.addCommissionToCustomer || false; // Asumiendo que la IA puede extraer esto
+
+         // Rellenar Hora
+         if (extractedData.deliveryTime) {
+             const timeParts = extractedData.deliveryTime.split(':');
+             if (timeParts.length >= 2) {
+                 const hour = parseInt(timeParts[0], 10);
+                 const minute = timeParts[1];
+                 if (!isNaN(hour)) {
+                     const hour12 = (hour % 12) || 12;
+                     deliveryHourSelect.value = hour12;
+                     // Asegurarse de que el minuto exista en las opciones
+                     const minuteOptionExists = Array.from(deliveryMinuteSelect.options).some(opt => opt.value === minute);
+                     deliveryMinuteSelect.value = minuteOptionExists ? minute : '00'; // Default a 00 si no existe
+                     deliveryPeriodSelect.value = hour >= 12 ? 'PM' : 'AM';
+                 }
+             }
+         }
+
+         // Rellenar Tipo de Folio y campos dependientes
+         folioTypeSelect.value = extractedData.folioType || 'Normal';
+         folioTypeSelect.dispatchEvent(new Event('change')); // Disparar evento para mostrar/ocultar campos
+
+         if (extractedData.folioType === 'Normal') {
+             selectedCakeFlavors = extractedData.cakeFlavor || [];
+             // Asegurar formato {name, hasCost} para rellenos
+             selectedRellenos = (extractedData.filling || []).map(r => typeof r === 'string' ? { name: r, hasCost: false } : r);
+             renderTags(cakeFlavorContainer, selectedCakeFlavors, removeCakeFlavor);
+             renderTags(fillingContainer, selectedRellenos, removeRelleno);
+         } else if (extractedData.folioType === 'Base/Especial') {
+             tiersTableBody.innerHTML = '';
+             tiersData = [];
+             (extractedData.tiers || []).forEach(tier => addTierRow(tier));
+         }
+
+         // Rellenar Adicionales
+         additionalItems = [];
+         if (extractedData.additional && Array.isArray(extractedData.additional)) {
+             additionalItems = extractedData.additional.map(item => {
+                 // Intentar extraer cantidad, nombre y precio del string o usar objeto
+                 let name = item.name || 'Adicional';
+                 let quantity = 1;
+                 let totalPrice = parseFloat(item.price) || 0;
+                 let unitPrice = totalPrice;
+
+                 const nameMatch = name.match(/^(\d+)\s*x\s*(.*)/i);
+                 if (nameMatch) {
+                     quantity = parseInt(nameMatch[1], 10) || 1;
+                     name = nameMatch[2].trim();
+                 }
+
+                 const priceMatch = name.match(/\(\$\s*([\d.]+)\s*\)$/);
+                 if (priceMatch) {
+                     totalPrice = parseFloat(priceMatch[1]) || totalPrice; // Precio del string tiene prioridad
+                     name = name.substring(0, priceMatch.index).trim();
+                 }
+
+                 unitPrice = (quantity > 0 && !isNaN(totalPrice)) ? totalPrice / quantity : 0;
+
+                 return { name, quantity, price: unitPrice, totalPrice };
+             }).filter(item => item && !isNaN(item.totalPrice));
+             renderAdditionalItems();
+         }
+
+         // Rellenar Complementos
+         complementsContainer.innerHTML = '';
+         if (extractedData.complements && Array.isArray(extractedData.complements)) {
+             extractedData.complements.forEach(comp => addComplementRow(comp));
+         }
+
+         // Rellenar Entrega
+         const location = extractedData.deliveryLocation || '';
+         if (location.toLowerCase() === 'recoge en tienda') {
+             inStorePickupCheckbox.checked = true;
+         } else if (location.includes('El cliente envía ubicación')) {
+             googleMapsLocationCheckbox.checked = true;
+             // Intentar extraer dirección si viene entre paréntesis
+             const addressMatch = location.match(/\(([^)]+)\)/);
+             if (addressMatch) {
+                 // Lógica simple para extraer partes (puedes mejorarla)
+                 const parts = addressMatch[1].split(',');
+                 streetInput.value = parts[0]?.trim() || '';
+                 if (parts.length > 1 && parts[1].toLowerCase().includes('col.')) {
+                     neighborhoodInput.value = parts[1].replace(/col\./i, '').trim();
+                 }
+                 // ... (extraer número si es posible) ...
+             }
+         } else {
+             // Asumir dirección completa
+             inStorePickupCheckbox.checked = false;
+             googleMapsLocationCheckbox.checked = false;
+             // Lógica similar para extraer partes de la dirección completa
+             let addressPart = location;
+             const colMatch = addressPart.match(/(?:Colonia|Col\.?)\s*([^,]+)/i);
+             if (colMatch) {
+                 neighborhoodInput.value = colMatch[1].trim();
+                 addressPart = addressPart.replace(colMatch[0], '').trim().replace(/^,\s*/, '').replace(/,\s*$/, '');
+             }
+             const numExtMatch = addressPart.match(/\b(\d+[A-Z]?)\b/);
+             if (numExtMatch) {
+                 extNumberInput.value = numExtMatch[0];
+                 addressPart = addressPart.replace(new RegExp(`\\b${numExtMatch[0]}\\b\\s*,?|,?\\s*\\b${numExtMatch[0]}\\b`), '').trim();
+             }
+             streetInput.value = addressPart.trim();
+         }
+         inStorePickupCheckbox.dispatchEvent(new Event('change'));
+         googleMapsLocationCheckbox.dispatchEvent(new Event('change'));
+
+
+         updateTotals(); // Recalcular balance
+     }
+     // --- FIN NUEVO ---
+
+
+    // --- LÓGICA DEL CHAT ---
+     // Esta sección permanece igual que en tu código base original
      function addMessageToChat(text, sender) {
         const messageEl = document.createElement('div');
         messageEl.className = `p-2 rounded-lg max-w-[80%] ${sender === 'user' ? 'bg-blue-500 text-white self-end' : 'bg-gray-200 text-gray-800 self-start'}`;
-        // Escapar HTML básico para seguridad simple
         messageEl.textContent = text;
         chatMessagesContainer.appendChild(messageEl);
-        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight; // Auto-scroll
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
 
-
     function renderFolioStatus(data) {
-        folioStatusPanel.innerHTML = ''; // Limpiar panel
+        folioStatusPanel.innerHTML = '';
         if (!data) {
             folioStatusPanel.innerHTML = '<p class="text-gray-500 italic">No hay datos extraídos aún.</p>';
             return;
         }
 
         const keyMap = {
-            folioType: 'Tipo Folio',
-            clientName: 'Cliente',
-            clientPhone: 'Teléfono',
-            deliveryDate: 'Fecha Entrega',
-            deliveryTime: 'Hora Entrega',
-            persons: 'Personas',
-            shape: 'Forma',
-            // No mostrar cakeFlavor/filling si es Base/Especial
+            folioType: 'Tipo Folio', clientName: 'Cliente', clientPhone: 'Teléfono',
+            deliveryDate: 'Fecha Entrega', deliveryTime: 'Hora Entrega', persons: 'Personas', shape: 'Forma',
             cakeFlavor: data.folioType !== 'Base/Especial' ? 'Sabores Pan' : null,
             filling: data.folioType !== 'Base/Especial' ? 'Rellenos' : null,
-            // Mostrar tiers si es Base/Especial
             tiers: data.folioType === 'Base/Especial' ? 'Estructura Pisos' : null,
-            designDescription: 'Descripción Diseño',
-            dedication: 'Dedicatoria',
-            deliveryLocation: 'Lugar Entrega',
-            deliveryCost: 'Costo Envío',
-            total: 'Costo Pastel (Base)', // Asumiendo que 'total' es el costo base
-            advancePayment: 'Anticipo',
-            accessories: 'Accesorios',
-            additional: 'Adicionales',
-            complements: 'Complementos',
-            hasExtraHeight: 'Altura Extra',
-            isPaid: 'Pagado Total'
+            designDescription: 'Descripción Diseño', dedication: 'Dedicatoria', deliveryLocation: 'Lugar Entrega',
+            deliveryCost: 'Costo Envío', total: 'Costo Pastel (Base)', advancePayment: 'Anticipo',
+            accessories: 'Accesorios', additional: 'Adicionales', complements: 'Complementos',
+            hasExtraHeight: 'Altura Extra', isPaid: 'Pagado Total'
         };
 
         for (const key in keyMap) {
-            if (keyMap[key] === null) continue; // Saltar claves deshabilitadas
-
+            if (keyMap[key] === null) continue;
             let value = data[key];
-
-            // Formatear valores para mejor visualización
             if (value !== null && value !== undefined) {
                 if (key === 'tiers' && Array.isArray(value)) {
                     value = value.map((tier, i) => `P${i+1}: ${tier.persons}p, Panes(${tier.panes?.join('/')||'N/A'}), Rellenos(${tier.rellenos?.join('/')||'N/A'})`).join('; ');
@@ -705,248 +985,147 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (typeof value === 'boolean') {
                     value = value ? 'Sí' : 'No';
                 } else if (key === 'deliveryTime' && typeof value === 'string') {
-                    // Formatear HH:MM:SS a AM/PM
                     const parts = value.split(':');
                     if (parts.length >= 2) {
-                        let hour = parseInt(parts[0], 10);
-                        const minute = parts[1];
-                        const period = hour >= 12 ? 'PM' : 'AM';
-                        hour = hour % 12 || 12; // Convierte 0 a 12 para AM, mantiene 12 para PM
+                        let hour = parseInt(parts[0], 10); const minute = parts[1];
+                        const period = hour >= 12 ? 'PM' : 'AM'; hour = hour % 12 || 12;
                         value = `${hour}:${minute} ${period}`;
                     }
                 } else if (typeof value === 'number' && ['total', 'advancePayment', 'deliveryCost'].includes(key)) {
                     value = `$${value.toFixed(2)}`;
                 }
-
-                if (value === '' || (Array.isArray(value) && value.length === 0)) {
-                   value = 'N/A'; // Mostrar N/A si está vacío
-                }
-
+                if (value === '' || (Array.isArray(value) && value.length === 0)) { value = 'N/A'; }
                 const itemEl = document.createElement('div');
-                itemEl.className = 'text-sm mb-1'; // Estilo más compacto
+                itemEl.className = 'text-sm mb-1';
                 itemEl.innerHTML = `<strong class="text-gray-600">${keyMap[key]}:</strong> <span class="text-gray-800">${value}</span>`;
                 folioStatusPanel.appendChild(itemEl);
             }
         }
     }
 
-
      async function loadChatSession(sessionId) {
         currentSessionId = sessionId;
         loadingEl.classList.remove('hidden');
         showView('chat');
-        chatMessagesContainer.innerHTML = ''; // Limpiar mensajes anteriores
-        folioStatusPanel.innerHTML = '<p class="text-gray-500 italic">Cargando datos de la sesión...</p>'; // Mensaje de carga
-
+        chatMessagesContainer.innerHTML = '';
+        folioStatusPanel.innerHTML = '<p class="text-gray-500 italic">Cargando datos de la sesión...</p>';
         try {
             const authToken = localStorage.getItem('authToken');
-            const response = await fetch(`http://localhost:3000/api/ai-sessions/${sessionId}`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            if (!response.ok) {
-                 const errorData = await response.json();
-                 throw new Error(errorData.message || 'No se pudo cargar la sesión de chat.');
-            }
-
+            const response = await fetch(`http://localhost:3000/api/ai-sessions/${sessionId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+            if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'No se pudo cargar la sesión de chat.'); }
             const session = await response.json();
             chatTitle.textContent = `Asistente - Sesión #${session.id}`;
-
-            // Renderizar historial de chat
              if (session.chatHistory && Array.isArray(session.chatHistory)) {
-                 session.chatHistory.forEach(msg => {
-                     // Solo mostrar mensajes con contenido y rol user o assistant
-                     if (msg.content && (msg.role === 'user' || msg.role === 'assistant')) {
-                         addMessageToChat(msg.content, msg.role);
-                     }
-                 });
+                 session.chatHistory.forEach(msg => { if (msg.content && (msg.role === 'user' || msg.role === 'assistant')) { addMessageToChat(msg.content, msg.role); } });
              }
-
-            // Renderizar estado inicial del folio
             renderFolioStatus(session.extractedData);
-
-            // Si no hay historial o el último mensaje no es del asistente, añadir saludo inicial
             const lastMessage = session.chatHistory?.[session.chatHistory.length - 1];
             if (!lastMessage || lastMessage.role !== 'assistant' || !lastMessage.content) {
                  addMessageToChat('¡Hola! He analizado la conversación inicial. ¿Qué deseas hacer? Puedes pedirme que modifique datos ("cambia el nombre a X", "añade un piso para Y personas", etc.) o que genere el folio ("genera el folio").', 'assistant');
             }
-
-
         } catch (error) {
             console.error("Error cargando sesión de chat:", error);
             folioStatusPanel.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
             addMessageToChat(`Error al cargar la sesión: ${error.message}`, 'assistant');
         } finally {
             loadingEl.classList.add('hidden');
-            chatInput.focus(); // Poner foco en el input
+            chatInput.focus();
         }
     }
-
 
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const messageText = chatInput.value.trim();
         if (!messageText || !currentSessionId) return;
-
         addMessageToChat(messageText, 'user');
         chatInput.value = '';
-        chatInput.disabled = true; // Deshabilitar mientras responde
+        chatInput.disabled = true;
         const thinkingEl = document.createElement('div');
         thinkingEl.className = 'chat-message assistant-message italic text-gray-500';
         thinkingEl.textContent = 'Pensando...';
         chatMessagesContainer.appendChild(thinkingEl);
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
-
-
         try {
             const authToken = localStorage.getItem('authToken');
             const response = await fetch(`http://localhost:3000/api/ai-sessions/${currentSessionId}/chat`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
                 body: JSON.stringify({ message: messageText })
             });
-
-             // Eliminar "Pensando..."
              thinkingEl.remove();
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `Error del servidor: ${response.status}`);
-            }
-
+            if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || `Error del servidor: ${response.status}`); }
             const { message, sessionData } = await response.json();
-
-            // Añadir mensaje del asistente solo si tiene contenido textual
-            if (message && message.content) {
-                addMessageToChat(message.content, 'assistant');
-            } else if (message && message.tool_calls) {
-                 // Si solo hubo llamada a tool y no contenido textual, no añadir nada visible
-                 console.log("Asistente llamó a herramienta(s), sin respuesta textual directa.");
-            }
-
-
-            // Actualizar panel de estado con los datos MÁS RECIENTES de la sesión
+            if (message && message.content) { addMessageToChat(message.content, 'assistant'); }
+            else if (message && message.tool_calls) { console.log("Asistente llamó a herramienta(s), sin respuesta textual directa."); }
             if (sessionData && sessionData.extractedData) {
                 renderFolioStatus(sessionData.extractedData);
-                 // Si la sesión se completó (ej. se generó el folio), mostrar mensaje y quizás deshabilitar input
                  if (sessionData.status === 'completed') {
                      addMessageToChat("El folio ha sido generado. Esta sesión está completa.", "assistant");
-                     chatInput.disabled = true; // Deshabilitar input
-                     generateFolioBtn.disabled = true; // Deshabilitar botón
-                     manualEditBtn.disabled = true;
+                     chatInput.disabled = true; generateFolioBtn.disabled = true; manualEditBtn.disabled = true;
                  }
-            } else {
-                console.warn("No se recibieron datos de sesión actualizados en la respuesta del chat.");
-                // Podrías intentar recargar la sesión completa si esto pasa a menudo
-                // await loadChatSession(currentSessionId); // Opcional: recargar todo si falla
-            }
-
+            } else { console.warn("No se recibieron datos de sesión actualizados en la respuesta del chat."); }
         } catch (error) {
-             thinkingEl.remove(); // Asegurarse de quitar "Pensando..." en caso de error
+             thinkingEl.remove();
             console.error("Error en chat submit:", error);
             addMessageToChat(`Error: ${error.message}`, 'assistant');
         } finally {
-             // Habilitar input solo si la sesión no está completada
              if (currentSessionId && folioStatusPanel.closest('.col-span-1').querySelector('#generate-folio-btn:disabled') === null) {
-                 chatInput.disabled = false;
-                 chatInput.focus();
+                 chatInput.disabled = false; chatInput.focus();
              }
         }
     });
 
     backToSessionsBtn.addEventListener('click', () => {
-        currentSessionId = null;
-        showView('pending');
-        loadActiveSessions(); // Recargar lista de sesiones pendientes
+        currentSessionId = null; showView('pending'); loadActiveSessions();
     });
 
     generateFolioBtn.addEventListener('click', () => {
-        if (!currentSessionId || chatInput.disabled) return; // Evitar si ya está completado
-        chatInput.value = "Genera el folio y PDF con los datos actuales"; // Comando explícito
+        if (!currentSessionId || chatInput.disabled) return;
+        chatInput.value = "Genera el folio y PDF con los datos actuales";
         chatForm.dispatchEvent(new Event('submit'));
     });
 
     manualEditBtn.addEventListener('click', async () => {
-        if (!currentSessionId || chatInput.disabled) return; // Evitar si ya está completado
+        if (!currentSessionId || chatInput.disabled) return;
         loadingEl.classList.remove('hidden');
         try {
             const authToken = localStorage.getItem('authToken');
-            const response = await fetch(`http://localhost:3000/api/ai-sessions/${currentSessionId}`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
+            const response = await fetch(`http://localhost:3000/api/ai-sessions/${currentSessionId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
             if (!response.ok) throw new Error('No se pudo cargar la sesión para edición manual.');
-
             const session = await response.json();
             const extracted = session.extractedData;
-
-             // Crear un objeto 'folio' simulado para populateFormForEdit
             const mockFolio = {
-                id: `ai-${session.id}`, // Usar un ID temporal para indicar que viene de IA
-                ...extracted,
-                // Asegurarse de que los campos esperados por populateFormForEdit existan
-                client: {
-                    name: extracted.clientName || '',
-                    phone: extracted.clientPhone || '',
-                    phone2: extracted.clientPhone2 || ''
-                },
-                // Asegurar formato correcto para JSON y arrays
-                cakeFlavor: JSON.stringify(extracted.cakeFlavor || []),
-                filling: JSON.stringify(extracted.filling || []),
-                tiers: extracted.tiers || [], // Ya debería ser array o null
-                additional: extracted.additional || [], // Ya debería ser array o null
-                complements: extracted.complements || [], // Ya debería ser array o null
-                imageUrls: session.imageUrls || [],
-                imageComments: session.imageComments || [], // Asegurar que exista
-                status: 'Pendiente', // Marcar como pendiente para que el submit lo cambie a 'Nuevo'
-                deliveryCost: extracted.deliveryCost || 0,
-                advancePayment: extracted.advancePayment || 0,
-                total: extracted.total || 0, // El 'total' aquí es el costo base del pastel
-                isPaid: extracted.isPaid || false,
-                hasExtraHeight: extracted.hasExtraHeight || false,
-                // folioNumber no se pasa, se generará al guardar
+                id: `ai-${session.id}`, ...extracted,
+                client: { name: extracted.clientName || '', phone: extracted.clientPhone || '', phone2: extracted.clientPhone2 || '' },
+                cakeFlavor: JSON.stringify(extracted.cakeFlavor || []), filling: JSON.stringify(extracted.filling || []),
+                tiers: extracted.tiers || [], additional: extracted.additional || [], complements: extracted.complements || [],
+                imageUrls: session.imageUrls || [], imageComments: session.imageComments || [],
+                status: 'Pendiente', deliveryCost: extracted.deliveryCost || 0, advancePayment: extracted.advancePayment || 0,
+                total: extracted.total || 0, isPaid: extracted.isPaid || false, hasExtraHeight: extracted.hasExtraHeight || false,
             };
-
-
-            window.previousView = 'chat'; // Para que el botón Cancelar regrese al chat
+            window.previousView = 'chat';
             populateFormForEdit(mockFolio);
             showView('form');
-
-        } catch (error) {
-            alert(`Error al preparar edición manual: ${error.message}`);
-        } finally {
-            loadingEl.classList.add('hidden');
-        }
+        } catch (error) { alert(`Error al preparar edición manual: ${error.message}`);
+        } finally { loadingEl.classList.add('hidden'); }
     });
 
 
-    // --- Lógica para Estadísticas (sin cambios) ---
+    // --- Lógica para Estadísticas ---
     function renderStatsList(elementId, data) {
         const container = document.getElementById(elementId);
         container.innerHTML = '';
-        if (!data || data.length === 0) {
-            container.innerHTML = `<p class="text-gray-500 italic">No hay datos para mostrar.</p>`;
-            return;
-        }
+        if (!data || data.length === 0) { container.innerHTML = `<p class="text-gray-500 italic">No hay datos para mostrar.</p>`; return; }
         const ol = document.createElement('ol');
         ol.className = 'list-decimal list-inside space-y-1';
-        data.forEach(item => {
-            const li = document.createElement('li');
-            li.className = 'text-gray-700';
-            li.innerHTML = `${item.name} <span class="font-bold text-gray-900">(${item.count} veces)</span>`;
-            ol.appendChild(li);
-        });
+        data.forEach(item => { const li = document.createElement('li'); li.className = 'text-gray-700'; li.innerHTML = `${item.name} <span class="font-bold text-gray-900">(${item.count} veces)</span>`; ol.appendChild(li); });
         container.appendChild(ol);
     }
 
     async function loadFlavorAndFillingStats() {
-         // ... (código sin cambios)
          try {
             const authToken = localStorage.getItem('authToken');
-            const response = await fetch('http://localhost:3000/api/folios/statistics', {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
+            const response = await fetch('http://localhost:3000/api/folios/statistics', { headers: { 'Authorization': `Bearer ${authToken}` } });
             if (!response.ok) throw new Error('No se pudieron cargar las estadísticas de sabores.');
             const stats = await response.json();
             renderStatsList('normalFlavorsList', stats.normal.flavors);
@@ -955,73 +1134,37 @@ document.addEventListener('DOMContentLoaded', function() {
             renderStatsList('specialFillingsList', stats.special.fillings);
         } catch (error) {
             console.error(error);
-             // Mostrar error en la UI si es necesario
              document.getElementById('normalFlavorsList').innerHTML = `<p class="text-red-500">Error al cargar.</p>`;
-             // ... etc para otros contenedores ...
+             /* ... */
         }
     }
 
     async function loadProductivityStats() {
-         // ... (código sin cambios)
-         const date = productivityDateInput.value;
-        if (!date) return;
-
+         const date = productivityDateInput.value; if (!date) return;
         const productivityListBody = document.getElementById('productivityListBody');
         productivityListBody.innerHTML = `<tr><td colspan="2" class="text-center p-4">Cargando...</td></tr>`;
-
         try {
             const authToken = localStorage.getItem('authToken');
-            const response = await fetch(`http://localhost:3000/api/folios/productivity?date=${date}`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-
-            if (!response.ok) {
-                 const errorData = await response.json();
-                throw new Error(errorData.message || 'No se pudieron cargar los datos de productividad.');
-            }
-
+            const response = await fetch(`http://localhost:3000/api/folios/productivity?date=${date}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+            if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'No se pudieron cargar los datos de productividad.'); }
             const stats = await response.json();
             productivityListBody.innerHTML = '';
-
-            if (stats.length === 0) {
-                productivityListBody.innerHTML = `<tr><td colspan="2" class="text-center p-4">No se capturaron folios en esta fecha.</td></tr>`;
-                return;
-            }
-
+            if (stats.length === 0) { productivityListBody.innerHTML = `<tr><td colspan="2" class="text-center p-4">No se capturaron folios en esta fecha.</td></tr>`; return; }
             stats.forEach(userStat => {
-                 if (userStat.responsibleUser) { // Verificar que el usuario exista
-                     const row = document.createElement('tr');
-                     row.className = 'border-b';
-                     row.innerHTML = `
-                         <td class="py-2 px-4">${userStat.responsibleUser.username}</td>
-                         <td class="py-2 px-4 font-bold">${userStat.folioCount}</td>
-                     `;
+                 if (userStat.responsibleUser) {
+                     const row = document.createElement('tr'); row.className = 'border-b';
+                     row.innerHTML = `<td class="py-2 px-4">${userStat.responsibleUser.username}</td><td class="py-2 px-4 font-bold">${userStat.folioCount}</td>`;
                      productivityListBody.appendChild(row);
-                 } else {
-                     console.warn("Estadística encontrada sin usuario asociado:", userStat);
-                 }
+                 } else { console.warn("Estadística encontrada sin usuario asociado:", userStat); }
             });
-
-        } catch (error) {
-            productivityListBody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-red-500">${error.message}</td></tr>`;
-        }
+        } catch (error) { productivityListBody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-red-500">${error.message}</td></tr>`; }
     }
-
 
     if (viewStatsButton) {
         viewStatsButton.addEventListener('click', () => {
-            showView('stats');
-            loadingEl.classList.remove('hidden');
-            // Establecer fecha por defecto a hoy
-             const today = new Date();
-             productivityDateInput.value = today.toISOString().split('T')[0];
-
-            Promise.all([
-                loadFlavorAndFillingStats(),
-                loadProductivityStats() // Carga con la fecha de hoy por defecto
-            ]).finally(() => {
-                loadingEl.classList.add('hidden');
-            });
+            showView('stats'); loadingEl.classList.remove('hidden');
+             const today = new Date(); productivityDateInput.value = today.toISOString().split('T')[0];
+            Promise.all([ loadFlavorAndFillingStats(), loadProductivityStats() ]).finally(() => { loadingEl.classList.add('hidden'); });
         });
     }
 
@@ -1030,20 +1173,57 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- LÓGICA DEL FORMULARIO (Submit, Previews, Tags, Modales, Totales, etc.) ---
-    // ... (El resto del código del formulario, incluyendo:
-    //      - folioForm.addEventListener('submit', ...)
-    //      - renderImagePreviews, imageInput listener, imagePreview listeners
-    //      - renderTags, openSelectionModal, openRellenoModal, openRellenoModalEspecial, modalCloseBtn listener
-    //      - addCakeFlavor/removeCakeFlavor, addRelleno/removeRelleno, listeners de botones correspondientes
-    //      - checkRestrictions
-    //      - inStorePickupCheckbox listener
-    //      - getGrandTotal, calculateBalance, updateTotals, listeners de inputs financieros
-    //      - renderAdditionalItems, addAdditionalButton listener, additionalList listener
-    //      - addTierRow, folioTypeSelect listener, addTierButton listener, removeTierPane/Filling
-    //      - tiersTableBody listener
-    //      - addComplementRow, addComplementButton listener
-    //    permanecen IGUALES a como los tenías en tu código base original)
-     folioForm.addEventListener('submit', async (e) => {
+    let additionalItems = []; // Array para almacenar los adicionales
+    let selectedFiles = []; // Array para archivos de imagen nuevos
+    let existingImages = []; // Array para URLs de imágenes existentes al editar
+    let selectedCakeFlavors = [];
+    let selectedRellenos = []; // Ahora será array de objetos {name, hasCost}
+    let tiersData = []; // Para almacenar estado de panes/rellenos por piso
+    let currentTierIndex = -1; // Para saber qué fila de piso se está editando
+
+    // Datos quemados para los modales (puedes cargarlos desde API si prefieres)
+    const cakeFlavorsData = {
+        normal: ['Vainilla', 'Chocolate', 'Red Velvet', 'Mantequilla', 'Nata', 'Queso', '3 Leches', 'Pastel de queso', 'Queso/Flan', 'Zanahoria', 'Mil Hojas', 'Flan'],
+        tier: ['Vainilla', 'Chocolate', 'Red Velvet', 'Mantequilla', 'Nata', 'Queso', 'Flan'] // Sabores para pisos especiales
+    };
+    const rellenosData = {
+        incluidos: { // Sin costo adicional
+            'Manjar': { suboptions: ['Nuez', 'Coco', 'Almendra', 'Cajeta'] },
+            'Cajeta': { suboptions: ['Nuez', 'Coco', 'Oreo'] },
+            'Chantilly': { suboptions: ['Duraznos', 'Fresas', 'Piña'] },
+            'Mermelada': { suboptions: ['Fresa', 'Zarzamora', 'Piña', 'Chabacano'] },
+            'Crema de Queso': { suboptions: ['Cajeta', 'Envinada'] }
+        },
+        conCosto: { // Con costo adicional ($30 por cada 20 personas)
+            'Nutella': { suboptions: ['Nuez', 'Almendra'] },
+            'Dulce de Leche': { suboptions: ['Nuez', 'Almendra', 'Envinada'] },
+            'Nuez': { suboptions: ['Capuchino', 'Mocka', 'Chocolate'] },
+            'Cremas': { suboptions: ['Yogurth de fresa', 'Café con o sin brandy'] },
+            'Duraznos': { suboptions: ['Rompope', 'Crema de Yogurth', 'Chantilly'] }
+        }
+    };
+     // Rellenos para Base/Especial (estructura diferente)
+     const rellenosDataEspecial = {
+         principales: [
+             { name: 'Manjar', suboptions: ['Nuez', 'Coco', 'Almendra', 'Cajeta'] },
+             { name: 'Cajeta', suboptions: ['Nuez', 'Coco', 'Oreo'] },
+             { name: 'Chantilly', suboptions: ['Duraznos', 'Fresas', 'Piña'] },
+             { name: 'Mermelada', suboptions: ['Fresa', 'Zarzamora', 'Piña', 'Chabacano'] },
+             { name: 'Crema de Queso', suboptions: ['Cajeta', 'Envinada'] },
+             { name: 'Nutella', suboptions: ['Nuez', 'Almendra'] },
+             { name: 'Dulce de Leche', suboptions: ['Nuez', 'Almendra', 'Envinada'] },
+             { name: 'Nuez', suboptions: ['Capuchino', 'Mocka', 'Chocolate'] },
+             { name: 'Cremas', suboptions: ['Yogurth de fresa', 'Café con o sin brandy'] },
+             { name: 'Duraznos', suboptions: ['Rompope', 'Crema de Yogurth', 'Chantilly'] }
+         ],
+         secundarios: [
+            'Manjar', 'Cajeta', 'Chantilly', 'Mermelada de Fresa', 'Mermelada de Zarzamora',
+            'Mermelada de Piña', 'Mermelada de Chabacano', 'Crema de Queso', 'Nutella',
+            'Dulce de Leche', 'Nuez', 'Crema de Yogurth de fresa', 'Crema de Café', 'Duraznos', 'Rompope'
+         ]
+     };
+
+    folioForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const editingId = folioForm.dataset.editingId;
         // Diferenciar si viene de IA (ID temporal) o es una edición real
@@ -1196,8 +1376,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const successMessage = (isCreatingFromAI || !isEditingExisting)
-                ? '¡Folio creado con éxito!'
-                : '¡Folio actualizado con éxito!';
+                 ? '¡Folio creado con éxito!'
+                 : '¡Folio actualizado con éxito!';
 
             alert(successMessage);
 
@@ -1233,16 +1413,16 @@ document.addEventListener('DOMContentLoaded', function() {
          } else if (returnView === 'pending' || returnView === 'chat') {
               // Si volvemos a pending o chat (aunque chat no debería ser directo), recargar sesiones
              loadActiveSessions();
-             // Si específicamente volvemos al chat (quizás tras error), podríamos recargar esa sesión
-             if (returnView === 'chat' && currentSessionId) {
-                  loadChatSession(currentSessionId);
-             }
+              // Si específicamente volvemos al chat (quizás tras error), podríamos recargar esa sesión
+              if (returnView === 'chat' && currentSessionId) {
+                   loadChatSession(currentSessionId);
+              }
          }
      });
 
 
     function renderImagePreviews() {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          imagePreview.innerHTML = '';
 
         existingImages.forEach((imgData, index) => {
@@ -1269,7 +1449,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     imageInput.addEventListener('change', () => {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          const files = Array.from(imageInput.files);
         const totalImages = selectedFiles.length + existingImages.length;
         const allowedNew = 5 - totalImages;
@@ -1288,12 +1468,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     imagePreview.addEventListener('click', (e) => {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          if (e.target.classList.contains('delete-image-btn')) {
             const index = parseInt(e.target.dataset.index, 10);
             if (e.target.classList.contains('existing')) {
                  if (index >= 0 && index < existingImages.length) {
-                    existingImages.splice(index, 1);
+                     existingImages.splice(index, 1);
                  }
             } else {
                  if (index >= 0 && index < selectedFiles.length) {
@@ -1308,7 +1488,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     imagePreview.addEventListener('input', (e) => {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          if (e.target.tagName === 'TEXTAREA') {
             const index = parseInt(e.target.dataset.index, 10);
             if (e.target.classList.contains('existing-comment')) {
@@ -1324,8 +1504,7 @@ document.addEventListener('DOMContentLoaded', function() {
      function renderTags(container, tagsArray, onRemoveCallback) {
         container.innerHTML = '';
         (tagsArray || []).forEach((tagData, index) => {
-            const tagEl = document.createElement('div');
-            tagEl.className = 'tag';
+            const tagEl = document.createElement('div'); tagEl.className = 'tag';
              // Manejar si tagData es string u objeto {name: ..., hasCost: ...}
             const tagName = typeof tagData === 'object' ? tagData.name : tagData;
             const hasCost = typeof tagData === 'object' ? tagData.hasCost : false; // Asumir no costo si es string
@@ -1335,7 +1514,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         if (onRemoveCallback) {
              container.querySelectorAll('.tag-remove-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                 btn.addEventListener('click', (e) => {
                      e.stopPropagation(); // Prevenir que otros listeners se activen
                      onRemoveCallback(parseInt(e.target.dataset.index, 10));
                  });
@@ -1474,7 +1653,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
              if (filteredSuboptions.length === 0) {
-                  modalStep2List.innerHTML = '<p class="text-gray-500 p-2">No hay más opciones o ya están seleccionadas.</p>';
+                 modalStep2List.innerHTML = '<p class="text-gray-500 p-2">No hay más opciones o ya están seleccionadas.</p>';
              }
 
             modalStep2Title.querySelector('.back-to-step1').addEventListener('click', () => {
@@ -1490,7 +1669,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
      function openRellenoModalEspecial(onSelectCallback) {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          let state = { principal: null, finalPrincipal: '' };
         modalSearch.value = '';
 
@@ -1502,7 +1681,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const lowerFilter = filter.toLowerCase();
             const filteredPrincipales = rellenosDataEspecial.principales.filter(item =>
-                item.name.toLowerCase().includes(lowerFilter)
+                 item.name.toLowerCase().includes(lowerFilter)
             );
 
             filteredPrincipales.forEach(item => {
@@ -1582,14 +1761,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             modalStep2Title.querySelector('.back-to-step1-from-sec').addEventListener('click', () => {
-                // Volver al paso anterior correcto (subopciones o principales)
-                if (state.principal.suboptions && state.principal.suboptions.length > 0) {
-                    showPrincipalSuboptions();
-                } else {
-                     modalStep1.classList.remove('hidden');
-                     modalStep2.classList.add('hidden');
-                     showPrincipales(modalSearch.value);
-                }
+                 // Volver al paso anterior correcto (subopciones o principales)
+                 if (state.principal.suboptions && state.principal.suboptions.length > 0) {
+                     showPrincipalSuboptions();
+                 } else {
+                      modalStep1.classList.remove('hidden');
+                      modalStep2.classList.add('hidden');
+                      showPrincipales(modalSearch.value);
+                 }
             });
         };
 
@@ -1635,7 +1814,7 @@ document.addEventListener('DOMContentLoaded', function() {
     addFillingBtn.addEventListener('click', () => openRellenoModal(addRelleno, selectedRellenos, 2));
 
      function checkRestrictions() {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          const hasNoFillingPan = selectedCakeFlavors.some(flavor => ['Pastel de queso', 'Queso/Flan'].includes(flavor));
         const isMilHojas = selectedCakeFlavors.includes('Mil Hojas');
 
@@ -1683,11 +1862,11 @@ document.addEventListener('DOMContentLoaded', function() {
          // Ocultar campos de dirección específicos si se marca "Google Maps"
          addressFields.classList.toggle('hidden', this.checked);
          if (this.checked) {
-             // Opcional: Limpiar campos cuando se marca
-             // streetInput.value = '';
-             // extNumberInput.value = '';
-             // intNumberInput.value = '';
-             // neighborhoodInput.value = '';
+              // Opcional: Limpiar campos cuando se marca
+              // streetInput.value = '';
+              // extNumberInput.value = '';
+              // intNumberInput.value = '';
+              // neighborhoodInput.value = '';
          }
      });
 
@@ -1746,7 +1925,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     function renderAdditionalItems() {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          additionalList.innerHTML = '';
         additionalItems.forEach((item, index) => {
              // Asegurarse de que totalPrice esté calculado
@@ -1761,7 +1940,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     addAdditionalButton.addEventListener('click', () => {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          const nameInput = document.getElementById('additionalName');
          const quantityInput = document.getElementById('additionalQuantity');
          const priceInput = document.getElementById('additionalPrice');
@@ -1772,20 +1951,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (name && quantity > 0 && !isNaN(price) && price >= 0) {
              additionalItems.push({ name, quantity, price, totalPrice: quantity * price }); // Guardar precio unitario y total
-            renderAdditionalItems();
-            updateTotals(); // Recalcular total general y balance
-            // Limpiar inputs
-            nameInput.value = '';
-            quantityInput.value = '1';
-            priceInput.value = '';
-            nameInput.focus(); // Foco en el nombre para el siguiente item
+             renderAdditionalItems();
+             updateTotals(); // Recalcular total general y balance
+             // Limpiar inputs
+             nameInput.value = '';
+             quantityInput.value = '1';
+             priceInput.value = '';
+             nameInput.focus(); // Foco en el nombre para el siguiente item
         } else {
             alert('Por favor, completa la descripción (texto), cantidad (>0) y precio unitario (>=0) del adicional.');
         }
     });
 
     additionalList.addEventListener('click', (e) => {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          if (e.target.classList.contains('remove-additional-btn')) {
              const index = parseInt(e.target.dataset.index, 10);
              if (index >= 0 && index < additionalItems.length) {
@@ -1834,7 +2013,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     folioTypeSelect.addEventListener('change', function() {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          const isSpecial = this.value === 'Base/Especial';
         normalFields.classList.toggle('hidden', isSpecial);
         specialFields.classList.toggle('hidden', !isSpecial);
@@ -1863,7 +2042,7 @@ document.addEventListener('DOMContentLoaded', function() {
     addTierButton.addEventListener('click', () => addTierRow());
 
     const removeTierPane = (tierIndex, tagIndex) => {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          if (tierIndex >= 0 && tierIndex < tiersData.length) {
             tiersData[tierIndex].panes.splice(tagIndex, 1);
             const row = tiersTableBody.querySelector(`tr[data-index="${tierIndex}"]`);
@@ -1874,7 +2053,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     const removeTierFilling = (tierIndex, tagIndex) => {
          // ... (código sin cambios)
-          if (tierIndex >= 0 && tierIndex < tiersData.length) {
+         if (tierIndex >= 0 && tierIndex < tiersData.length) {
             tiersData[tierIndex].rellenos.splice(tagIndex, 1);
             const row = tiersTableBody.querySelector(`tr[data-index="${tierIndex}"]`);
             if (row) {
@@ -1885,7 +2064,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     tiersTableBody.addEventListener('click', function(e) {
-        // ... (código sin cambios, asegurando que addTierPane/Filling funcionen)
+         // ... (código sin cambios, asegurando que addTierPane/Filling funcionen)
          const target = e.target;
         const row = target.closest('.tier-row');
         if (!row) return;
@@ -1899,12 +2078,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const addTierPane = (flavor) => {
              // No añadir si ya está o si se alcanzó el límite
-            if (tiersData[currentTierIndex].panes.length < 3 && !tiersData[currentTierIndex].panes.includes(flavor)) {
-                tiersData[currentTierIndex].panes.push(flavor);
-                renderTags(row.querySelector('.panes-container'), tiersData[currentTierIndex].panes, (tagIndex) => removeTierPane(currentTierIndex, tagIndex));
-            } else if (tiersData[currentTierIndex].panes.length >= 3) {
+             if (tiersData[currentTierIndex].panes.length < 3 && !tiersData[currentTierIndex].panes.includes(flavor)) {
+                 tiersData[currentTierIndex].panes.push(flavor);
+                 renderTags(row.querySelector('.panes-container'), tiersData[currentTierIndex].panes, (tagIndex) => removeTierPane(currentTierIndex, tagIndex));
+             } else if (tiersData[currentTierIndex].panes.length >= 3) {
                  alert("Máximo 3 panes por piso.");
-            }
+             }
         };
 
         const addTierFilling = (rellenosSeleccionados) => { // Recibe array de 1 o 2 rellenos
@@ -1921,11 +2100,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (target.classList.contains('add-tier-pane-btn')) {
             openSelectionModal(
-                `Panes Piso ${currentTierIndex + 1}`,
-                cakeFlavorsData.tier,
-                tiersData[currentTierIndex].panes,
-                addTierPane,
-                3 // Límite de panes
+                 `Panes Piso ${currentTierIndex + 1}`,
+                 cakeFlavorsData.tier,
+                 tiersData[currentTierIndex].panes,
+                 addTierPane,
+                 3 // Límite de panes
             );
         } else if (target.classList.contains('add-tier-filling-btn')) {
              // Limpiar rellenos existentes antes de abrir modal para reemplazarlos
@@ -1956,7 +2135,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
      function addComplementRow(complement = null) {
-        // ... (código sin cambios)
+         // ... (código sin cambios)
          const complementIndex = complementsContainer.children.length;
         const formWrapper = document.createElement('div');
         formWrapper.className = 'complement-form relative space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50 mb-4'; // Añadir mb-4
@@ -2029,8 +2208,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showMainView = showView; // Exponer función para cambiar vistas
 
     // --- LÓGICA DEL VISOR DE PDFS (sin cambios) ---
-    // ... (El código del visor PDF permanece igual) ...
-     const pdfViewerModal = document.getElementById('pdfViewerModal');
+    const pdfViewerModal = document.getElementById('pdfViewerModal');
     const closePdfViewerBtn = document.getElementById('closePdfViewer');
     const pdfViewerTitle = document.getElementById('pdfViewerTitle');
     const pdfFrame = document.getElementById('pdfFrame');
@@ -2134,7 +2312,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     // --- LÓGICA DEL BOTÓN DE REPORTE (sin cambios) ---
-    // ... (El código del botón de reporte permanece igual) ...
      if (commissionReportButton) {
         commissionReportButton.addEventListener('click', () => {
              // Generar reporte para el día ANTERIOR
@@ -2153,7 +2330,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ===== SECCIÓN PARA LA BANDEJA DE ENTRADA (sin cambios) =====
-    // ... (El código de loadActiveSessions permanece igual) ...
     async function loadActiveSessions() {
         const authToken = localStorage.getItem('authToken');
         if (!authToken) {

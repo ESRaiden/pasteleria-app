@@ -17,6 +17,7 @@ const clientRoutes = require('./server/routes/clientRoutes');
 const whatsappRoutes = require('./server/routes/whatsappRoutes'); // <-- RUTA NUEVA
 const aiSessionRoutes = require('./server/routes/aiSessionRoutes');
 const testRoutes = require('./server/routes/testRoutes');
+const dictationRoutes = require('./server/routes/dictationRoutes');
 
 // --- TAREAS PROGRAMADAS ---
 // Esta línea importa e inicia las tareas programadas (como el envío de correos)
@@ -53,6 +54,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/webhooks', whatsappRoutes); // <-- USANDO LA NUEVA RUTA
 app.use('/api/ai-sessions', aiSessionRoutes);
 app.use('/api/test', testRoutes);
+app.use('/api/dictation', dictationRoutes);
 
 // --- INICIO DEL SERVIDOR ---
 sequelize.sync({ force: false }).then(() => {
