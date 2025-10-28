@@ -90,7 +90,7 @@
     <div>
         <% if (folio.isPaid) { %><div class="paid-watermark">PAGADO</div><% } %>
         <% if (folio.status === 'Cancelado') { %><div class="cancel-watermark">CANCELADO</div><% } %>
-        <% if (folio.balance > 0 && folio.status !== 'Cancelado') { %><div class="balance-watermark">RESTA</div><% } %>
+        <% if (folio.balance > 0 && folio.status !== 'Cancelado' && !folio.isPaid) { %><div class="balance-watermark">RESTA</div><% } %>
 
         <div class="header">
             <div class="header-info">

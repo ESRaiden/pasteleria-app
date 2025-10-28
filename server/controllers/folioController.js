@@ -23,9 +23,6 @@ const calculateFillingCost = (folioType, persons, fillings, tiers) => {
          // Por ahora, asumimos que no tienen costo extra o se incluye en el 'total' base.
          // Si necesitaras calcularlo basado en tiers, tendrías que implementar esa lógica aquí.
          cost = 0;
-         // ===== INICIO BLOQUE ELIMINADO =====
-         // El bloque comentado que causaba el SyntaxError ha sido removido.
-         // ===== FIN BLOQUE ELIMINADO =====
     }
     return cost;
 };
@@ -114,8 +111,20 @@ exports.createFolio = async (req, res) => {
         finalTotal += roundedCommissionAmount; // Sumar comisión redondeada al total final
     }
 
-    const finalAdvancePayment = parseFloat(advancePayment) || 0;
+    // --- INICIO DE LA CORRECCIÓN isPaid vs balance ---
+    let finalAdvancePayment = parseFloat(advancePayment) || 0;
+    const isActuallyPaid = isPaid === 'true' || isPaid === true; // Convertir a booleano
+
+    // Si está marcado como pagado, forzar el anticipo para que cubra el total
+    if (isActuallyPaid) {
+        finalAdvancePayment = finalTotal;
+    }
+
+    // Ahora calcula el balance con el finalAdvancePayment posiblemente ajustado
     const balance = finalTotal - finalAdvancePayment;
+    // Determina el estado final de isPaid basado en el balance calculado
+    const finalIsPaidStatus = balance <= 0;
+    // --- FIN DE LA CORRECCIÓN isPaid vs balance ---
 
     // Manejar imágenes
     const newImageUrls = req.files ? req.files.map(file => file.path.replace(/\\/g, '/')) : []; // Normalizar slashes
@@ -138,8 +147,8 @@ exports.createFolio = async (req, res) => {
       deliveryTime: folioData.deliveryTime || '00:00:00',
       folioNumber: finalFolioNumber,
       total: finalTotal.toFixed(2),
-      advancePayment: finalAdvancePayment.toFixed(2),
-      balance: balance.toFixed(2),
+      advancePayment: finalAdvancePayment.toFixed(2), // <= Usar la variable ajustada
+      balance: balance.toFixed(2),                 // <= Usar el balance recalculado
       clientId: client.id,
       responsibleUserId: req.user?.id || null, // Usar null si req.user no existe (aunque debería)
       imageUrls: imageUrls.length > 0 ? imageUrls : null,
@@ -150,7 +159,7 @@ exports.createFolio = async (req, res) => {
       cakeFlavor: cakeFlavorData.length > 0 ? cakeFlavorData : null,
       filling: fillingData.length > 0 ? fillingData : null,
       complements: complementsData.length > 0 ? complementsData : null,
-      isPaid: isPaid === 'true' || isPaid === true,
+      isPaid: finalIsPaidStatus, // <= Establecer isPaid basado en el balance real
       hasExtraHeight: hasExtraHeight === 'true' || hasExtraHeight === true,
       status: status === 'Nuevo' ? 'Nuevo' : (folioData.status || 'Nuevo') // Default a 'Nuevo'
     };
@@ -329,8 +338,22 @@ exports.updateFolio = async (req, res) => {
             roundedCommissionAmount = Math.ceil(commissionAmount / 10) * 10;
             finalTotal += roundedCommissionAmount;
         }
-        const finalAdvancePayment = parseFloat(advancePayment) || 0;
+
+        // --- INICIO DE LA CORRECCIÓN isPaid vs balance ---
+        let finalAdvancePayment = parseFloat(advancePayment) || 0;
+        const isActuallyPaid = isPaid === 'true' || isPaid === true; // Convertir a booleano
+
+        // Si está marcado como pagado, forzar el anticipo para que cubra el total
+        if (isActuallyPaid) {
+            finalAdvancePayment = finalTotal;
+        }
+
+        // Ahora calcula el balance con el finalAdvancePayment posiblemente ajustado
         const balance = finalTotal - finalAdvancePayment;
+        // Determina el estado final de isPaid basado en el balance calculado
+        const finalIsPaidStatus = balance <= 0;
+        // --- FIN DE LA CORRECCIÓN isPaid vs balance ---
+
 
         // Manejar imágenes
         const currentExistingUrls = JSON.parse(existingImageUrls || '[]').map(url => url.replace(/\\/g, '/')); // Normalizar
@@ -353,8 +376,8 @@ exports.updateFolio = async (req, res) => {
             deliveryDate: deliveryDate || folio.deliveryDate,
             deliveryTime: folioData.deliveryTime || folio.deliveryTime,
             total: finalTotal.toFixed(2),
-            advancePayment: finalAdvancePayment.toFixed(2),
-            balance: balance.toFixed(2),
+            advancePayment: finalAdvancePayment.toFixed(2), // <= Usar la variable ajustada
+            balance: balance.toFixed(2),                 // <= Usar el balance recalculado
             imageUrls: finalImageUrls.length > 0 ? finalImageUrls : null,
             imageComments: finalImageComments.some(c => c !== null) ? finalImageComments : null,
             tiers: tiersData.length > 0 ? tiersData : null,
@@ -363,10 +386,10 @@ exports.updateFolio = async (req, res) => {
             cakeFlavor: cakeFlavorData.length > 0 ? cakeFlavorData : null,
             filling: fillingData.length > 0 ? fillingData : null,
             complements: complementsData.length > 0 ? complementsData : null,
-            isPaid: isPaid === 'true' || isPaid === true,
+            isPaid: finalIsPaidStatus, // <= Establecer isPaid basado en el balance real
             hasExtraHeight: hasExtraHeight === 'true' || hasExtraHeight === true,
-            // Actualizar status solo si se proporciona explícitamente
-            ...(status && { status: status })
+            // Actualizar status solo si se proporciona explícitamente y es válido
+            ...(status && ['Pendiente', 'Nuevo', 'En Producción', 'Listo para Entrega', 'Entregado', 'Cancelado'].includes(status) && { status: status })
         };
 
          // Limpiar campos según folioType si este cambia
@@ -463,7 +486,6 @@ exports.deleteFolio = async (req, res) => {
 };
 
 // --- Resto de funciones (generateFolioPdf, markAsPrinted, cancelFolio, generateDaySummaryPdf, generateLabelPdf, getStatistics, getProductivityStats, generateCommissionReport, updateFolioStatus) ---
-// ... (El código de estas funciones puede permanecer como en la versión anterior, asegurándose de que las llamadas a BD y la lógica interna sean correctas) ...
 
 // --- GENERAR PDF INDIVIDUAL ---
 exports.generateFolioPdf = async (req, res) => {
@@ -599,7 +621,6 @@ exports.generateFolioPdf = async (req, res) => {
 
 // --- MARK AS PRINTED ---
 exports.markAsPrinted = async (req, res) => {
-     // Implementación sin cambios...
      try {
         const folio = await Folio.findByPk(req.params.id);
         if (!folio) return res.status(404).json({ message: 'Folio no encontrado' });
@@ -613,7 +634,6 @@ exports.markAsPrinted = async (req, res) => {
 
 // --- CANCEL FOLIO ---
 exports.cancelFolio = async (req, res) => {
-    // Implementación sin cambios...
      try {
         const folio = await Folio.findByPk(req.params.id);
         if (!folio) return res.status(404).json({ message: 'Folio no encontrado' });
@@ -629,7 +649,6 @@ exports.cancelFolio = async (req, res) => {
 
 // --- GENERATE DAY SUMMARY PDF ---
 exports.generateDaySummaryPdf = async (req, res) => {
-    // Implementación sin cambios...
     const { date, type } = req.query;
     if (!date || !type || !['labels', 'orders'].includes(type)) {
         return res.status(400).json({ message: 'Parámetros inválidos.' });
@@ -645,26 +664,28 @@ exports.generateDaySummaryPdf = async (req, res) => {
         let pdfBuffer;
         let pdfData = [];
         if (type === 'labels') {
-            // ... (lógica para generar pdfData para etiquetas) ...
-             foliosDelDia.forEach(folio => { /* ... lógica detallada ... */
+             foliosDelDia.forEach(folio => {
                 const folioJson = folio.toJSON();
                 let labelCounter = 1;
-                let hasMultipleParts = (folio.tiers && folio.tiers.length > 0) || (folio.complements && folio.complements.length > 0);
+                // Parse JSON fields safely before using them
+                try { folioJson.tiers = JSON.parse(folioJson.tiers || '[]'); } catch(e) { folioJson.tiers = []; }
+                try { folioJson.complements = JSON.parse(folioJson.complements || '[]'); } catch(e) { folioJson.complements = []; }
 
-                if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && (!folio.tiers || folio.tiers.length === 0))) {
+                let hasMultipleParts = (folioJson.tiers && folioJson.tiers.length > 0) || (folioJson.complements && folioJson.complements.length > 0);
+
+                if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && (!folioJson.tiers || folioJson.tiers.length === 0))) {
                     pdfData.push({ ...folioJson, folioNumber: hasMultipleParts ? `${folio.folioNumber}-P${labelCounter++}`: folio.folioNumber, id: folio.id });
                 }
-                if (folio.folioType === 'Base/Especial' && folio.tiers && folio.tiers.length > 0) {
-                    folio.tiers.forEach((tier, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}` }));
+                if (folio.folioType === 'Base/Especial' && folioJson.tiers && folioJson.tiers.length > 0) {
+                    folioJson.tiers.forEach((tier, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}` }));
                 }
-                if (folio.complements && folio.complements.length > 0) {
-                     folio.complements.forEach((comp, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}` }));
+                if (folioJson.complements && folioJson.complements.length > 0) {
+                     folioJson.complements.forEach((comp, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}` }));
                 }
                  // Quitar sufijo si solo hay una parte al final
                  if(pdfData.length > 0 && labelCounter === 2 && pdfData[pdfData.length-1].folioNumber.endsWith('-P1')) {
                     pdfData[pdfData.length-1].folioNumber = pdfData[pdfData.length-1].folioNumber.replace('-P1', '');
                  }
-
             });
              if (pdfData.length === 0) return res.status(404).send(`<html><body><h1>No se generaron etiquetas para ${date}.</h1></body></html>`);
             pdfBuffer = await pdfService.createLabelsPdf(pdfData);
@@ -686,7 +707,6 @@ exports.generateDaySummaryPdf = async (req, res) => {
 
 // --- GENERATE LABEL PDF (Individual) ---
 exports.generateLabelPdf = async (req, res) => {
-     // Implementación sin cambios...
      try {
         const folioId = req.params.id;
         if (isNaN(folioId)) return res.status(400).json({ message: 'ID inválido.'});
@@ -698,16 +718,20 @@ exports.generateLabelPdf = async (req, res) => {
         const labelsToPrint = [];
         const folioJson = folio.toJSON();
         let labelCounter = 1;
-        let hasMultipleParts = (folio.tiers && folio.tiers.length > 0) || (folio.complements && folio.complements.length > 0);
+        // Parse JSON fields safely before using them
+        try { folioJson.tiers = JSON.parse(folioJson.tiers || '[]'); } catch(e) { folioJson.tiers = []; }
+        try { folioJson.complements = JSON.parse(folioJson.complements || '[]'); } catch(e) { folioJson.complements = []; }
 
-        if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && (!folio.tiers || folio.tiers.length === 0))) {
+        let hasMultipleParts = (folioJson.tiers && folioJson.tiers.length > 0) || (folioJson.complements && folioJson.complements.length > 0);
+
+        if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && (!folioJson.tiers || folioJson.tiers.length === 0))) {
             labelsToPrint.push({ ...folioJson, folioNumber: hasMultipleParts ? `${folio.folioNumber}-P${labelCounter++}` : folio.folioNumber, id: folio.id });
         }
-        if (folio.folioType === 'Base/Especial' && folio.tiers && folio.tiers.length > 0) {
-            folio.tiers.forEach((tier, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}` }));
+        if (folio.folioType === 'Base/Especial' && folioJson.tiers && folioJson.tiers.length > 0) {
+            folioJson.tiers.forEach((tier, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}` }));
         }
-        if (folio.complements && folio.complements.length > 0) {
-            folio.complements.forEach((comp, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}` }));
+        if (folioJson.complements && folioJson.complements.length > 0) {
+            folioJson.complements.forEach((comp, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}` }));
         }
         if (labelsToPrint.length === 1 && labelCounter === 2 && labelsToPrint[0].folioNumber.endsWith('-P1')) {
            labelsToPrint[0].folioNumber = folio.folioNumber;
@@ -728,7 +752,6 @@ exports.generateLabelPdf = async (req, res) => {
 
 // --- GET STATISTICS ---
 exports.getStatistics = async (req, res) => {
-    // Implementación sin cambios...
      try {
         const folios = await Folio.findAll({
             attributes: ['folioType', 'cakeFlavor', 'filling', 'tiers'],
@@ -736,26 +759,24 @@ exports.getStatistics = async (req, res) => {
         });
 
         const stats = { normal: { flavors: {}, fillings: {} }, special: { flavors: {}, fillings: {} } };
-        const incrementCount = (obj, key) => { /* ... (igual que antes) ... */
+        const incrementCount = (obj, key) => {
              if (!key || typeof key !== 'string' || key.trim() === '' || key.toLowerCase() === 'n/a') return;
             const normalizedKey = key.trim();
             obj[normalizedKey] = (obj[normalizedKey] || 0) + 1;
         };
 
-        for (const folio of folios) { /* ... (lógica de conteo igual que antes) ... */
+        for (const folio of folios) {
              try {
+                let flavors = [], fillings = [], tiers = [];
+                // Safely parse JSON fields
+                try { flavors = JSON.parse(folio.cakeFlavor || '[]'); if (!Array.isArray(flavors)) flavors = [flavors].filter(Boolean); } catch (e) { flavors = [folio.cakeFlavor].filter(Boolean); }
+                try { fillings = JSON.parse(folio.filling || '[]'); if (!Array.isArray(fillings)) fillings = [fillings].filter(Boolean); } catch (e) { fillings = [folio.filling].filter(Boolean); }
+                try { tiers = JSON.parse(folio.tiers || '[]'); if (!Array.isArray(tiers)) tiers = []; } catch (e) { tiers = []; }
+
                 if (folio.folioType === 'Normal') {
-                    let flavors = []; let fillings = [];
-                    try { flavors = Array.isArray(folio.cakeFlavor) ? folio.cakeFlavor : JSON.parse(folio.cakeFlavor || '[]'); } catch (e) { flavors = [folio.cakeFlavor].filter(Boolean); }
-                    try { fillings = Array.isArray(folio.filling) ? folio.filling : JSON.parse(folio.filling || '[]'); } catch (e) { fillings = [folio.filling].filter(Boolean); }
-                    if (!Array.isArray(flavors)) flavors = [flavors].filter(Boolean);
-                    if (!Array.isArray(fillings)) fillings = [fillings].filter(Boolean);
                     flavors.forEach(f => incrementCount(stats.normal.flavors, f));
-                    fillings.forEach(f => incrementCount(stats.normal.fillings, f?.name || f));
+                    fillings.forEach(f => incrementCount(stats.normal.fillings, f?.name || f)); // Handle string or object
                 } else if (folio.folioType === 'Base/Especial') {
-                    let tiers = [];
-                    try { tiers = Array.isArray(folio.tiers) ? folio.tiers : JSON.parse(folio.tiers || '[]'); } catch (e) { tiers = []; }
-                    if (!Array.isArray(tiers)) tiers = [];
                     tiers.forEach(tier => {
                         (tier?.panes || []).forEach(p => incrementCount(stats.special.flavors, p));
                         (tier?.rellenos || []).forEach(rStr => (rStr || '').split(';').forEach(r => incrementCount(stats.special.fillings, r.trim())));
@@ -775,17 +796,30 @@ exports.getStatistics = async (req, res) => {
 
 // --- GET PRODUCTIVITY STATS ---
 exports.getProductivityStats = async (req, res) => {
-    // Implementación sin cambios...
      try {
         const { date } = req.query;
         if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ message: 'Fecha inválida (YYYY-MM-DD).' });
         const stats = await Folio.findAll({
             where: { createdAt: { [Op.gte]: `${date} 00:00:00`, [Op.lte]: `${date} 23:59:59` } },
-            attributes: ['responsibleUserId', [sequelize.fn('COUNT', sequelize.col('Folio.id')), 'folioCount']],
-            include: [{ model: User, as: 'responsibleUser', attributes: ['username'] }],
-            group: ['responsibleUserId', 'responsibleUser.id'], raw: false, order: [[sequelize.literal('folioCount'), 'DESC']]
+            attributes: [
+                'responsibleUserId',
+                [sequelize.fn('COUNT', sequelize.col('Folio.id')), 'folioCount']
+            ],
+            include: [{
+                model: User,
+                as: 'responsibleUser',
+                attributes: ['username']
+            }],
+            group: ['responsibleUserId', 'responsibleUser.id', 'responsibleUser.username'], // Include username in group by
+            raw: false, // Set raw to false to get Sequelize model instances
+            order: [[sequelize.literal('folioCount'), 'DESC']]
         });
-         const formattedStats = stats.map(s => ({ userId: s.responsibleUserId, username: s.responsibleUser?.username || 'Desconocido', folioCount: s.folioCount }));
+         // Access nested properties correctly
+        const formattedStats = stats.map(s => ({
+            userId: s.responsibleUserId,
+            username: s.responsibleUser?.username || 'Desconocido', // Use optional chaining
+            folioCount: s.get('folioCount') // Use get() for aggregated values when raw is false
+        }));
         res.status(200).json(formattedStats);
     } catch (error) {
         console.error(`Error getProductivityStats ${req.query.date}:`, error);
@@ -793,9 +827,9 @@ exports.getProductivityStats = async (req, res) => {
     }
 };
 
+
 // --- GENERATE COMMISSION REPORT ---
 exports.generateCommissionReport = async (req, res) => {
-    // Implementación sin cambios...
      try {
         const { date } = req.query;
         if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ message: 'Fecha inválida (YYYY-MM-DD).' });
@@ -816,7 +850,6 @@ exports.generateCommissionReport = async (req, res) => {
 
 // --- UPDATE FOLIO STATUS ---
 exports.updateFolioStatus = async (req, res) => {
-    // Implementación sin cambios...
      try {
         const folioId = req.params.id;
         if (isNaN(folioId)) return res.status(400).json({ message: 'ID inválido.'});
