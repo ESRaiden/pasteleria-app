@@ -2,12 +2,82 @@
 <html>
 <head>
     <style>
-        body { font-family: sans-serif; margin: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card { border: 2px dashed #999; padding: 15px; page-break-inside: avoid; }
-        .card h3 { margin-top: 0; font-size: 1.2em; }
-        .card p { margin: 5px 0; }
-        .extra-height { color: #d9534f; font-weight: bold; }
+        body {
+            font-family: sans-serif;
+            margin: 5px; /* Reducir margen general */
+            font-size: 8pt; /* Tamaño base más pequeño */
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* Columnas automáticas, min 140px */
+            gap: 5px; /* Espacio mínimo entre etiquetas */
+            width: 100%;
+        }
+        .card {
+            border: 1px dashed #777; /* Borde más fino */
+            padding: 4px 6px;      /* Reducir padding interno */
+            page-break-inside: avoid;
+            display: flex;         /* Usar flexbox para control interno */
+            flex-direction: column;
+            justify-content: space-between; /* Distribuir espacio */
+            /* Intentar simular proporción 2:1 (ancho:alto) - AJUSTAR SEGÚN PRUEBAS */
+            /* width: 140px; */ /* Ancho fijo puede ayudar */
+            aspect-ratio: 2 / 1.1; /* Forzar proporción cercana a 5x2.5, ajustar el 1.1 */
+            box-sizing: border-box;
+            overflow: hidden; /* Evitar que el contenido se desborde */
+        }
+        .folio-number {
+            font-size: 14pt; /* Folio grande y prominente */
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.1;
+            margin-bottom: 2px; /* Espacio reducido */
+            color: #000;
+            white-space: nowrap; /* Evitar saltos de línea */
+        }
+        .details {
+            display: flex;
+            justify-content: space-between; /* Alinear hora y personas/forma */
+            align-items: center; /* Alinear verticalmente */
+            font-size: 8.5pt; /* Tamaño un poco más grande para detalles */
+            line-height: 1.2;
+            gap: 4px; /* Pequeño espacio entre elementos */
+        }
+        .time {
+            font-weight: bold;
+            white-space: nowrap; /* Evitar saltos de línea */
+        }
+        .shape-persons {
+            text-align: right;
+            white-space: nowrap; /* Evitar saltos de línea */
+        }
+        .shape {
+            display: block; /* Forma en una línea */
+            text-transform: capitalize; /* Poner en mayúscula la primera letra */
+        }
+        .persons {
+            display: block; /* Personas debajo de la forma */
+            font-weight: bold;
+        }
+        h1 { /* Opcional: reducir tamaño del título principal si interfiere */
+            font-size: 14pt;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        /* Ocultar ID y Altura Extra para ahorrar espacio */
+        .folio-id, .extra-height {
+            display: none;
+        }
+
+        /* Estilos específicos para impresión (opcional pero recomendado) */
+        @media print {
+            body { margin: 0; font-size: 7.5pt; /* Aún más pequeño para impresión si es necesario */ }
+            .grid { gap: 2px; }
+            .card { border: 1px solid #555; padding: 3px 5px; aspect-ratio: 2 / 1; } /* Borde sólido y menos padding al imprimir */
+            .folio-number { font-size: 12pt; }
+            .details { font-size: 8pt; }
+            h1 { display: none; } /* Ocultar título principal al imprimir */
+        }
     </style>
 </head>
 <body>
@@ -15,12 +85,40 @@
     <div class="grid">
         <% folios.forEach(folio => { %>
             <div class="card">
-                <h3>Folio: <%= folio.folioNumber %></h3>
-                <p><strong>ID:</strong> <%= folio.id %></p>
-                <p><strong>Forma:</strong> <%= folio.shape %></p>
-                <p><strong>Personas:</strong> <%= folio.persons %></p>
+                <%# Formatear Hora %>
+                <%
+                    let formattedTime = 'Hora N/A';
+                    if (folio.deliveryTime) {
+                        try {
+                            const timeParts = folio.deliveryTime.split(':');
+                            const hour = parseInt(timeParts[0]);
+                            const minute = timeParts[1];
+                            const dateForTime = new Date();
+                            dateForTime.setHours(hour, minute);
+                            // Formato AM/PM conciso
+                            formattedTime = dateForTime.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true });
+                        } catch (e) { formattedTime = 'Hora Inv.'; }
+                    }
+                %>
+
+                <%# Número de Folio (prominente) %>
+                <div class="folio-number"><%= folio.folioNumber %></div>
+
+                <%# Detalles: Hora a la izquierda, Forma/Personas a la derecha %>
+                <div class="details">
+                    <span class="time"><%= formattedTime %></span>
+                    <span class="shape-persons">
+                        <%# Capitalizar solo la primera letra de la forma %>
+                        <span class="shape"><%= folio.shape ? folio.shape.charAt(0).toUpperCase() + folio.shape.slice(1).toLowerCase() : 'N/A' %></span>
+                        <span class="persons"><%= folio.persons %>p</span>
+                    </span>
+                </div>
+
+                <%# ID y Altura Extra se omiten visualmente por CSS %>
+                <%# Se mantienen en el HTML por si se necesitan en el futuro %>
+                <p class="folio-id" style="display: none;"><strong>ID:</strong> <%= folio.id %></p>
                 <% if (folio.hasExtraHeight) { %>
-                    <p class="extra-height">¡ALTURA EXTRA!</p>
+                    <p class="extra-height" style="display: none;">¡ALTURA EXTRA!</p>
                 <% } %>
             </div>
         <% }); %>
