@@ -42,6 +42,8 @@ app.use(express.json());
 // Esto es necesario para que el PDF y el frontend puedan encontrar las imágenes
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+app.use(express.static(__dirname));
+
 // --- RUTAS DE LA API ---
 app.get('/', (req, res) => {
   res.json({ message: '¡API de la Pastelería La Fiesta funcionando!' });
