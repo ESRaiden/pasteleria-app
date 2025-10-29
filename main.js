@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.previousView = 'calendar';
     let currentSessionId = null; // Variable para saber en qué sesión de chat estamos
     window.currentUserRole = null; // Variable global para el rol del usuario
+    let allActiveSessions = [];
 
     // --- VISTAS Y ELEMENTOS GLOBALES ---
     const loginView = document.getElementById('loginView');
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const viewPendingButton = document.getElementById('viewPendingButton');
     const pendingFoliosList = document.getElementById('pendingFoliosList');
     const pendingCountBadge = document.getElementById('pending-count');
+    const pendingSearchInput = document.getElementById('pendingSearchInput'); // <-- AÑADIR ESTA LÍNEA
 
     const manageUsersButton = document.getElementById('manageUsersButton');
     const loginForm = document.getElementById('loginForm');
@@ -2766,111 +2768,139 @@ document.addEventListener('DOMContentLoaded', function() {
      }
 
     // ===== SECCIÓN PARA LA BANDEJA DE ENTRADA (sin cambios) =====
-    async function loadActiveSessions() {
-        const authToken = localStorage.getItem('authToken');
-        if (!authToken) {
-             console.warn("No auth token found for loading sessions.");
-             // Podrías redirigir a login aquí si es necesario
-             return;
+    // --- NUEVA FUNCIÓN para renderizar la lista de sesiones ---
+function renderPendingSessions(sessionsToRender) {
+    pendingFoliosList.innerHTML = ''; // Limpiar lista actual
+
+    if (!sessionsToRender || sessionsToRender.length === 0) {
+        const searchTerm = pendingSearchInput ? pendingSearchInput.value.trim() : '';
+        if (searchTerm) {
+            pendingFoliosList.innerHTML = `<p class="text-gray-500 text-center italic mt-4 p-4">No se encontraron sesiones activas para "${searchTerm}".</p>`;
+        } else {
+            pendingFoliosList.innerHTML = '<p class="text-gray-500 text-center italic mt-4 p-4">No hay sesiones de IA activas en este momento.</p>';
         }
+        pendingCountBadge.classList.add('hidden'); // Ocultar contador si no hay resultados
+        return;
+    }
 
-
-        const pendingTitle = document.querySelector('#pendingView h2');
-        if (pendingTitle) pendingTitle.textContent = 'Bandeja de Entrada - Sesiones de IA Activas';
-
-        pendingFoliosList.innerHTML = '<p class="text-gray-500 text-center italic mt-4 p-4">Cargando sesiones activas...</p>';
-         pendingCountBadge.classList.add('hidden'); // Ocultar contador mientras carga
-
-        try {
-            const response = await fetch('http://localhost:3000/api/ai-sessions?status=active', { // Asegurar que solo traiga activas
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-
-            if (!response.ok) {
-                 // Manejar caso donde la ruta aún no exista o falle
-                 if (response.status === 404) {
-                     pendingFoliosList.innerHTML = '<p class="text-orange-600 text-center italic mt-4 p-4">Funcionalidad de Sesiones IA no disponible o sin sesiones activas.</p>';
-                 } else {
-                     const errorData = await response.json();
-                     throw new Error(errorData.message || `Error ${response.status} al cargar sesiones.`);
-                 }
-                 pendingCountBadge.classList.add('hidden'); // Asegurar que esté oculto
-                 return; // Salir si no se pueden cargar
-            }
-
-            const activeSessions = await response.json();
-
-            // Actualizar contador
-            if (activeSessions.length > 0) {
-                pendingCountBadge.textContent = activeSessions.length;
-                pendingCountBadge.classList.remove('hidden');
-            } else {
-                pendingCountBadge.classList.add('hidden');
-            }
-
-            pendingFoliosList.innerHTML = ''; // Limpiar mensaje de carga
-            if (activeSessions.length === 0) {
-                pendingFoliosList.innerHTML = '<p class="text-gray-500 text-center italic mt-4 p-4">No hay sesiones de IA activas en este momento.</p>';
-                return;
-            }
-
-            activeSessions.forEach(session => {
-                const sessionCard = document.createElement('div');
-                 // Estilos mejorados
-                 sessionCard.className = 'p-4 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-y-2 sm:gap-x-4 cursor-pointer hover:bg-blue-50 transition-colors duration-150';
-                sessionCard.dataset.sessionId = session.id;
-
-                 // Extraer datos de forma segura
-                 const clientName = session.extractedData?.clientName || 'Cliente Desconocido';
-                 let deliveryDateStr = 'Fecha no definida';
-                 if (session.extractedData?.deliveryDate) {
-                     try {
-                          // Intentar parsear y formatear la fecha
-                          const dateObj = new Date(session.extractedData.deliveryDate + 'T12:00:00Z'); // Asumir UTC para evitar problemas de zona horaria al parsear YYYY-MM-DD
-                          if (!isNaN(dateObj)) {
-                              deliveryDateStr = dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Mexico_City' }); // Especificar zona horaria
-                          }
-                     } catch (e) { console.error("Error formateando fecha de sesión:", e); }
-                 }
-                 const persons = session.extractedData?.persons || 'N/A';
-
-
-                sessionCard.innerHTML = `
-                     <div class="flex-grow">
-                         <p class="font-bold text-base text-gray-800">${clientName} <span class="text-sm font-normal text-gray-500">(ID: ${session.id})</span></p>
-                         <p class="text-sm text-gray-600">
-                             <span class="font-medium">Fecha:</span> ${deliveryDateStr} |
-                             <span class="font-medium">Personas:</span> ${persons}
-                         </p>
-                     </div>
-                     <button class="bg-blue-600 text-white font-bold py-1 px-3 rounded-md text-sm hover:bg-blue-700 transition-colors flex-shrink-0">Abrir Asistente</button>
-                `;
-
-                sessionCard.addEventListener('click', (e) => {
-                     // Solo navegar si no se hizo clic en el botón (permitir que el botón funcione si se añade otra acción)
-                     if (e.target.tagName !== 'BUTTON') {
-                         window.previousView = 'pending'; // Guardar de dónde venimos
-                         loadChatSession(session.id);
-                     }
-                });
-                
-                // --- NUEVO: Permitir que el botón también abra el asistente ---
-                sessionCard.querySelector('button').addEventListener('click', () => {
-                     window.previousView = 'pending'; // Guardar de dónde venimos
-                     loadChatSession(session.id);
-                });
-                // --- FIN NUEVO ---
-
-
-                pendingFoliosList.appendChild(sessionCard);
-            });
-
-        } catch (error) {
-            console.error("Error en loadActiveSessions:", error);
-            pendingFoliosList.innerHTML = `<p class="text-red-600 text-center p-4">Error al cargar sesiones: ${error.message}</p>`;
-             pendingCountBadge.classList.add('hidden'); // Ocultar contador en caso de error
-        }
+    // Actualizar contador (basado en resultados filtrados si hay búsqueda)
+    const totalActive = allActiveSessions.length; // Total real
+    // const displayedCount = sessionsToRender.length; // Si quisieras mostrar "X de Y"
+    if (totalActive > 0) {
+         pendingCountBadge.textContent = totalActive; // Mostrar siempre el total activo
+         pendingCountBadge.classList.remove('hidden');
+    } else {
+         pendingCountBadge.classList.add('hidden');
     }
 
 
+    sessionsToRender.forEach(session => {
+        const sessionCard = document.createElement('div');
+        sessionCard.className = 'p-4 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-y-2 sm:gap-x-4 cursor-pointer hover:bg-blue-50 transition-colors duration-150';
+        sessionCard.dataset.sessionId = session.id;
+
+        const clientName = session.extractedData?.clientName || 'Cliente Desconocido';
+        let deliveryDateStr = 'Fecha no definida';
+        if (session.extractedData?.deliveryDate) {
+             try {
+                 // Intentar parsear y formatear la fecha
+                 const dateObj = new Date(session.extractedData.deliveryDate + 'T12:00:00Z'); // Asumir UTC
+                 if (!isNaN(dateObj)) {
+                     deliveryDateStr = dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Mexico_City' });
+                 }
+             } catch (e) { console.error("Error formateando fecha de sesión:", e); }
+        }
+        const persons = session.extractedData?.persons || 'N/A';
+
+        sessionCard.innerHTML = `
+             <div class="flex-grow">
+                 <p class="font-bold text-base text-gray-800">${clientName} <span class="text-sm font-normal text-gray-500">(ID: ${session.id})</span></p>
+                 <p class="text-sm text-gray-600">
+                     <span class="font-medium">Fecha:</span> ${deliveryDateStr} |
+                     <span class="font-medium">Personas:</span> ${persons}
+                 </p>
+             </div>
+             <button class="bg-blue-600 text-white font-bold py-1 px-3 rounded-md text-sm hover:bg-blue-700 transition-colors flex-shrink-0">Abrir Asistente</button>
+        `;
+
+        // Event listener para abrir el chat
+        sessionCard.addEventListener('click', (e) => {
+             if (e.target.tagName !== 'BUTTON') {
+                 window.previousView = 'pending';
+                 loadChatSession(session.id);
+             }
+        });
+        sessionCard.querySelector('button').addEventListener('click', () => {
+             window.previousView = 'pending';
+             loadChatSession(session.id);
+        });
+
+        pendingFoliosList.appendChild(sessionCard);
+    });
+}
+    // --- MODIFICAR la función `loadActiveSessions` original ---
+async function loadActiveSessions() {
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+         console.warn("No auth token found for loading sessions.");
+         return;
+    }
+
+    const pendingTitle = document.querySelector('#pendingView h2');
+    if (pendingTitle) pendingTitle.textContent = 'Bandeja de Entrada - Sesiones de IA Activas';
+
+    pendingFoliosList.innerHTML = '<p class="text-gray-500 text-center italic mt-4 p-4">Cargando sesiones activas...</p>';
+    pendingCountBadge.classList.add('hidden');
+    if (pendingSearchInput) pendingSearchInput.value = ''; // Limpiar búsqueda al recargar
+
+    try {
+        const response = await fetch('http://localhost:3000/api/ai-sessions?status=active', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (!response.ok) {
+             if (response.status === 404) {
+                 pendingFoliosList.innerHTML = '<p class="text-orange-600 text-center italic mt-4 p-4">Funcionalidad de Sesiones IA no disponible o sin sesiones activas.</p>';
+             } else {
+                 const errorData = await response.json();
+                 throw new Error(errorData.message || `Error ${response.status} al cargar sesiones.`);
+             }
+             allActiveSessions = []; // Limpiar caché local
+             renderPendingSessions(allActiveSessions); // Renderizar lista vacía
+             return;
+        }
+
+        allActiveSessions = await response.json(); // Guardar en la variable global
+        renderPendingSessions(allActiveSessions); // Mostrar todas inicialmente
+
+    } catch (error) {
+        console.error("Error en loadActiveSessions:", error);
+        pendingFoliosList.innerHTML = `<p class="text-red-600 text-center p-4">Error al cargar sesiones: ${error.message}</p>`;
+        allActiveSessions = []; // Limpiar caché
+        renderPendingSessions(allActiveSessions); // Renderizar lista vacía
+        pendingCountBadge.classList.add('hidden');
+    }
+}
+
+// --- Event Listener para Búsqueda en Bandeja de Entrada ---
+    if (pendingSearchInput) {
+        pendingSearchInput.addEventListener('input', () => {
+            const searchTerm = pendingSearchInput.value.toLowerCase().trim();
+
+            if (!searchTerm) {
+                renderPendingSessions(allActiveSessions); // Mostrar todas si no hay búsqueda
+                return;
+            }
+
+            const filteredSessions = allActiveSessions.filter(session => {
+                const clientName = session.extractedData?.clientName?.toLowerCase() || '';
+                // Busca si el nombre del cliente incluye el término de búsqueda
+                return clientName.includes(searchTerm);
+            });
+
+            renderPendingSessions(filteredSessions); // Mostrar solo las filtradas
+        });
+    }
+    // --- Fin Event Listener ---
+    
 }); // Fin de DOMContentLoaded
