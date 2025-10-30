@@ -67,9 +67,8 @@ app.use('/api/dictation', dictationRoutes);
 // Sirve los archivos de la carpeta 'public' (index.html, main.js, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Manejador "catch-all" (opcional pero recomendado):
-// Si ninguna ruta de API o archivo estático coincide, sirve el index.html.
-// Esto es útil para Single Page Applications (SPAs).
+// Manejador "catch-all": Si ninguna ruta de API o archivo estático coincide,
+// envía el index.html. Esto es crucial para que el frontend maneje sus propias rutas.
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
