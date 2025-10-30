@@ -20,11 +20,12 @@ const testRoutes = require('./server/routes/testRoutes');
 const dictationRoutes = require('./server/routes/dictationRoutes');
 
 // --- TAREAS PROGRAMADAS ---
+// Esta línea importa e inicia las tareas programadas (como el envío de correos)
 require('./server/cronJobs');
 
 // --- CONFIGURACIÓN DE LA APLICACIÓN ---
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // Usa el puerto del entorno o 3000 por defecto
 
 // Conectar a la base de datos
 conectarDB();
@@ -37,10 +38,13 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Servir archivos estáticos de la carpeta 'uploads'
+// Servir archivos estáticos de la carpeta 'uploads' de forma pública
+// Esto es necesario para que el PDF y el frontend puedan encontrar las imágenes
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// --- RUTAS DE LA API (DEBEN IR PRIMERO) ---
+// --- RUTAS DE LA API ---
+// (Estas son las únicas rutas que debe manejar este servidor)
+
 app.get('/api', (req, res) => {
   res.json({ message: '¡API de la Pastelería La Fiesta funcionando!' });
 });
@@ -53,23 +57,6 @@ app.use('/api/webhooks', whatsappRoutes);
 app.use('/api/ai-sessions', aiSessionRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/dictation', dictationRoutes);
-
-
-// --- SERVIR FRONTEND ESTÁTICO (DEBE IR DESPUÉS DE LA API) ---
-// Sirve los archivos de la carpeta raíz (index.html, main.js, etc.)
-app.use(express.static(__dirname));
-
-// Manejador "catch-all": Si no es una ruta API, sirve el index.html
-// Esto permite que tu frontend maneje las rutas.
-app.get('*', (req, res) => {
-    // Asegúrate de no interceptar las rutas de la API que fallan
-    if (req.path.startsWith('/api/')) {
-        return res.status(404).json({ message: 'Ruta API no encontrada.' });
-    }
-    // Para cualquier otra cosa, sirve el frontend
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
 
 // --- INICIO DEL SERVIDOR ---
 sequelize.sync({ force: false }).then(() => {
