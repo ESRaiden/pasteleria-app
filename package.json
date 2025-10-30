@@ -24,6 +24,8 @@
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.14",
     "openai": "^6.7.0",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
     "puppeteer": "^24.22.3",
     "sequelize": "^6.37.3"
   },

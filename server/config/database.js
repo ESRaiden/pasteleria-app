@@ -8,7 +8,7 @@ const sequelize = new Sequelize(
   process.env.DB_PASSWORD,
   {
     host: process.env.DB_HOST,
-    dialect: 'mysql',
+    dialect: process.env.DB_DIALECT || 'mysql',
     logging: false, // Se mantiene desactivado para no llenar la consola con logs de SQL.
     dialectOptions: {
       charset: 'utf8mb4',
