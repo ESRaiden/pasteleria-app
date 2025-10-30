@@ -38,6 +38,12 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// ======================= INICIO DE LA MODIFICACIÓN =======================
+// Servir archivos estáticos del frontend (HTML, CSS, JS) desde la carpeta 'public'
+// Esta línea es clave para que Render pueda encontrar main.js, style.css, etc.
+app.use(express.static(path.join(__dirname, 'public')));
+// ======================== FIN DE LA MODIFICACIÓN =========================
+
 // Servir archivos estáticos de la carpeta 'uploads' de forma pública
 // Esto es necesario para que el PDF y el frontend puedan encontrar las imágenes
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -57,6 +63,16 @@ app.use('/api/webhooks', whatsappRoutes);
 app.use('/api/ai-sessions', aiSessionRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/dictation', dictationRoutes);
+
+// ======================= INICIO DE LA MODIFICACIÓN =======================
+// Esta ruta "catch-all" debe ir DESPUÉS de todas las rutas API y estáticas.
+// Envía el 'index.html' para cualquier ruta que no sea de la API.
+// Esto soluciona problemas al refrescar la página en producción.
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+// ======================== FIN DE LA MODIFICACIÓN =========================
+
 
 // --- INICIO DEL SERVIDOR ---
 sequelize.sync({ force: false }).then(() => {
