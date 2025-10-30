@@ -42,10 +42,14 @@ app.use(express.json());
 // Esto es necesario para que el PDF y el frontend puedan encontrar las imágenes
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use(express.static(path.join(__dirname, 'public')));
+
+// ==================== INICIO DE LA CORRECCIÓN ====================
 
 // --- RUTAS DE LA API ---
-app.get('/', (req, res) => {
+// (Deben definirse ANTES de servir los archivos estáticos del frontend)
+
+// Ruta de estado de la API (cambiada de '/' a '/api' para evitar conflictos)
+app.get('/api', (req, res) => {
   res.json({ message: '¡API de la Pastelería La Fiesta funcionando!' });
 });
 
@@ -57,6 +61,21 @@ app.use('/api/webhooks', whatsappRoutes); // <-- USANDO LA NUEVA RUTA
 app.use('/api/ai-sessions', aiSessionRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/dictation', dictationRoutes);
+
+// --- SERVIR FRONTEND ESTÁTICO ---
+// (Esta línea ahora va DESPUÉS de las rutas de la API)
+// Sirve los archivos de la carpeta 'public' (index.html, main.js, etc.)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Manejador "catch-all" (opcional pero recomendado):
+// Si ninguna ruta de API o archivo estático coincide, sirve el index.html.
+// Esto es útil para Single Page Applications (SPAs).
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ===================== FIN DE LA CORRECCIÓN ======================
+
 
 // --- INICIO DEL SERVIDOR ---
 sequelize.sync({ force: false }).then(() => {
