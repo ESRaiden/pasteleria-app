@@ -1,6 +1,6 @@
 const { sequelize } = require('../config/database');
-const User = require('./User');
-const Client = require('./Client');
+const User = require('./user'); // <--- CORRECCIÓN
+const Client = require('./client'); // <--- CORRECCIÓN
 const Folio = require('./Folio');
 const FolioEditHistory = require('./FolioEditHistory');
 const Commission = require('./Commission');
