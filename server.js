@@ -14,18 +14,17 @@ const authRoutes = require('./server/routes/authRoutes');
 const folioRoutes = require('./server/routes/folioRoutes');
 const userRoutes = require('./server/routes/userRoutes');
 const clientRoutes = require('./server/routes/clientRoutes');
-const whatsappRoutes = require('./server/routes/whatsappRoutes'); // <-- RUTA NUEVA
+const whatsappRoutes = require('./server/routes/whatsappRoutes');
 const aiSessionRoutes = require('./server/routes/aiSessionRoutes');
 const testRoutes = require('./server/routes/testRoutes');
 const dictationRoutes = require('./server/routes/dictationRoutes');
 
 // --- TAREAS PROGRAMADAS ---
-// Esta línea importa e inicia las tareas programadas (como el envío de correos)
 require('./server/cronJobs');
 
 // --- CONFIGURACIÓN DE LA APLICACIÓN ---
 const app = express();
-const PORT = process.env.PORT || 3000; // Usa el puerto del entorno o 3000 por defecto
+const PORT = process.env.PORT || 3000;
 
 // Conectar a la base de datos
 conectarDB();
@@ -38,17 +37,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Servir archivos estáticos de la carpeta 'uploads' de forma pública
-// Esto es necesario para que el PDF y el frontend puedan encontrar las imágenes
+// Servir archivos estáticos de la carpeta 'uploads'
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-
-// ==================== INICIO DE LA CORRECCIÓN ====================
-
-// --- RUTAS DE LA API ---
-// (Deben definirse ANTES de servir los archivos estáticos del frontend)
-
-// Ruta de estado de la API (cambiada de '/' a '/api' para evitar conflictos)
+// --- RUTAS DE LA API (DEBEN IR PRIMERO) ---
 app.get('/api', (req, res) => {
   res.json({ message: '¡API de la Pastelería La Fiesta funcionando!' });
 });
@@ -57,23 +49,26 @@ app.use('/api/auth', authRoutes);
 app.use('/api/folios', folioRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/clients', clientRoutes);
-app.use('/api/webhooks', whatsappRoutes); // <-- USANDO LA NUEVA RUTA
+app.use('/api/webhooks', whatsappRoutes);
 app.use('/api/ai-sessions', aiSessionRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/dictation', dictationRoutes);
 
-// --- SERVIR FRONTEND ESTÁTICO ---
-// (Esta línea ahora va DESPUÉS de las rutas de la API)
-// Sirve los archivos de la carpeta 'public' (index.html, main.js, etc.)
-app.use(express.static(path.join(__dirname, 'public')));
 
-// Manejador "catch-all": Si ninguna ruta de API o archivo estático coincide,
-// envía el index.html. Esto es crucial para que el frontend maneje sus propias rutas.
+// --- SERVIR FRONTEND ESTÁTICO (DEBE IR DESPUÉS DE LA API) ---
+// Sirve los archivos de la carpeta raíz (index.html, main.js, etc.)
+app.use(express.static(__dirname));
+
+// Manejador "catch-all": Si no es una ruta API, sirve el index.html
+// Esto permite que tu frontend maneje las rutas.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    // Asegúrate de no interceptar las rutas de la API que fallan
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ message: 'Ruta API no encontrada.' });
+    }
+    // Para cualquier otra cosa, sirve el frontend
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
-
-// ===================== FIN DE LA CORRECCIÓN ======================
 
 
 // --- INICIO DEL SERVIDOR ---
