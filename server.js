@@ -77,7 +77,7 @@ app.get('*', (req, res) => {
 // --- INICIO DEL SERVIDOR ---
 sequelize.sync({ force: false }).then(() => {
   console.log('🔄 Modelos sincronizados con la base de datos.');
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   });
 }).catch(error => {
