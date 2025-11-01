@@ -38,11 +38,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// ======================= INICIO DE LA MODIFICACIÓN =======================
+// ======================= MODIFICACIÓN 1 =======================
 // Servir archivos estáticos del frontend (HTML, CSS, JS) desde la carpeta 'public'
-// Esta línea es clave para que Render pueda encontrar main.js, style.css, etc.
 app.use(express.static(path.join(__dirname, 'public')));
-// ======================== FIN DE LA MODIFICACIÓN =========================
+// ================================================================
 
 // Servir archivos estáticos de la carpeta 'uploads' de forma pública
 // Esto es necesario para que el PDF y el frontend puedan encontrar las imágenes
@@ -64,22 +63,25 @@ app.use('/api/ai-sessions', aiSessionRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/dictation', dictationRoutes);
 
-// ======================= INICIO DE LA MODIFICACIÓN =======================
-// Esta ruta "catch-all" debe ir DESPUÉS de todas las rutas API y estáticas.
+// ======================= MODIFICACIÓN 2 =======================
+// Esta ruta "catch-all" debe ir DESPUÉS de todas las rutas API.
 // Envía el 'index.html' para cualquier ruta que no sea de la API.
-// Esto soluciona problemas al refrescar la página en producción.
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-// ======================== FIN DE LA MODIFICACIÓN =========================
-
+// ================================================================
 
 // --- INICIO DEL SERVIDOR ---
 sequelize.sync({ force: false }).then(() => {
   console.log('🔄 Modelos sincronizados con la base de datos.');
+  
+  // ======================= MODIFICACIÓN 3 =======================
+  // Forzamos al servidor a escuchar en '0.0.0.0' y cambiamos el log
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+    console.log(`🚀 Servidor corriendo y escuchando en http://0.0.0.0:${PORT}`);
   });
+  // ================================================================
+
 }).catch(error => {
   console.error('❌ Error al sincronizar con la base de datos:', error);
 });
