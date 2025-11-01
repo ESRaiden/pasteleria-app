@@ -12,7 +12,7 @@ function initializeCalendar(authToken, userRole) {
         const loadingEl = document.getElementById('loading');
         if (!query) loadingEl.classList.remove('hidden');
 
-        const url = query ? `https://pasteleria-api-backend.onrender.com/api/folios?q=${query}` : 'https://pasteleria-api-backend.onrender.com/api/folios';
+        const url = query ? `https://pasteleria-app-production.up.railway.app/api/folios?q=${query}` : 'https://pasteleria-app-production.up.railway.app/api/folios';
         
         fetch(url, {
             method: 'GET',
@@ -203,7 +203,7 @@ function initializeCalendar(authToken, userRole) {
             const dataChecked = checkboxContainer.querySelector('[data-status="dataChecked"]').checked;
 
             try {
-                const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/folios/${folioId}/status`, {
+                const response = await fetch(`https://pasteleria-app-production.up.railway.app/api/folios/${folioId}/status`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
@@ -252,7 +252,7 @@ function initializeCalendar(authToken, userRole) {
         }
 
         try {
-            const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/folios?q=${query}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+            const response = await fetch(`https://pasteleria-app-production.up.railway.app/api/folios?q=${query}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
             const folios = await response.json();
 
             searchResultsContainer.innerHTML = '';
@@ -292,7 +292,7 @@ function initializeCalendar(authToken, userRole) {
                 searchInput.value = '';
                 
                 try {
-                    const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/folios/${folioId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+                    const response = await fetch(`https://pasteleria-app-production.up.railway.app/api/folios/${folioId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
                     const folioData = await response.json();
 
                     dailyFoliosCache = [];
@@ -325,7 +325,7 @@ function initializeCalendar(authToken, userRole) {
             const currentFolio = window.currentEditingFolio;
             if (currentFolio) {
                 const currentToken = localStorage.getItem('authToken');
-                const url = `https://pasteleria-api-backend.onrender.com/api/folios/${currentFolio.id}/label-pdf?token=${currentToken}`;
+                const url = `https://pasteleria-app-production.up.railway.app/api/folios/${currentFolio.id}/label-pdf?token=${currentToken}`;
                 window.open(url, '_blank');
             }
         });
@@ -338,7 +338,7 @@ function initializeCalendar(authToken, userRole) {
                 modal.classList.add('hidden');
                 document.getElementById('loading').classList.remove('hidden');
                 try {
-                    const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/folios/${currentFolio.id}/cancel`, {
+                    const response = await fetch(`https://pasteleria-app-production.up.railway.app/api/folios/${currentFolio.id}/cancel`, {
                         method: 'PATCH',
                         headers: { 'Authorization': `Bearer ${authToken}` }
                     });
@@ -405,7 +405,7 @@ function initializeCalendar(authToken, userRole) {
                     document.getElementById('loading').classList.remove('hidden');
     
                     try {
-                        const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/folios/${folioId}`, {
+                        const response = await fetch(`https://pasteleria-app-production.up.railway.app/api/folios/${folioId}`, {
                             method: 'DELETE',
                             headers: { 'Authorization': `Bearer ${authToken}` }
                         });
@@ -437,7 +437,7 @@ function initializeCalendar(authToken, userRole) {
             const date = document.getElementById('dailyFoliosModal').dataset.date;
             if (date) {
                 const currentToken = localStorage.getItem('authToken');
-                const url = `https://pasteleria-api-backend.onrender.com/api/folios/day-summary-pdf?type=labels&date=${date}&token=${currentToken}`;
+                const url = `https://pasteleria-app-production.up.railway.app/api/folios/day-summary-pdf?type=labels&date=${date}&token=${currentToken}`;
                 window.open(url, '_blank');
             }
         });
@@ -448,7 +448,7 @@ function initializeCalendar(authToken, userRole) {
             const date = document.getElementById('dailyFoliosModal').dataset.date;
             if (date) {
                 const currentToken = localStorage.getItem('authToken');
-                const url = `https://pasteleria-api-backend.onrender.com/api/folios/day-summary-pdf?type=orders&date=${date}&token=${currentToken}`;
+                const url = `https://pasteleria-app-production.up.railway.app/api/folios/day-summary-pdf?type=orders&date=${date}&token=${currentToken}`;
                 window.open(url, '_blank');
             }
         });
