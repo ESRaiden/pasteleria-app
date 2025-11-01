@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
             errorEl.textContent = '';
 
             try {
-                const response = await fetch('https://pasteleria-api-3bno.onrender.com/api/auth/register', {
+                const response = await fetch('https://pasteleria-api-backend.onrender.com/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, email, password, role }),
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
         userListBody.innerHTML = `<tr><td colspan="5" class="text-center p-4">Cargando usuarios...</td></tr>`;
 
         try {
-            const response = await fetch('https://pasteleria-api-3bno.onrender.com/api/users', {
+            const response = await fetch('https://pasteleria-api-backend.onrender.com/api/users', {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
@@ -285,7 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (confirm(`¿Estás seguro de que quieres eliminar al usuario con ID ${userId}?`)) {
                 loadingEl.classList.remove('hidden'); // --- NUEVO: Mostrar carga
                 try {
-                    const response = await fetch(`https://pasteleria-api-3bno.onrender.com/api/users/${userId}`, {
+                    const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/users/${userId}`, {
                         method: 'DELETE',
                         headers: { 'Authorization': `Bearer ${authToken}` }
                     });
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (newRole && validRoles.includes(newRole)) {
                 loadingEl.classList.remove('hidden'); // --- NUEVO: Mostrar carga
                 try {
-                    const response = await fetch(`https://pasteleria-api-3bno.onrender.com/api/users/${userId}`, {
+                    const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/users/${userId}`, {
                         method: 'PUT',
                         headers: {
                             'Authorization': `Bearer ${authToken}`,
@@ -468,7 +468,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const authToken = localStorage.getItem('authToken');
-            const response = await fetch('https://pasteleria-api-3bno.onrender.com/api/folios/validate-suggest', {
+            const response = await fetch('https://pasteleria-api-backend.onrender.com/api/folios/validate-suggest', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -844,7 +844,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingEl.classList.remove('hidden');
         document.getElementById('loginError').textContent = ''; // Limpiar error previo
         try {
-            const response = await fetchWithTimeout('https://pasteleria-api-3bno.onrender.com/api/auth/login', {
+            const response = await fetchWithTimeout('https://pasteleria-api-backend.onrender.com/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
@@ -971,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function() {
          dictationError.textContent = '';
 
          try {
-             const response = await fetch('https://pasteleria-api-3bno.onrender.com/api/dictation/process', {
+             const response = await fetch('https://pasteleria-api-backend.onrender.com/api/dictation/process', {
                  method: 'POST',
                  headers: { 'Authorization': `Bearer ${authToken}` },
                  body: formData
@@ -1282,7 +1282,7 @@ document.addEventListener('DOMContentLoaded', function() {
          // --- FIN NUEVO ---
          try {
              const authToken = localStorage.getItem('authToken');
-             const response = await fetch(`https://pasteleria-api-3bno.onrender.com/api/ai-sessions/${sessionId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+             const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/ai-sessions/${sessionId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
              if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'No se pudo cargar la sesión de chat.'); }
              const session = await response.json();
              chatTitle.textContent = `Asistente - Sesión #${session.id}`;
@@ -1331,7 +1331,7 @@ document.addEventListener('DOMContentLoaded', function() {
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
         try {
             const authToken = localStorage.getItem('authToken');
-            const response = await fetch(`https://pasteleria-api-3bno.onrender.com/api/ai-sessions/${currentSessionId}/chat`, {
+            const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/ai-sessions/${currentSessionId}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
                 body: JSON.stringify({ message: messageText })
@@ -1377,7 +1377,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingEl.classList.remove('hidden');
         try {
             const authToken = localStorage.getItem('authToken');
-            const response = await fetch(`https://pasteleria-api-3bno.onrender.com/api/ai-sessions/${currentSessionId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+            const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/ai-sessions/${currentSessionId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
             if (!response.ok) throw new Error('No se pudo cargar la sesión para edición manual.');
             const session = await response.json();
             const extracted = session.extractedData || {}; // --- NUEVO: Usar objeto vacío si no hay datos
@@ -1423,7 +1423,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadFlavorAndFillingStats() {
         try {
             const authToken = localStorage.getItem('authToken');
-            const response = await fetch('https://pasteleria-api-3bno.onrender.com/api/folios/statistics', { headers: { 'Authorization': `Bearer ${authToken}` } });
+            const response = await fetch('https://pasteleria-api-backend.onrender.com/api/folios/statistics', { headers: { 'Authorization': `Bearer ${authToken}` } });
             if (!response.ok) throw new Error('No se pudieron cargar las estadísticas de sabores.');
             const stats = await response.json();
             renderStatsList('normalFlavorsList', stats.normal?.flavors); // --- NUEVO: Optional chaining
@@ -1450,7 +1450,7 @@ document.addEventListener('DOMContentLoaded', function() {
          productivityListBody.innerHTML = `<tr><td colspan="2" class="text-center p-4">Cargando...</td></tr>`;
          try {
              const authToken = localStorage.getItem('authToken');
-             const response = await fetch(`https://pasteleria-api-3bno.onrender.com/api/folios/productivity?date=${date}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+             const response = await fetch(`https://pasteleria-api-backend.onrender.com/api/folios/productivity?date=${date}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
              if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'No se pudieron cargar los datos de productividad.'); }
              const stats = await response.json();
              productivityListBody.innerHTML = '';
@@ -1542,7 +1542,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const isEditingExisting = editingId && !isCreatingFromAI;
 
         const method = isEditingExisting ? 'PUT' : 'POST'; // Siempre POST si es nuevo o desde IA
-        const url = isEditingExisting ? `https://pasteleria-api-3bno.onrender.com/api/folios/${editingId}` : 'https://pasteleria-api-3bno.onrender.com/api/folios';
+        const url = isEditingExisting ? `https://pasteleria-api-backend.onrender.com/api/folios/${editingId}` : 'https://pasteleria-api-backend.onrender.com/api/folios';
 
         loadingEl.classList.remove('hidden');
         const authToken = localStorage.getItem('authToken');
@@ -1740,7 +1740,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const wrapper = document.createElement('div');
             wrapper.className = 'relative border rounded-md overflow-hidden shadow'; // Estilo
             wrapper.innerHTML = `
-                <img src="https://pasteleria-api-3bno.onrender.com/${imgData.url.replace(/\\/g, '/')}" alt="Imagen existente ${index + 1}" class="block w-full h-32 object-cover">
+                <img src="https://pasteleria-api-backend.onrender.com/${imgData.url.replace(/\\/g, '/')}" alt="Imagen existente ${index + 1}" class="block w-full h-32 object-cover">
                 <button type="button" class="absolute top-1 right-1 bg-red-600 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold delete-image-btn existing" data-index="${index}">&times;</button>
                 <textarea placeholder="Comentario..." class="w-full text-xs p-1 border-t existing-comment" data-index="${index}" rows="2">${imgData.comment || ''}</textarea>
             `;
@@ -2577,7 +2577,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             try {
                 const authToken = localStorage.getItem('authToken');
-                const response = await fetch('https://pasteleria-api-3bno.onrender.com/api/folios/analyze-image', { // Usa la ruta correcta
+                const response = await fetch('https://pasteleria-api-backend.onrender.com/api/folios/analyze-image', { // Usa la ruta correcta
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${authToken}` }, // No 'Content-Type' con FormData
                     body: formData
@@ -2661,7 +2661,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const authToken = localStorage.getItem('authToken');
-        const pdfUrl = `https://pasteleria-api-3bno.onrender.com/api/folios/${folio.id}/pdf?token=${authToken}`;
+        const pdfUrl = `https://pasteleria-api-backend.onrender.com/api/folios/${folio.id}/pdf?token=${authToken}`;
 
         pdfViewerTitle.textContent = `Viendo Folio: ${folio.folioNumber || 'N/A'} (${currentFolioIndex + 1}/${currentFolioList.length})`;
         pdfFrame.src = pdfUrl;
@@ -2760,7 +2760,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
              const authToken = localStorage.getItem('authToken');
              // Asegurarse de que el token se pasa correctamente como query param
-             const url = `https://pasteleria-api-3bno.onrender.com/api/folios/commission-report?date=${reportDate}&token=${authToken}`;
+             const url = `https://pasteleria-api-backend.onrender.com/api/folios/commission-report?date=${reportDate}&token=${authToken}`;
 
              console.log("Abriendo URL de reporte:", url); // Log para depuración
              window.open(url, '_blank'); // Abrir en nueva pestaña
@@ -2854,7 +2854,7 @@ async function loadActiveSessions() {
     if (pendingSearchInput) pendingSearchInput.value = ''; // Limpiar búsqueda al recargar
 
     try {
-        const response = await fetch('https://pasteleria-api-3bno.onrender.com/api/ai-sessions?status=active', {
+        const response = await fetch('https://pasteleria-api-backend.onrender.com/api/ai-sessions?status=active', {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
 
