@@ -1,5 +1,7 @@
 // server/services/aiImageAnalysisService.js
-require('dotenv').config();
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 const OpenAI = require('openai');
 const openai = new OpenAI();
 

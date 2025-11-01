@@ -1,5 +1,7 @@
 // server/services/aiValidationService.js
-require('dotenv').config();
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 const OpenAI = require('openai');
 const openai = new OpenAI(); // La API key se toma de process.env.OPENAI_API_KEY
 

@@ -1,4 +1,6 @@
-require('dotenv').config(); // Asegúrate de que dotenv esté configurado al inicio
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+} // Asegúrate de que dotenv esté configurado al inicio
 const OpenAI = require('openai');
 
 // La clave de la API se carga automáticamente desde las variables de entorno (process.env.OPENAI_API_KEY)

@@ -1,7 +1,8 @@
 // --- CONFIGURACIÓN DE ENTORNO ---
-// Carga las variables de entorno desde el archivo .env al inicio de la aplicación
-require('dotenv').config();
-
+// Carga las variables de entorno SÓLO SI NO ESTAMOS en producción
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 // --- IMPORTACIÓN DE MÓDULOS ---
 const express = require('express');
 const cors = require('cors');
