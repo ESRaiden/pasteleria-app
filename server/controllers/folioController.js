@@ -674,13 +674,19 @@ exports.generateDaySummaryPdf = async (req, res) => {
                 let hasMultipleParts = (folioJson.tiers && folioJson.tiers.length > 0) || (folioJson.complements && folioJson.complements.length > 0);
 
                 if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && (!folioJson.tiers || folioJson.tiers.length === 0))) {
-                    pdfData.push({ ...folioJson, folioNumber: hasMultipleParts ? `${folio.folioNumber}-P${labelCounter++}`: folio.folioNumber, id: folio.id });
+                    // ===== INICIO CORRECCIÓN 1/4 =====
+                    pdfData.push({ ...folioJson, folioNumber: hasMultipleParts ? `${folio.folioNumber}-P${labelCounter++}`: folio.folioNumber, id: folio.id, labelType: 'main' });
+                    // ===== FIN CORRECCIÓN 1/4 =====
                 }
                 if (folio.folioType === 'Base/Especial' && folioJson.tiers && folioJson.tiers.length > 0) {
-                    folioJson.tiers.forEach((tier, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}` }));
+                    // ===== INICIO CORRECCIÓN 2/4 =====
+                    folioJson.tiers.forEach((tier, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}`, labelType: 'tier' }));
+                    // ===== FIN CORRECCIÓN 2/4 =====
                 }
                 if (folioJson.complements && folioJson.complements.length > 0) {
-                     folioJson.complements.forEach((comp, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}` }));
+                     // ===== INICIO CORRECCIÓN 3/4 =====
+                     folioJson.complements.forEach((comp, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}`, labelType: 'complement' }));
+                     // ===== FIN CORRECCIÓN 3/4 =====
                 }
                  // Quitar sufijo si solo hay una parte al final
                  if(pdfData.length > 0 && labelCounter === 2 && pdfData[pdfData.length-1].folioNumber.endsWith('-P1')) {
@@ -725,13 +731,19 @@ exports.generateLabelPdf = async (req, res) => {
         let hasMultipleParts = (folioJson.tiers && folioJson.tiers.length > 0) || (folioJson.complements && folioJson.complements.length > 0);
 
         if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && (!folioJson.tiers || folioJson.tiers.length === 0))) {
-            labelsToPrint.push({ ...folioJson, folioNumber: hasMultipleParts ? `${folio.folioNumber}-P${labelCounter++}` : folio.folioNumber, id: folio.id });
+            // ===== INICIO CORRECCIÓN 1/4 =====
+            labelsToPrint.push({ ...folioJson, folioNumber: hasMultipleParts ? `${folio.folioNumber}-P${labelCounter++}` : folio.folioNumber, id: folio.id, labelType: 'main' });
+            // ===== FIN CORRECCIÓN 1/4 =====
         }
         if (folio.folioType === 'Base/Especial' && folioJson.tiers && folioJson.tiers.length > 0) {
-            folioJson.tiers.forEach((tier, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}` }));
+            // ===== INICIO CORRECCIÓN 2/4 =====
+            folioJson.tiers.forEach((tier, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}`, labelType: 'tier' }));
+            // ===== FIN CORRECCIÓN 2/4 =====
         }
         if (folioJson.complements && folioJson.complements.length > 0) {
-            folioJson.complements.forEach((comp, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}` }));
+            // ===== INICIO CORRECCIÓN 3/4 =====
+            folioJson.complements.forEach((comp, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}`, labelType: 'complement' }));
+            // ===== FIN CORRECCIÓN 3/4 =====
         }
         if (labelsToPrint.length === 1 && labelCounter === 2 && labelsToPrint[0].folioNumber.endsWith('-P1')) {
            labelsToPrint[0].folioNumber = folio.folioNumber;
