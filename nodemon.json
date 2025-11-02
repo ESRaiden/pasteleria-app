@@ -3,5 +3,6 @@
     "FOLIOS_GENERADOS/*",
     "uploads/*",
     "RESPALDOS_BD/*"
-  ]
+  ],
+  "ext": "js,json,ejs"
 }

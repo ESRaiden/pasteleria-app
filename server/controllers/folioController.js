@@ -667,31 +667,48 @@ exports.generateDaySummaryPdf = async (req, res) => {
              foliosDelDia.forEach(folio => {
                 const folioJson = folio.toJSON();
                 let labelCounter = 1;
-                // Parse JSON fields safely before using them
-                try { folioJson.tiers = JSON.parse(folioJson.tiers || '[]'); } catch(e) { folioJson.tiers = []; }
-                try { folioJson.complements = JSON.parse(folioJson.complements || '[]'); } catch(e) { folioJson.complements = []; }
 
-                let hasMultipleParts = (folioJson.tiers && folioJson.tiers.length > 0) || (folioJson.complements && folioJson.complements.length > 0);
+                // ===== INICIO DE LA CORRECCIÓN =====
+                // Parsear JSON fields de forma segura (revisando si es string primero)
+                if (typeof folioJson.tiers === 'string') {
+                    try { folioJson.tiers = JSON.parse(folioJson.tiers || '[]'); } catch(e) { folioJson.tiers = []; }
+                } else if (!Array.isArray(folioJson.tiers)) {
+                    folioJson.tiers = []; // Asegurar que sea array si es null o inválido
+                }
 
-                if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && (!folioJson.tiers || folioJson.tiers.length === 0))) {
-                    // ===== INICIO CORRECCIÓN 1/4 =====
-                    pdfData.push({ ...folioJson, folioNumber: hasMultipleParts ? `${folio.folioNumber}-P${labelCounter++}`: folio.folioNumber, id: folio.id, labelType: 'main' });
-                    // ===== FIN CORRECCIÓN 1/4 =====
+                if (typeof folioJson.complements === 'string') {
+                    try { folioJson.complements = JSON.parse(folioJson.complements || '[]'); } catch(e) { folioJson.complements = []; }
+                } else if (!Array.isArray(folioJson.complements)) {
+                    folioJson.complements = []; // Asegurar que sea array
                 }
-                if (folio.folioType === 'Base/Especial' && folioJson.tiers && folioJson.tiers.length > 0) {
-                    // ===== INICIO CORRECCIÓN 2/4 =====
-                    folioJson.tiers.forEach((tier, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}`, labelType: 'tier' }));
-                    // ===== FIN CORRECCIÓN 2/4 =====
+                
+                let hasTiers = folioJson.tiers.length > 0;
+                let hasComplements = folioJson.complements.length > 0;
+
+                // Caso 1: Es un pastel "simple" (Normal sin complementos, o Base/Especial sin tiers ni complementos)
+                if (!hasTiers && !hasComplements) {
+                    pdfData.push({ ...folioJson, folioNumber: folio.folioNumber, id: folio.id, labelType: 'main' });
+                } else {
+                    // Caso 2: Es un pastel con partes
+                    
+                    // Parte A: El pastel principal (ya sea Normal o el "principal" de un Base/Especial sin tiers)
+                    // Si es "Normal" O (es "Base/Especial" PERO no tiene tiers definidos), imprime la etiqueta principal.
+                    if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && !hasTiers)) {
+                        pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, id: folio.id, labelType: 'main' });
+                    }
+                    
+                    // Parte B: Los Tiers (si existen)
+                    if (hasTiers) {
+                         folioJson.tiers.forEach((tier, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}`, labelType: 'tier' }));
+                    }
+                    
+                    // Parte C: Los Complementos (si existen)
+                    if (hasComplements) {
+                        folioJson.complements.forEach((comp, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}`, labelType: 'complement' }));
+                    }
                 }
-                if (folioJson.complements && folioJson.complements.length > 0) {
-                     // ===== INICIO CORRECCIÓN 3/4 =====
-                     folioJson.complements.forEach((comp, i) => pdfData.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}`, labelType: 'complement' }));
-                     // ===== FIN CORRECCIÓN 3/4 =====
-                }
-                 // Quitar sufijo si solo hay una parte al final
-                 if(pdfData.length > 0 && labelCounter === 2 && pdfData[pdfData.length-1].folioNumber.endsWith('-P1')) {
-                    pdfData[pdfData.length-1].folioNumber = pdfData[pdfData.length-1].folioNumber.replace('-P1', '');
-                 }
+                // ===== FIN DE LA CORRECCIÓN =====
+
             });
              if (pdfData.length === 0) return res.status(404).send(`<html><body><h1>No se generaron etiquetas para ${date}.</h1></body></html>`);
             pdfBuffer = await pdfService.createLabelsPdf(pdfData);
@@ -724,30 +741,47 @@ exports.generateLabelPdf = async (req, res) => {
         const labelsToPrint = [];
         const folioJson = folio.toJSON();
         let labelCounter = 1;
+        
+        // ===== INICIO DE LA CORRECCIÓN =====
         // Parse JSON fields safely before using them
-        try { folioJson.tiers = JSON.parse(folioJson.tiers || '[]'); } catch(e) { folioJson.tiers = []; }
-        try { folioJson.complements = JSON.parse(folioJson.complements || '[]'); } catch(e) { folioJson.complements = []; }
+        if (typeof folioJson.tiers === 'string') {
+            try { folioJson.tiers = JSON.parse(folioJson.tiers || '[]'); } catch(e) { folioJson.tiers = []; }
+        } else if (!Array.isArray(folioJson.tiers)) {
+            folioJson.tiers = []; // Asegurar que sea array si es null o inválido
+        }
 
-        let hasMultipleParts = (folioJson.tiers && folioJson.tiers.length > 0) || (folioJson.complements && folioJson.complements.length > 0);
+        if (typeof folioJson.complements === 'string') {
+            try { folioJson.complements = JSON.parse(folioJson.complements || '[]'); } catch(e) { folioJson.complements = []; }
+        } else if (!Array.isArray(folioJson.complements)) {
+            folioJson.complements = []; // Asegurar que sea array
+        }
+        
+        let hasTiers = folioJson.tiers.length > 0;
+        let hasComplements = folioJson.complements.length > 0;
 
-        if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && (!folioJson.tiers || folioJson.tiers.length === 0))) {
-            // ===== INICIO CORRECCIÓN 1/4 =====
-            labelsToPrint.push({ ...folioJson, folioNumber: hasMultipleParts ? `${folio.folioNumber}-P${labelCounter++}` : folio.folioNumber, id: folio.id, labelType: 'main' });
-            // ===== FIN CORRECCIÓN 1/4 =====
+        // Caso 1: Es un pastel "simple" (Normal sin complementos, o Base/Especial sin tiers ni complementos)
+        if (!hasTiers && !hasComplements) {
+            labelsToPrint.push({ ...folioJson, folioNumber: folio.folioNumber, id: folio.id, labelType: 'main' });
+        } else {
+            // Caso 2: Es un pastel con partes
+            
+            // Parte A: El pastel principal (ya sea Normal o el "principal" de un Base/Especial sin tiers)
+            if (folio.folioType === 'Normal' || (folio.folioType === 'Base/Especial' && !hasTiers)) {
+                labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, id: folio.id, labelType: 'main' });
+            }
+            
+            // Parte B: Los Tiers (si existen)
+            if (hasTiers) {
+                 folioJson.tiers.forEach((tier, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}`, labelType: 'tier' }));
+            }
+            
+            // Parte C: Los Complementos (si existen)
+            if (hasComplements) {
+                folioJson.complements.forEach((comp, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}`, labelType: 'complement' }));
+            }
         }
-        if (folio.folioType === 'Base/Especial' && folioJson.tiers && folioJson.tiers.length > 0) {
-            // ===== INICIO CORRECCIÓN 2/4 =====
-            folioJson.tiers.forEach((tier, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-P${labelCounter++}`, persons: tier.persons, shape: tier.notas || folio.shape, cakeFlavor: null, filling: null, id: `${folio.id}-T${i}`, labelType: 'tier' }));
-            // ===== FIN CORRECCIÓN 2/4 =====
-        }
-        if (folioJson.complements && folioJson.complements.length > 0) {
-            // ===== INICIO CORRECCIÓN 3/4 =====
-            folioJson.complements.forEach((comp, i) => labelsToPrint.push({ ...folioJson, folioNumber: `${folio.folioNumber}-C${labelCounter++}`, persons: comp.persons, shape: comp.shape || 'Comp.', cakeFlavor: null, filling: null, id: `${folio.id}-C${i}`, labelType: 'complement' }));
-            // ===== FIN CORRECCIÓN 3/4 =====
-        }
-        if (labelsToPrint.length === 1 && labelCounter === 2 && labelsToPrint[0].folioNumber.endsWith('-P1')) {
-           labelsToPrint[0].folioNumber = folio.folioNumber;
-        }
+        // ===== FIN DE LA CORRECCIÓN =====
+
         if (labelsToPrint.length === 0) return res.status(404).send(`<html><body><h1>No se generaron etiquetas para folio ${folio.folioNumber}.</h1></body></html>`);
 
         const pdfBuffer = await pdfService.createLabelsPdf(labelsToPrint);
@@ -844,7 +878,9 @@ exports.getProductivityStats = async (req, res) => {
 exports.generateCommissionReport = async (req, res) => {
      try {
         const { date } = req.query;
+        // ===== INICIO DE LA CORRECCIÓN (Typo 4D0 -> 400) =====
         if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ message: 'Fecha inválida (YYYY-MM-DD).' });
+        // ===== FIN DE LA CORRECCIÓN =====
         const commissions = await Commission.findAll({
             where: { createdAt: { [Op.gte]: `${date} 00:00:00`, [Op.lte]: `${date} 23:59:59` } },
             attributes: ['folioNumber', 'amount'], order: [['createdAt', 'ASC']]
