@@ -408,3 +408,39 @@ exports.postChatMessage = async (req, res) => {
         res.status(statusCode).json({ message: error.message || 'Error interno al procesar el mensaje.' });
     }
 };
+
+// ==================== INICIO DE LA MODIFICACIÓN ====================
+/**
+ * Descarta una sesión de IA (marcandola como 'cancelled').
+ */
+exports.discardSession = async (req, res) => {
+    const sessionId = req.params.id;
+    console.log(`🤖 Solicitud para descartar sesión de IA #${sessionId}`);
+  
+    try {
+        const session = await AISession.findByPk(sessionId);
+    
+        if (!session) {
+            console.warn(`Sesión #${sessionId} no encontrada al intentar descartar.`);
+            return res.status(404).json({ message: 'Sesión no encontrada.' });
+        }
+
+        if (session.status !== 'active') {
+            console.warn(`Sesión #${sessionId} ya estaba en estado '${session.status}'.`);
+            // Devolvemos éxito de todos modos, ya que el resultado deseado (que no esté activa) se cumple.
+            return res.status(200).json({ message: 'La sesión ya estaba finalizada.' });
+        }
+
+        // Cambiar el estado a 'cancelled'
+        session.status = 'cancelled'; 
+        await session.save();
+        
+        console.log(`✅ Sesión de IA #${sessionId} marcada como 'cancelled'.`);
+        res.status(200).json({ message: 'Sesión descartada exitosamente.' });
+
+    } catch (error) {
+        console.error(`Error al descartar la sesión #${sessionId}:`, error);
+        res.status(500).json({ message: 'Error interno del servidor al descartar la sesión.' });
+    }
+};
+// ===================== FIN DE LA MODIFICACIÓN ======================

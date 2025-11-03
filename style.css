@@ -107,3 +107,17 @@ input:read-only, input:disabled, textarea:disabled { background-color: #e9ecef; 
     border-radius: 9999px;
 }
 /* ===================== FIN DE LA MODIFICACIÓN ====================== */
+/* Añadir al final de style.css */
+.button-danger {
+    background-color: #e53e3e; /* Un color rojo */
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+}
+.button-danger:hover {
+    background-color: #c53030; /* Rojo más oscuro al pasar el mouse */
+}

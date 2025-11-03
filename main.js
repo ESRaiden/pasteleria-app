@@ -1406,8 +1406,50 @@ document.addEventListener('DOMContentLoaded', function() {
             alert(`Error al preparar edición manual: ${error.message}`);
         } finally { loadingEl.classList.add('hidden'); }
     });
+    const discardSessionBtn = document.getElementById('discard-session-btn');
 
+    if (discardSessionBtn) {
+        discardSessionBtn.addEventListener('click', async () => {
+            if (!currentSessionId) return;
 
+            if (confirm(`¿Estás seguro de que deseas descartar esta sesión (${currentSessionId})? Esta acción no se puede deshacer.`)) {
+                loadingEl.classList.remove('hidden');
+                discardSessionBtn.disabled = true;
+
+                try {
+                    const authToken = localStorage.getItem('authToken');
+                    
+                    // ===== INICIO DE LA CORRECCIÓN =====
+                    // Usamos la URL absoluta para que coincida con tus otras llamadas
+                    const response = await fetch(`http://localhost:3000/api/ai-sessions/${currentSessionId}`, {
+                    // ===== FIN DE LA CORRECCIÓN =====
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        // El error "Not Found" venía de aquí si la URL estaba mal
+                        const errData = await response.json().catch(() => ({ message: response.statusText }));
+                        throw new Error(errData.message || 'Error del servidor');
+                    }
+
+                    alert('Sesión descartada exitosamente.');
+                    currentSessionId = null;
+                    showView('pending'); // Volver a la bandeja de entrada
+                    loadActiveSessions(); // Recargar la lista de sesiones
+
+                } catch (error) {
+                    // Aquí es donde viste el "Not Found"
+                    alert(`Error al descartar la sesión: ${error.message}`);
+                } finally {
+                    loadingEl.classList.add('hidden');
+                    // No re-habilitar el botón, ya que la vista cambiará
+                }
+            }
+        });
+    }
     // --- Lógica para Estadísticas ---
     function renderStatsList(elementId, data) {
          const container = document.getElementById(elementId);

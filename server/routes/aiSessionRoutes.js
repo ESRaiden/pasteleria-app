@@ -15,4 +15,9 @@ router.route('/:id')
 router.route('/:id/chat')
     .post(aiSessionController.postChatMessage);
 
+// ===== INICIO DE LA MODIFICACIÓN =====
+// Ruta para descartar (marcar como 'cancelled') una sesión de IA
+router.delete('/:id', aiSessionController.discardSession);
+// ===== FIN DE LA MODIFICACIÓN =====
+
 module.exports = router;
