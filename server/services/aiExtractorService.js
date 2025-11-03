@@ -36,7 +36,7 @@ async function getInitialExtraction(conversationText) {
                 * Deja el campo \`tiers\` como \`null\` o un array vacío \`[]\`.
             * **Si es "Base/Especial":**
                 * **Deja los campos \`cakeFlavor\` y \`filling\` como \`null\` o arrays vacíos \`[]\`**. La información irá en \`tiers\`.
-                * Analiza la descripción de cada piso y crea un array de objetos en el campo \`tiers\`.
+                * Analiza la descripción de cada piso **ESTRUCTURAL (APILADO)** y crea un array de objetos en el campo \`tiers\`. **NO incluyas planchas o pasteles de complemento aquí.**
                 * Cada objeto dentro de \`tiers\` DEBE tener la siguiente estructura exacta:
                     \`\`\`
                     {
@@ -63,13 +63,26 @@ async function getInitialExtraction(conversationText) {
         - \`shape\`: (String | null) Forma general del pastel (ej. "Redondo", "Rectangular").
         - \`cakeFlavor\`: (Array of Strings | null) Sabores generales del pan (SOLO para tipo "Normal").
         - \`filling\`: (Array of Strings | null) Rellenos generales (SOLO para tipo "Normal").
-        - \`tiers\`: (Array of Objects | null) Estructura por pisos (SOLO para tipo "Base/Especial", sigue la estructura definida arriba).
+        - \`tiers\`: (Array of Objects | null) Estructura por pisos **APILADOS** (SOLO para tipo "Base/Especial"). **NO incluir planchas aquí.** Sigue la estructura definida arriba.
         - \`designDescription\`: (String | null) Descripción detallada de la decoración (SIN dedicatoria).
         - \`dedication\`: (String | null) Texto de la dedicatoria.
         - \`deliveryLocation\`: (String | null) Dirección de entrega o "recoge en tienda".
         - \`deliveryCost\`: (Number | null) Costo del envío (solo número).
         - \`total\`: (Number | null) Costo total o del pastel (solo número).
         - \`advancePayment\`: (Number | null) Anticipo (solo número).
+        - \`complements\`: (Array of Objects | null) Array de pasteles ADICIONALES (planchas, quequitos) que complementan el pedido. **NO SON LOS PISOS DEL PASTEL PRINCIPAL.** Ejemplo: Si piden "pastel de 2 pisos Y dos planchas", aquí SÓLO van las dos planchas.
+            * \`\`\`
+                {
+                  "persons": number | null,   // Personas para ESE complemento
+                  "shape": string | null,     // Forma (ej. "Plancha")
+                  "flavor": string | null,    // Sabor del pan
+                  "filling": string | null,   // Relleno
+                  "description": string | null // Decoración o notas
+                }
+                \`\`\`
+        - \`accessories\`: (String | null) Accesorios físicos (ej. "Oblea", "Figura de fondant", "Moño").
+        - \`additional\`: (Array of Objects | null) Adicionales con costo (ej. velas, letreros). Estructura: \`[{ "name": "Cant x Producto", "price": number }]\`.
+        - \`hasExtraHeight\`: (Boolean) \`true\` si el pastel principal lleva altura extra.
 
         **Conversación a analizar:**
         ---
@@ -138,6 +151,12 @@ async function getInitialExtraction(conversationText) {
              if (!Array.isArray(extractedData.cakeFlavor)) extractedData.cakeFlavor = [];
              if (!Array.isArray(extractedData.filling)) extractedData.filling = [];
         }
+
+        // --- INICIO CORRECCIÓN: Asegurar que los arrays existan ---
+        if (!Array.isArray(extractedData.complements)) extractedData.complements = [];
+        if (!Array.isArray(extractedData.additional)) extractedData.additional = [];
+        // --- FIN CORRECCIÓN ---
+
 
         // Convertir campos numéricos que puedan venir como string
         ['deliveryCost', 'total', 'advancePayment'].forEach(key => {
