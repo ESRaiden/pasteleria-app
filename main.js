@@ -1709,24 +1709,62 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('status', 'Nuevo');
         }
 
+try {
+    const response = await fetch(url, { method, headers: { 'Authorization': `Bearer ${authToken}` }, body: formData });
+
+     const responseBody = await response.text(); // Leer como texto primero
+     let responseData;
+     try {
+         responseData = JSON.parse(responseBody); // Intentar parsear como JSON
+     } catch (e) {
+         // Si falla el parseo, lanzar error con el texto original
+         console.error("Respuesta no es JSON:", responseBody);
+         throw new Error(`Respuesta inesperada del servidor: ${responseBody}`);
+     }
+
+
+    if (!response.ok) {
+         // Usar el mensaje del JSON parseado si existe
+        throw new Error(responseData.message || `Error del servidor: ${response.status}`);
+    }
+
+    // =================================================================
+    // ===== INICIO DE LA MODIFICACIÓN (Arreglo 3 y 4 Combinados) =====
+    // =================================================================
+
+    // ARREGLO 3: Descartar la sesión de IA si se creó desde el formulario manual
+    if (isCreatingFromAI) {
+        const sessionId = editingId.split('-')[1]; // Extraer ID (ej. "31" de "ai-31")
+        console.log(`Folio creado desde IA. Descartando sesión ${sessionId}...`);
+
         try {
-            const response = await fetch(url, { method, headers: { 'Authorization': `Bearer ${authToken}` }, body: formData });
+            // Llamamos a la ruta DELETE para descartar la sesión de la bandeja de entrada
+            const deleteResponse = await fetch(`http://localhost:3000/api/ai-sessions/${sessionId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
 
-             const responseBody = await response.text(); // Leer como texto primero
-             let responseData;
-             try {
-                 responseData = JSON.parse(responseBody); // Intentar parsear como JSON
-             } catch (e) {
-                 // Si falla el parseo, lanzar error con el texto original
-                 console.error("Respuesta no es JSON:", responseBody);
-                 throw new Error(`Respuesta inesperada del servidor: ${responseBody}`);
-             }
-
-
-            if (!response.ok) {
-                 // Usar el mensaje del JSON parseado si existe
-                throw new Error(responseData.message || `Error del servidor: ${response.status}`);
+            if (!deleteResponse.ok) {
+                console.warn(`Error al descartar la sesión de IA ${sessionId}. Es posible que siga apareciendo en la bandeja.`);
+            } else {
+                console.log(`Sesión de IA ${sessionId} descartada exitosamente.`);
+                // Refrescamos la lista de sesiones en segundo plano para la próxima vez que entres
+                loadActiveSessions(); 
             }
+        } catch (discardError) {
+            console.warn(`Error de red al descartar la sesión de IA ${sessionId}:`, discardError.message);
+        }
+    }
+
+    // ARREGLO 4: Refrescar el calendario (igual que hicimos en el chat submit)
+    if (window.myAppCalendar) {
+        console.log('Refrescando calendario desde el formulario...');
+        window.myAppCalendar.refetchEvents();
+    }
+
+    // =================================================================
+    // ===== FIN DE LA MODIFICACIÓN =====
+    // =================================================================
 
             const successMessage = (isCreatingFromAI || !isEditingExisting)
                  ? '¡Folio creado con éxito!'
