@@ -145,8 +145,14 @@ function initializeCalendar(authToken, userRole) {
 
                     const time = folio.deliveryTime.substring(0, 5);
                     
+                    // ===== INICIO DE LA MODIFICACIÓN (Arreglo 3.1) =====
+                    // Determina si los checkboxes deben estar deshabilitados
+                    const isDisabled = folio.status === 'Cancelado';
+                    const disabledAttribute = isDisabled ? 'disabled' : '';
+                    // ===== FIN DE LA MODIFICACIÓN =====
+
                     let tagsHTML = '';
-                    if (folio.status === 'Cancelado') {
+                    if (isDisabled) {
                         tagsHTML += `<span class="status-tag bg-red-100 text-red-600">CANCELADO</span>`;
                     } else {
                         if (folio.isPrinted) tagsHTML += `<span class="status-tag bg-green-100 text-green-600">IMPRESO</span>`;
@@ -161,10 +167,16 @@ function initializeCalendar(authToken, userRole) {
                         </div>
                         <div class="flex-shrink-0 ml-4 p-2 border-l" data-folio-id="${folio.id}">
                             <div class="flex items-center space-x-3 text-xs">
-                                <label class="flex items-center"><input type="checkbox" class="folio-status-check" data-status="isPrinted" ${folio.isPrinted ? 'checked' : ''}> Impreso</label>
-                                <label class="flex items-center"><input type="checkbox" class="folio-status-check" data-status="fondantChecked" ${folio.fondantChecked ? 'checked' : ''}> Revisado Fondant</label>
-                                <label class="flex items-center"><input type="checkbox" class="folio-status-check" data-status="dataChecked" ${folio.dataChecked ? 'checked' : ''}> Datos Revisados</label>
-                            </div>
+                                <label class="flex items-center ${isDisabled ? 'cursor-not-allowed opacity-60' : ''}">
+                                    <input type="checkbox" class="folio-status-check" data-status="isPrinted" ${folio.isPrinted ? 'checked' : ''} ${disabledAttribute}> Impreso
+                                </label>
+                                <label class="flex items-center ${isDisabled ? 'cursor-not-allowed opacity-60' : ''}">
+                                    <input type="checkbox" class="folio-status-check" data-status="fondantChecked" ${folio.fondantChecked ? 'checked' : ''} ${disabledAttribute}> Revisado Fondant
+                                </label>
+                                <label class="flex items-center ${isDisabled ? 'cursor-not-allowed opacity-60' : ''}">
+                                    <input type="checkbox" class="folio-status-check" data-status="dataChecked" ${folio.dataChecked ? 'checked' : ''} ${disabledAttribute}> Datos Revisados
+                                </label>
+                                </div>
                         </div>
                     `;
 
@@ -213,13 +225,50 @@ function initializeCalendar(authToken, userRole) {
                 });
                 if (!response.ok) throw new Error('Error al actualizar el estado');
                 
-                // Actualizar el folio en el caché local para que los cambios se reflejen si se reabre el modal
+                // ===== INICIO DE LA MODIFICACIÓN (Arreglo 3.3) =====
+                // 1. Encuentra el elemento de la lista (el <div>) que se está modificando
+                const listItem = e.target.closest('.folio-list-item');
+                if (listItem) {
+                    // 2. Busca el folio en el caché del día para obtener su estado (ej. "Cancelado")
+                    //    (Aunque si llegamos aquí, no debería estar cancelado, esto es por si acaso)
+                    const folioFromCache = dailyFoliosCache.find(f => f.id == folioId);
+                    const folioStatus = folioFromCache ? folioFromCache.status : 'Nuevo';
+
+                    // 3. Reconstruye el HTML de las etiquetas
+                    let tagsHTML = '';
+                    if (folioStatus === 'Cancelado') {
+                        tagsHTML = `<span class="status-tag bg-red-100 text-red-600">CANCELADO</span>`;
+                    } else {
+                        // Usa las variables que ya capturaste para el PATCH
+                        if (isPrinted) tagsHTML += `<span class="status-tag bg-green-100 text-green-600">IMPRESO</span>`;
+                        if (fondantChecked) tagsHTML += `<span class="status-tag bg-blue-100 text-blue-600">FONDANT OK</span>`;
+                        if (dataChecked) tagsHTML += `<span class="status-tag bg-purple-100 text-purple-600">DATOS OK</span>`;
+                    }
+
+                    // 4. Reemplaza el contenido del contenedor de etiquetas
+                    const tagsContainer = listItem.querySelector('.flex-wrap');
+                    if (tagsContainer) {
+                        tagsContainer.innerHTML = tagsHTML;
+                    }
+                }
+                // ===== FIN DE LA MODIFICACIÓN =====
+                
+                // Actualizar el folio en el caché GLOBAL (allFoliosData)
                 const folioInCache = allFoliosData.find(f => f.id == folioId);
                 if (folioInCache) {
                     folioInCache.isPrinted = isPrinted;
                     folioInCache.fondantChecked = fondantChecked;
                     folioInCache.dataChecked = dataChecked;
                 }
+
+                // Actualizar también el caché del MODAL (dailyFoliosCache)
+                const folioInDailyCache = dailyFoliosCache.find(f => f.id == folioId);
+                if (folioInDailyCache) {
+                    folioInDailyCache.isPrinted = isPrinted;
+                    folioInDailyCache.fondantChecked = fondantChecked;
+                    folioInDailyCache.dataChecked = dataChecked;
+                }
+                
                 calendar.refetchEvents(); // Refrescar los eventos del calendario
             } catch (error) {
                 alert('No se pudo guardar el estado. Inténtalo de nuevo.');
